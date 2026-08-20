@@ -1,0 +1,103 @@
+// Package middleware HTTP 中间件：JWT 认证、RBAC 鉴权、CORS。
+package middleware
+
+import (
+	"fmt"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	"github.com/smilex/smilex-admin-gin/pkg/response"
+)
+
+// CORS 跨域
+func CORS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	}
+}
+
+const ctxSubjectKey = "auth.subject"
+
+// JWT 认证：Bearer token -> Subject 存入 context
+func JWT(authSvc *authsvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		h := c.GetHeader("Authorization")
+		token, ok := strings.CutPrefix(h, "Bearer ")
+		if !ok || token == "" {
+			response.Unauthorized(c, "missing bearer token")
+			c.Abort()
+			return
+		}
+		s, err := authSvc.ParseSubject(token)
+		if err != nil {
+			response.Unauthorized(c, "invalid or expired token")
+			c.Abort()
+			return
+		}
+		c.Set(ctxSubjectKey, s)
+		c.Next()
+	}
+}
+
+// Subject 从 context 取认证主体（JWT 中间件之后可用）
+func Subject(c *gin.Context) *auth.Subject {
+	if v, ok := c.Get(ctxSubjectKey); ok {
+		if s, ok := v.(*auth.Subject); ok {
+			return s
+		}
+	}
+	return nil
+}
+
+// permEntry 权限缓存条目
+type permEntry struct {
+	allow    bool
+	expireAt time.Time
+}
+
+// RBAC 接口鉴权（带 30s 内存缓存，减少查库）
+func RBAC(authSvc *authsvc.Service) gin.HandlerFunc {
+	var (
+		mu      sync.RWMutex
+		cache   = map[string]permEntry{}
+		ttl     = 30 * time.Second
+	)
+	return func(c *gin.Context) {
+		s := Subject(c)
+		if s == nil {
+			response.Unauthorized(c, "unauthenticated")
+			c.Abort()
+			return
+		}
+		key := fmt.Sprintf("%d|%s|%s", s.UserID, c.Request.Method, c.Request.URL.Path)
+		mu.RLock()
+		e, ok := cache[key]
+		mu.RUnlock()
+		if ok && time.Now().Before(e.expireAt) {
+			if !e.allow {
+				response.Forbidden(c, "permission denied")
+				c.Abort()
+			}
+			return
+		}
+		allow := authSvc.Authorize(c.Request.Context(), s.UserID, c.Request.Method, c.Request.URL.Path)
+		mu.Lock()
+		cache[key] = permEntry{allow: allow, expireAt: time.Now().Add(ttl)}
+		mu.Unlock()
+		if !allow {
+			response.Forbidden(c, "permission denied")
+			c.Abort()
+		}
+	}
+}

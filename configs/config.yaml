@@ -1,0 +1,33 @@
+server:
+  port: 8080
+  mode: debug # debug | release
+
+db:
+  driver: mysql # mysql | postgres | sqlite
+  autoMigrate: true # 启动时自动建表 + 种子数据
+  mysql:
+    host: 127.0.0.1
+    port: 3306
+    user: root
+    password: "123456"
+    dbname: smilex_admin
+    charset: utf8mb4
+    maxOpenConns: 20
+    maxIdleConns: 10
+  postgres:
+    host: 127.0.0.1
+    port: 5432
+    user: postgres
+    password: "123456"
+    dbname: smilex_admin
+    sslmode: disable
+    maxOpenConns: 20
+    maxIdleConns: 10
+  sqlite:
+    path: ./data/smilex.db
+
+jwt:
+  secret: smilex-admin-secret-change-me
+  issuer: smilex-admin
+  expireHours: 2 # access token 有效期
+  refreshHours: 168 # refresh token 有效期

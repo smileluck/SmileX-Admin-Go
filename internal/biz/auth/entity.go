@@ -1,0 +1,26 @@
+// Package auth 认证限界上下文 —— 领域层
+package auth
+
+import "time"
+
+// Subject 认证主体（JWT 载荷）
+type Subject struct {
+	UserID   uint
+	Username string
+	Roles    []string
+}
+
+// TokenPair 令牌对
+type TokenPair struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+}
+
+// TokenIssuer 令牌签发接口（由 infrastructure/auth 实现，依赖倒置）
+type TokenIssuer interface {
+	IssueAccessToken(s Subject) (token string, expiresAt time.Time, err error)
+	IssueRefreshToken(s Subject) (token string, err error)
+	ParseAccessToken(token string) (*Subject, error)
+	ParseRefreshToken(token string) (*Subject, error)
+}

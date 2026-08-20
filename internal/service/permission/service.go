@@ -1,0 +1,58 @@
+// Package permission 权限应用服务
+package permission
+
+import (
+	"context"
+
+	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
+)
+
+type Service struct {
+	uc *bizperm.Usecase
+}
+
+func NewService(uc *bizperm.Usecase) *Service { return &Service{uc: uc} }
+
+type CreateRequest struct {
+	Name     string       `json:"name" binding:"required"`
+	Code     string       `json:"code" binding:"required"`
+	Type     bizperm.Type `json:"type" binding:"required,oneof=api menu"`
+	Method   string       `json:"method"`
+	Path     string       `json:"path"`
+	ParentID uint         `json:"parent_id"`
+	Icon     string       `json:"icon"`
+	Sort     int          `json:"sort"`
+}
+
+type UpdateRequest struct {
+	Name   string `json:"name"`
+	Method string `json:"method"`
+	Path   string `json:"path"`
+	Icon   string `json:"icon"`
+	Sort   *int   `json:"sort"`
+}
+
+func (s *Service) Create(ctx context.Context, req CreateRequest) (*bizperm.Permission, error) {
+	return s.uc.Create(ctx, req.Name, req.Code, req.Type, req.Method, req.Path, req.ParentID, req.Icon, req.Sort)
+}
+
+func (s *Service) Update(ctx context.Context, id uint, req UpdateRequest) error {
+	sort := 0
+	if req.Sort != nil {
+		sort = *req.Sort
+	}
+	return s.uc.Update(ctx, id, req.Name, req.Method, req.Path, req.Icon, sort)
+}
+
+func (s *Service) Delete(ctx context.Context, id uint) error { return s.uc.Delete(ctx, id) }
+
+func (s *Service) Get(ctx context.Context, id uint) (*bizperm.Permission, error) { return s.uc.Get(ctx, id) }
+
+func (s *Service) List(ctx context.Context, q bizperm.Query, page, pageSize int) ([]*bizperm.Permission, interface{}, error) {
+	return s.uc.List(ctx, q, page, pageSize)
+}
+
+// UserMenuTree 当前用户可见菜单树
+func (s *Service) UserMenuTree(ctx context.Context, userID uint) ([]*bizperm.MenuNode, error) {
+	return s.uc.UserMenuTree(ctx, userID)
+}

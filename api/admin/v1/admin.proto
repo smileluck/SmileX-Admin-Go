@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package admin.v1;
+
+option go_package = "github.com/smilex/smilex-admin-gin/api/admin/v1;adminv1";
+
+// 用户/角色/权限管理契约。首期 Gin 手写实现与之对应，
+// 切换 Kratos 时生成代码后 service 层可平移。
+
+// ---- 用户 ----
+
+message User {
+  uint32 id = 1;
+  string username = 2;
+  string nickname = 3;
+  string email = 4;
+  int32 status = 5; // 1 启用 0 禁用
+  repeated uint32 role_ids = 6;
+  string created_at = 7;
+}
+
+message CreateUserRequest {
+  string username = 1;
+  string password = 2;
+  string nickname = 3;
+  string email = 4;
+  repeated uint32 role_ids = 5;
+}
+
+message UpdateUserRequest {
+  uint32 id = 1;
+  string nickname = 2;
+  string email = 3;
+  optional int32 status = 4;
+}
+
+message SetUserRolesRequest {
+  uint32 id = 1;
+  repeated uint32 role_ids = 2;
+}
+
+message ResetPasswordRequest {
+  uint32 id = 1;
+  string password = 2;
+}
+
+message ListUsersRequest {
+  string username = 1;
+  optional int32 status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListUsersReply {
+  repeated User list = 1;
+  int64 total = 2;
+}
+
+service UserService {
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc DeleteUser(DeleteRequest) returns (Empty);
+  rpc GetUser(IDRequest) returns (User);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersReply);
+  rpc SetUserRoles(SetUserRolesRequest) returns (Empty);
+  rpc ResetPassword(ResetPasswordRequest) returns (Empty);
+}
+
+// ---- 角色 ----
+
+message Role {
+  uint32 id = 1;
+  string name = 2;
+  string code = 3;
+  string remark = 4;
+  repeated uint32 permission_ids = 5;
+}
+
+message CreateRoleRequest {
+  string name = 1;
+  string code = 2;
+  string remark = 3;
+}
+
+message SetRolePermissionsRequest {
+  uint32 id = 1;
+  repeated uint32 permission_ids = 2;
+}
+
+service RoleService {
+  rpc CreateRole(CreateRoleRequest) returns (Role);
+  rpc DeleteRole(DeleteRequest) returns (Empty);
+  rpc GetRole(IDRequest) returns (Role);
+  rpc ListRoles(ListRequest) returns (ListRolesReply);
+  rpc SetRolePermissions(SetRolePermissionsRequest) returns (Empty);
+}
+
+// ---- 权限 ----
+
+message Permission {
+  uint32 id = 1;
+  string name = 2;
+  string code = 3;
+  string type = 4; // api | menu
+  string method = 5;
+  string path = 6;
+  uint32 parent_id = 7;
+}
+
+service PermissionService {
+  rpc CreatePermission(Permission) returns (Permission);
+  rpc DeletePermission(DeleteRequest) returns (Empty);
+  rpc ListPermissions(ListRequest) returns (ListPermissionsReply);
+}
+
+// ---- 公共 ----
+
+message Empty {}
+
+message IDRequest { uint32 id = 1; }
+
+message DeleteRequest { uint32 id = 1; }
+
+message ListRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListRolesReply {
+  repeated Role list = 1;
+  int64 total = 2;
+}
+
+message ListPermissionsReply {
+  repeated Permission list = 1;
+  int64 total = 2;
+}
