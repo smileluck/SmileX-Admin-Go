@@ -19,8 +19,13 @@ export const useUserStore = defineStore('user', {
     },
   },
   actions: {
-    async login(username: string, password: string) {
-      const { data: resp } = await apiLogin({ username, password })
+    async login(username: string, password: string, captchaId: string, captchaCode: string) {
+      const { data: resp } = await apiLogin({
+        username,
+        password,
+        captcha_id: captchaId,
+        captcha_code: captchaCode,
+      })
       this.accessToken = resp.data.access_token
       this.refreshTokenValue = resp.data.refresh_token
       localStorage.setItem('access_token', this.accessToken)

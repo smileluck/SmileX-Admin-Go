@@ -1,7 +1,6 @@
 <template>
   <n-layout has-sider style="height: 100vh">
-    <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="224" :collapsed="collapsed"
-      show-trigger @collapse="collapsed = true" @expand="collapsed = false">
+    <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="224" :collapsed="collapsed">
       <div class="logo">
         <div class="seal">S</div>
         <div v-if="!collapsed" class="logo-text">
@@ -17,8 +16,16 @@
     <n-layout class="main">
       <n-layout-header bordered class="header">
         <div class="header-left">
-          <span class="crumb-eyebrow mono">section</span>
-          <span class="crumb-title">{{ route.meta?.title || '首页' }}</span>
+          <n-button class="sider-trigger" quaternary circle :focusable="false" aria-label="折叠/展开侧边栏"
+            @click="toggleCollapsed">
+            <template #icon>
+              <n-icon :component="MenuOutline" />
+            </template>
+          </n-button>
+          <div class="crumb">
+            <span class="crumb-eyebrow mono">section</span>
+            <span class="crumb-title">{{ route.meta?.title || '首页' }}</span>
+          </div>
         </div>
         <n-dropdown :options="userOptions" @select="onUserAction">
           <div class="user-chip">
@@ -37,7 +44,8 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown } from 'naive-ui'
+import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NButton, NIcon } from 'naive-ui'
+import { MenuOutline } from '@vicons/ionicons5'
 import { useUserStore } from '../stores/user'
 import { renderMenuIcon } from '../utils/menuIcon'
 import type { MenuNode } from '../api/types'
@@ -45,7 +53,15 @@ import type { MenuNode } from '../api/types'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const collapsed = ref(false)
+
+// 折叠状态持久化到 localStorage，刷新后保持
+const COLLAPSED_KEY = 'sider_collapsed'
+const collapsed = ref(localStorage.getItem(COLLAPSED_KEY) === '1')
+
+function toggleCollapsed() {
+  collapsed.value = !collapsed.value
+  localStorage.setItem(COLLAPSED_KEY, collapsed.value ? '1' : '0')
+}
 
 // 图标支持本地 ionicons5 名称 / 网络图片 URL，统一走 menuIcon 渲染
 const renderIcon = (icon?: string) => () => h('span', { style: 'display:inline-flex;align-items:center' }, renderMenuIcon(icon))
@@ -174,6 +190,14 @@ async function onUserAction(key: string) {
   z-index: 1;
 }
 .header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sider-trigger {
+  flex-shrink: 0;
+}
+.crumb {
   display: flex;
   flex-direction: column;
   line-height: 1.3;

@@ -13,6 +13,8 @@ var (
 	ErrInvalidCredentials = errors.New("invalid username or password")
 	// ErrDisabledAccount 账号被禁用
 	ErrDisabledAccount = errors.New("account disabled")
+	// ErrCaptcha 验证码缺失/过期/错误
+	ErrCaptcha = errors.New("captcha code invalid")
 )
 
 // UserReader 认证上下文依赖的用户读取接口（只依赖所需最小接口，而非整个 user.Repo）
@@ -26,19 +28,28 @@ type PermissionReader interface {
 	FindByUserID(ctx context.Context, userID uint) ([]*permission.Permission, error)
 }
 
+// CaptchaVerifier 登录验证码校验接口（由 captcha 上下文实现，跨上下文走接口）
+type CaptchaVerifier interface {
+	Verify(id, answer string) bool
+}
+
 // Usecase 认证领域用例
 type Usecase struct {
-	users  UserReader
-	perms  PermissionReader
-	tokens TokenIssuer
+	users   UserReader
+	perms   PermissionReader
+	tokens  TokenIssuer
+	captcha CaptchaVerifier
 }
 
-func NewUsecase(users UserReader, perms PermissionReader, tokens TokenIssuer) *Usecase {
-	return &Usecase{users: users, perms: perms, tokens: tokens}
+func NewUsecase(users UserReader, perms PermissionReader, tokens TokenIssuer, captcha CaptchaVerifier) *Usecase {
+	return &Usecase{users: users, perms: perms, tokens: tokens, captcha: captcha}
 }
 
-// Login 登录签发令牌
-func (uc *Usecase) Login(ctx context.Context, username, password string) (*TokenPair, error) {
+// Login 登录签发令牌（先校验一次性图形验证码）
+func (uc *Usecase) Login(ctx context.Context, username, password, captchaID, captchaCode string) (*TokenPair, error) {
+	if !uc.captcha.Verify(captchaID, captchaCode) {
+		return nil, ErrCaptcha
+	}
 	u, err := uc.users.FindByUsername(ctx, username)
 	if err != nil {
 		return nil, ErrInvalidCredentials

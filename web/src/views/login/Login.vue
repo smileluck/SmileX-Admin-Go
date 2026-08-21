@@ -51,10 +51,21 @@
             <n-input v-model:value="form.password" size="large" type="password" show-password-on="click" placeholder="密码"
               @keyup.enter="onLogin" />
           </n-form-item>
-          <n-button class="login-btn" type="primary" size="large" block :loading="loading" @click="onLogin">
-            登 录
-          </n-button>
+          <n-form-item path="captchaCode">
+            <div class="captcha-row">
+              <n-input v-model:value="form.captchaCode" size="large" placeholder="验证码" @keyup.enter="onLogin" />
+              <img v-if="captchaImage" class="captcha-img" :src="captchaImage" alt="验证码" title="点击刷新"
+                @click="loadCaptcha" />
+              <div v-else class="captcha-img captcha-img--empty" @click="loadCaptcha">刷新</div>
+            </div>
+          </n-form-item>
         </n-form>
+        <div class="form-extra">
+          <n-checkbox v-model:checked="remember">记住密码</n-checkbox>
+        </div>
+        <n-button class="login-btn" type="primary" size="large" block :loading="loading" @click="onLogin">
+          登 录
+        </n-button>
 
         <p class="form-foot mono">authorized personnel only</p>
       </div>
@@ -63,36 +74,96 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NForm, NFormItem, NInput, NButton, useMessage, type FormInst } from 'naive-ui'
+import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst } from 'naive-ui'
+import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
+
+const REMEMBER_KEY = 'remember_account'
 
 const router = useRouter()
 const userStore = useUserStore()
 const message = useMessage()
 const formRef = ref<FormInst | null>(null)
 const loading = ref(false)
-const form = reactive({ username: 'admin', password: '' })
+const form = reactive({ username: 'admin', password: '', captchaCode: '' })
 const rules = {
   username: { required: true, message: '请输入用户名', trigger: 'blur' },
   password: { required: true, message: '请输入密码', trigger: 'blur' },
+  captchaCode: { required: true, message: '请输入验证码', trigger: 'blur' },
+}
+
+// 验证码：id 不参与表单校验，随登录请求提交
+const captchaId = ref('')
+const captchaImage = ref('')
+const remember = ref(false)
+
+async function loadCaptcha() {
+  form.captchaCode = ''
+  try {
+    const { data: resp } = await getCaptcha()
+    captchaId.value = resp.data.captcha_id
+    captchaImage.value = resp.data.captcha_image
+  } catch {
+    captchaId.value = ''
+    captchaImage.value = ''
+    message.error('验证码加载失败，请点击刷新')
+  }
+}
+
+// 记住密码：base64 混淆存储（可逆，仅本地便利用途；需 encodeURIComponent 避免 btoa 非 Latin1 报错）
+function restoreRemembered() {
+  try {
+    const raw = localStorage.getItem(REMEMBER_KEY)
+    if (!raw) return
+    const saved = JSON.parse(decodeURIComponent(atob(raw)))
+    if (saved?.username) {
+      form.username = saved.username
+      form.password = saved.password || ''
+      remember.value = true
+    }
+  } catch { /* 本地数据损坏则忽略 */ }
+}
+
+function persistRemembered() {
+  if (remember.value) {
+    localStorage.setItem(REMEMBER_KEY, btoa(encodeURIComponent(JSON.stringify({
+      username: form.username,
+      password: form.password,
+    }))))
+  } else {
+    localStorage.removeItem(REMEMBER_KEY)
+  }
 }
 
 async function onLogin() {
-  await formRef.value?.validate()
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return // 校验失败：表单项已提示，静默返回
+  }
   loading.value = true
   try {
-    await userStore.login(form.username, form.password)
+    await userStore.login(form.username, form.password, captchaId.value, form.captchaCode)
+    persistRemembered()
     message.success('登录成功')
     // 不在这里 loadUserContext——交由路由守卫统一加载并注册动态路由
     router.push('/')
   } catch (e: any) {
-    message.error(e?.response?.data?.msg || '登录失败')
+    const msg: string = e?.response?.data?.msg || '登录失败'
+    message.error(/captcha/i.test(msg) ? '验证码错误，请重新输入' : msg)
+    // 验证码一次性，登录失败（无论原因）后必须换新
+    loadCaptcha()
   } finally {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  restoreRemembered()
+  loadCaptcha()
+})
 </script>
 
 <style scoped>
@@ -285,6 +356,40 @@ async function onLogin() {
   margin-top: 8px;
   font-weight: 600;
   letter-spacing: 4px;
+}
+
+/* 验证码：输入框 + 图片并排，图片与 large 输入框（40px）同高 */
+.captcha-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.captcha-img {
+  width: 132px;
+  height: 40px;
+  flex-shrink: 0;
+  display: block;
+  object-fit: cover;
+  border: 1px solid var(--sx-line);
+  border-radius: var(--sx-radius);
+  cursor: pointer;
+  background: var(--sx-accent-soft);
+}
+.captcha-img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sx-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--sx-muted);
+}
+
+.form-extra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 0 10px;
 }
 
 .form-foot {

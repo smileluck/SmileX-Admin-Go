@@ -6,6 +6,7 @@ package main
 import (
 	"github.com/google/wire"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	bizrole "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
@@ -24,7 +25,10 @@ var bizSet = wire.NewSet(
 	bizuser.NewUsecase,
 	bizrole.NewUsecase,
 	bizperm.NewUsecase,
+	bizcaptcha.NewUsecase,
 	auth.NewUsecase,
+	// 跨上下文最小依赖接口绑定（provider 与 bind 需同 set）
+	wire.Bind(new(auth.CaptchaVerifier), new(*bizcaptcha.Usecase)),
 )
 
 var dataRepoSet = wire.NewSet(

@@ -1,8 +1,9 @@
 import request from './request'
-import type { MenuNode, PageResult, Permission, R, Role, TokenPair, UserInfo } from './types'
+import type { CaptchaInfo, MenuNode, PageResult, Permission, R, Role, TokenPair, UserInfo } from './types'
 
 // ---- 认证 ----
-export const login = (data: { username: string; password: string }) =>
+export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
+export const login = (data: { username: string; password: string; captcha_id: string; captcha_code: string }) =>
   request.post<R<TokenPair>>('/auth/login', data)
 export const refreshToken = (refresh_token: string) =>
   request.post<R<TokenPair>>('/auth/refresh', { refresh_token })

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
@@ -62,6 +63,15 @@ func (s *HTTPServer) registerRoutes() {
 	// ---- 公开接口 ----
 	authg := v1.Group("/auth")
 	{
+		// 图形验证码：无需鉴权，登录页拉取
+		authg.GET("/captcha", func(c *gin.Context) {
+			vo, err := s.auth.GenerateCaptcha()
+			if err != nil {
+				response.ServerError(c, err.Error())
+				return
+			}
+			response.OK(c, vo)
+		})
 		authg.POST("/login", func(c *gin.Context) {
 			var req authsvc.LoginRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
@@ -70,6 +80,11 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			tp, err := s.auth.Login(c.Request.Context(), req)
 			if err != nil {
+				// 验证码错误属入参问题，返回 400 便于前端区分提示并自动刷新
+				if errors.Is(err, bizauth.ErrCaptcha) {
+					response.BadRequest(c, err.Error())
+					return
+				}
 				response.Unauthorized(c, err.Error())
 				return
 			}

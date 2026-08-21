@@ -10,6 +10,12 @@ export interface TokenPair {
   expires_at: string
 }
 
+export interface CaptchaInfo {
+  captcha_id: string
+  // PNG 的 dataURL（data:image/png;base64,...），可直接作 <img src>
+  captcha_image: string
+}
+
 export interface UserInfo {
   id: number
   username: string

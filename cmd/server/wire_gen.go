@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/google/wire"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	"github.com/smilex/smilex-admin-gin/internal/biz/captcha"
 	permission2 "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	role2 "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	user2 "github.com/smilex/smilex-admin-gin/internal/biz/user"
@@ -38,8 +39,9 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	repo := user.NewRepo(dataData)
 	permissionRepo := permission.NewRepo(dataData)
 	tokenIssuer := data.NewJWTIssuer(bootstrap)
-	usecase := auth.NewUsecase(repo, permissionRepo, tokenIssuer)
-	service := auth2.NewService(usecase)
+	usecase := captcha.NewUsecase()
+	authUsecase := auth.NewUsecase(repo, permissionRepo, tokenIssuer, usecase)
+	service := auth2.NewService(authUsecase, usecase)
 	userUsecase := user2.NewUsecase(repo)
 	userService := user3.NewService(userUsecase)
 	roleRepo := role.NewRepo(dataData)
@@ -55,7 +57,7 @@ func wireApp() (*server.HTTPServer, func(), error) {
 
 // wire.go:
 
-var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, auth.NewUsecase)
+var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha.NewUsecase, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha.Usecase)))
 
 var dataRepoSet = wire.NewSet(data.NewData, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, wire.Bind(new(auth.UserReader), new(user2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)))
 
