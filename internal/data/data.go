@@ -135,58 +135,168 @@ func (d *Data) migrateAndSeed() error {
 	if err := d.DB.Model(&model.UserPO{}).Count(&userCount).Error; err != nil {
 		return err
 	}
-	if userCount > 0 {
-		return nil
-	}
+	if userCount == 0 {
+		// 超管角色 + 通配权限（button 绑定 */*，参与 RBAC 匹配）
+		rolePO := model.RolePO{ID: 1, Name: "超级管理员", Code: "super_admin", Remark: "拥有全部权限"}
+		permPO := model.PermissionPO{ID: 1, Name: "全部权限", Code: "all", Type: string(permission.TypeButton), Method: "*", Path: "*"}
 
-	// 超管角色 + 通配权限（button 绑定 */*，参与 RBAC 匹配）
-	rolePO := model.RolePO{ID: 1, Name: "超级管理员", Code: "super_admin", Remark: "拥有全部权限"}
-	permPO := model.PermissionPO{ID: 1, Name: "全部权限", Code: "all", Type: string(permission.TypeButton), Method: "*", Path: "*"}
+		// 菜单种子数据（接口按钮权限点由 ensureSystemButtonPerms 统一补齐）
+		perms := []model.PermissionPO{
+			{ID: 100, Name: "首页", Code: "menu:dashboard", Type: "menu", Path: "/dashboard", Icon: "HomeOutline", Sort: 1},
+			{ID: 110, Name: "系统管理", Code: "menu:system", Type: "menu", Path: "/system", Icon: "SettingsOutline", Sort: 2},
+			{ID: 111, Name: "用户管理", Code: "menu:user", Type: "menu", Path: "/system/users", ParentID: 110, Icon: "PersonOutline", Sort: 1},
+			{ID: 112, Name: "角色管理", Code: "menu:role", Type: "menu", Path: "/system/roles", ParentID: 110, Icon: "IdCardOutline", Sort: 2},
+			{ID: 114, Name: "菜单与权限", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
+		}
+		adminPwd, err := user.NewPassword("123456")
+		if err != nil {
+			return err
+		}
+		adminPO := model.UserPO{ID: 1, Username: "admin", Password: string(adminPwd), Nickname: "超级管理员", Email: "admin@smilex.local", Status: int(user.StatusEnabled)}
 
-	// 菜单 + 示例按钮权限种子数据
-	perms := []model.PermissionPO{
-		{ID: 100, Name: "首页", Code: "menu:dashboard", Type: "menu", Path: "/dashboard", Icon: "HomeOutline", Sort: 1},
-		{ID: 110, Name: "系统管理", Code: "menu:system", Type: "menu", Path: "/system", Icon: "SettingsOutline", Sort: 2},
-		{ID: 111, Name: "用户管理", Code: "menu:user", Type: "menu", Path: "/system/users", ParentID: 110, Icon: "PersonOutline", Sort: 1},
-		{ID: 112, Name: "角色管理", Code: "menu:role", Type: "menu", Path: "/system/roles", ParentID: 110, Icon: "IdCardOutline", Sort: 2},
-		{ID: 114, Name: "菜单与权限", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
-		// 示例按钮权限：code 控制前端显隐，绑定接口后同时参与后端 RBAC 校验
-		{ID: 120, Name: "新增用户", Code: "user:create", Type: "button", ParentID: 111, Method: "POST", Path: "/api/v1/users", Sort: 1},
-		{ID: 121, Name: "删除用户", Code: "user:delete", Type: "button", ParentID: 111, Method: "DELETE", Path: "/api/v1/users/*", Sort: 2},
-	}
-	adminPwd, err := user.NewPassword("123456")
-	if err != nil {
-		return err
-	}
-	adminPO := model.UserPO{ID: 1, Username: "admin", Password: string(adminPwd), Nickname: "超级管理员", Email: "admin@smilex.local", Status: int(user.StatusEnabled)}
-
-	return d.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&permPO).Error; err != nil {
-			return err
-		}
-		if err := tx.Create(&rolePO).Error; err != nil {
-			return err
-		}
-		if err := tx.Create(&adminPO).Error; err != nil {
-			return err
-		}
-		if err := tx.Create(&model.UserRolePO{UserID: 1, RoleID: 1}).Error; err != nil {
-			return err
-		}
-		if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: 1}).Error; err != nil {
-			return err
-		}
-		for i := range perms {
-			if err := tx.Create(&perms[i]).Error; err != nil {
+		if err := d.DB.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Create(&permPO).Error; err != nil {
 				return err
 			}
-			if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: perms[i].ID}).Error; err != nil {
+			if err := tx.Create(&rolePO).Error; err != nil {
 				return err
 			}
+			if err := tx.Create(&adminPO).Error; err != nil {
+				return err
+			}
+			if err := tx.Create(&model.UserRolePO{UserID: 1, RoleID: 1}).Error; err != nil {
+				return err
+			}
+			if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: 1}).Error; err != nil {
+				return err
+			}
+			for i := range perms {
+				if err := tx.Create(&perms[i]).Error; err != nil {
+					return err
+				}
+				if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: perms[i].ID}).Error; err != nil {
+					return err
+				}
+			}
+			logger.Info("seeded super admin: admin/123456 (please change password before production)")
+			return nil
+		}); err != nil {
+			return err
 		}
-		logger.Info("seeded super admin: admin/123456 (please change password before production)")
-		return nil
-	})
+	}
+
+	// 系统管理接口权限点补齐并绑定超管角色（存量库/全新库统一走此路径，幂等）
+	return d.ensureSystemButtonPerms()
+}
+
+// systemButtonPermDef 系统管理接口权限点定义（code 为幂等键，menu 为所属菜单 code）
+type systemButtonPermDef struct {
+	Name   string
+	Code   string
+	Menu   string
+	Method string
+	Path   string
+	Sort   int
+}
+
+// systemButtonPerms 系统管理各接口的 button 权限点清单：
+// code 控前端按钮显隐，method/path 绑定接口参与后端 RBAC 校验（path 支持中间通配 *）
+var systemButtonPerms = []systemButtonPermDef{
+	// 用户管理
+	{Name: "查询用户", Code: "user:list", Menu: "menu:user", Method: "GET", Path: "/api/v1/users", Sort: 1},
+	{Name: "用户详情", Code: "user:view", Menu: "menu:user", Method: "GET", Path: "/api/v1/users/*", Sort: 2},
+	{Name: "新增用户", Code: "user:create", Menu: "menu:user", Method: "POST", Path: "/api/v1/users", Sort: 3},
+	{Name: "编辑用户", Code: "user:update", Menu: "menu:user", Method: "PUT", Path: "/api/v1/users/*", Sort: 4},
+	{Name: "删除用户", Code: "user:delete", Menu: "menu:user", Method: "DELETE", Path: "/api/v1/users/*", Sort: 5},
+	{Name: "分配角色", Code: "user:setRoles", Menu: "menu:user", Method: "PUT", Path: "/api/v1/users/*/roles", Sort: 6},
+	{Name: "重置密码", Code: "user:resetPassword", Menu: "menu:user", Method: "PUT", Path: "/api/v1/users/*/password", Sort: 7},
+	// 角色管理
+	{Name: "查询角色", Code: "role:list", Menu: "menu:role", Method: "GET", Path: "/api/v1/roles", Sort: 1},
+	{Name: "角色详情", Code: "role:view", Menu: "menu:role", Method: "GET", Path: "/api/v1/roles/*", Sort: 2},
+	{Name: "新增角色", Code: "role:create", Menu: "menu:role", Method: "POST", Path: "/api/v1/roles", Sort: 3},
+	{Name: "编辑角色", Code: "role:update", Menu: "menu:role", Method: "PUT", Path: "/api/v1/roles/*", Sort: 4},
+	{Name: "删除角色", Code: "role:delete", Menu: "menu:role", Method: "DELETE", Path: "/api/v1/roles/*", Sort: 5},
+	{Name: "分配权限", Code: "role:setPermissions", Menu: "menu:role", Method: "PUT", Path: "/api/v1/roles/*/permissions", Sort: 6},
+	// 菜单与权限
+	{Name: "查询权限", Code: "menu:list", Menu: "menu:menu", Method: "GET", Path: "/api/v1/permissions", Sort: 1},
+	{Name: "权限详情", Code: "menu:view", Menu: "menu:menu", Method: "GET", Path: "/api/v1/permissions/*", Sort: 2},
+	{Name: "新增权限", Code: "menu:create", Menu: "menu:menu", Method: "POST", Path: "/api/v1/permissions", Sort: 3},
+	{Name: "编辑权限", Code: "menu:update", Menu: "menu:menu", Method: "PUT", Path: "/api/v1/permissions/*", Sort: 4},
+	{Name: "删除权限", Code: "menu:delete", Menu: "menu:menu", Method: "DELETE", Path: "/api/v1/permissions/*", Sort: 5},
+}
+
+// ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
+//   - 按 code 查找，缺失则插入（自增 ID，避免与用户自建记录冲突；已存在不覆盖，尊重可能的自定义）；
+//   - 软删残留占用 code 唯一索引，恢复并校正归属；
+//   - 绑定 super_admin 角色：超管已有 * 通配实际全通过，绑定仅为角色权限树回显一致。
+func (d *Data) ensureSystemButtonPerms() error {
+	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
+	menuIDs := map[string]uint{}
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu"} {
+		var menu model.PermissionPO
+		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
+			menuIDs[code] = menu.ID
+		}
+	}
+
+	var superRole model.RolePO
+	superErr := d.DB.Where("code = ?", "super_admin").First(&superRole).Error
+
+	permIDs := make([]uint, 0, len(systemButtonPerms))
+	inserted := 0
+	for _, def := range systemButtonPerms {
+		var po model.PermissionPO
+		err := d.DB.Unscoped().Where("code = ?", def.Code).First(&po).Error
+		switch {
+		case err == nil && po.DeletedAt.Valid:
+			// 软删残留：恢复并校正为规范定义
+			if err := d.DB.Unscoped().Model(&po).Updates(map[string]interface{}{
+				"deleted_at": nil, "name": def.Name, "type": string(permission.TypeButton),
+				"method": def.Method, "path": def.Path, "parent_id": menuIDs[def.Menu], "sort": def.Sort,
+			}).Error; err != nil {
+				return err
+			}
+			inserted++
+		case err == nil:
+			// 已存在，跳过
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			po = model.PermissionPO{Name: def.Name, Code: def.Code, Type: string(permission.TypeButton),
+				Method: def.Method, Path: def.Path, ParentID: menuIDs[def.Menu], Sort: def.Sort}
+			if err := d.DB.Create(&po).Error; err != nil {
+				return err
+			}
+			inserted++
+		default:
+			return err
+		}
+		permIDs = append(permIDs, po.ID)
+	}
+
+	bound := 0
+	if superErr == nil {
+		for _, pid := range permIDs {
+			var cnt int64
+			if err := d.DB.Model(&model.RolePermissionPO{}).
+				Where("role_id = ? AND permission_id = ?", superRole.ID, pid).Count(&cnt).Error; err != nil {
+				return err
+			}
+			if cnt > 0 {
+				continue
+			}
+			if err := d.DB.Create(&model.RolePermissionPO{RoleID: superRole.ID, PermissionID: pid}).Error; err != nil {
+				return err
+			}
+			bound++
+		}
+	} else if !errors.Is(superErr, gorm.ErrRecordNotFound) {
+		return superErr
+	}
+
+	if inserted > 0 || bound > 0 {
+		logger.Info("ensured system button permissions",
+			zap.Int("inserted", inserted), zap.Int("bound_to_super_admin", bound))
+	}
+	return nil
 }
 
 // migrateLegacy 存量库幂等迁移（每次启动执行，无匹配行时零副作用）：

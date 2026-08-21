@@ -2,8 +2,8 @@
   <n-card title="菜单与权限">
     <template #header-extra>
       <n-space>
-        <n-button type="primary" ghost @click="openCreate(0, 'menu')">新增顶级菜单</n-button>
-        <n-button type="primary" ghost @click="openCreate(0, 'button')">新增权限点</n-button>
+        <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
+        <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
       </n-space>
     </template>
     <n-data-table :columns="columns" :data="tree" :loading="loading" default-expand-all />
@@ -86,11 +86,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
 import { NCard, NSpace, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NInputGroup, NTabs, NTabPane, NTreeSelect, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import * as icons from '@vicons/ionicons5'
 import { createPermission, deletePermission, listPermissions, updatePermission } from '../../api'
 import { renderMenuIcon } from '../../utils/menuIcon'
+import { useUserStore } from '../../stores/user'
 import type { Permission } from '../../api/types'
 
 // 模板中预览用的函数式组件
@@ -98,6 +99,7 @@ const IconPreview = (props: { icon?: string; size?: number }) => renderMenuIcon(
 
 const message = useMessage()
 const dialog = useDialog()
+const userStore = useUserStore()
 const loading = ref(false)
 const all = ref<Permission[]>([])
 const showModal = ref(false)
@@ -277,7 +279,8 @@ async function refresh() {
   buildTree()
 }
 
-const columns: DataTableColumns<any> = [
+// 操作列依赖按钮权限，computed 使权限变化后重新渲染
+const columns = computed<DataTableColumns<any>>(() => [
   {
     title: '名称', key: 'name',
     render(row) {
@@ -305,25 +308,29 @@ const columns: DataTableColumns<any> = [
   {
     title: '操作', key: 'actions', width: 290,
     render(row) {
-      const actions = [
-        h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
-      ]
-      if (row.type === 'menu') {
+      const actions: VNode[] = []
+      if (userStore.has('menu:update')) {
+        actions.push(h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }))
+      }
+      if (row.type === 'menu' && userStore.has('menu:create')) {
         actions.push(
           h(NButton, { size: 'small', type: 'info', onClick: () => openCreate(row.id, 'menu') }, { default: () => '加子菜单' }),
           h(NButton, { size: 'small', type: 'info', ghost: true, onClick: () => openCreate(row.id, 'button') }, { default: () => '加权限点' }),
         )
       }
       // 超管通配权限（all）禁止删除，不展示删除按钮
-      if (row.id !== WILDCARD_PERM_ID) {
+      if (row.id !== WILDCARD_PERM_ID && userStore.has('menu:delete')) {
         actions.push(
           h(NButton, { size: 'small', type: 'error', onClick: () => remove(row) }, { default: () => '删除' }),
         )
       }
+      if (actions.length === 0) {
+        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
+      }
       return h(NSpace, {}, { default: () => actions })
     },
   },
-]
+])
 
 onMounted(refresh)
 </script>

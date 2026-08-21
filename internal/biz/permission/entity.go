@@ -2,7 +2,9 @@
 package permission
 
 import (
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -31,7 +33,8 @@ type Permission struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// Match 判断权限是否能命中请求：button（及存量未迁移的 api）绑定了 method/path 即参与校验
+// Match 判断权限是否能命中请求：button（及存量未迁移的 api）绑定了 method/path 即参与校验。
+// path 支持 glob 通配：尾部 * 为前缀匹配（/api/v1/users/*），中间 * 匹配任意路径段（/api/v1/users/*/roles）。
 func (p *Permission) Match(method, path string) bool {
 	if p.Type == TypeMenu || p.Method == "" || p.Path == "" {
 		return false
@@ -42,17 +45,9 @@ func (p *Permission) Match(method, path string) bool {
 	if p.Method != "*" && p.Method != method {
 		return false
 	}
-	if p.Path == path {
-		return true
-	}
-	// 前缀通配：/api/v1/users/*
-	if n := len(p.Path); n > 1 && p.Path[n-1] == '*' {
-		prefix := p.Path[:n-1]
-		if len(path) >= len(prefix) && path[:len(prefix)] == prefix {
-			return true
-		}
-	}
-	return false
+	// glob -> 正则：转义后把 \* 还原为 .*，锚定首尾
+	pattern := "^" + strings.ReplaceAll(regexp.QuoteMeta(p.Path), `\*`, ".*") + "$"
+	return regexp.MustCompile(pattern).MatchString(path)
 }
 
 // MenuNode 菜单树节点

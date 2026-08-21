@@ -90,11 +90,13 @@ func (s *HTTPServer) registerRoutes() {
 		})
 	}
 
-	// ---- 受保护接口：JWT -> RBAC ----
-	protected := v1.Group("", middleware.JWT(s.auth), middleware.RBAC(s.auth))
+	// ---- 自身数据接口：仅 JWT 认证，不做 RBAC ----
+	// profile 是本人信息、menus 是已按角色过滤的本人菜单树、logout 无服务端状态，均无越权面；
+	// 若纳入默认拒绝的 RBAC，仅绑定了菜单/按钮权限的普通用户登录后即 403 白屏。
+	basic := v1.Group("", middleware.JWT(s.auth))
 	{
-		protected.POST("/auth/logout", func(c *gin.Context) { response.OK(c, nil) })
-		protected.GET("/auth/profile", func(c *gin.Context) {
+		basic.POST("/auth/logout", func(c *gin.Context) { response.OK(c, nil) })
+		basic.GET("/auth/profile", func(c *gin.Context) {
 			sub := middleware.Subject(c)
 			vo, err := s.auth.Profile(c.Request.Context(), sub.UserID)
 			if err != nil {
@@ -104,7 +106,7 @@ func (s *HTTPServer) registerRoutes() {
 			response.OK(c, vo)
 		})
 		// 当前用户可见菜单树
-		protected.GET("/menus", func(c *gin.Context) {
+		basic.GET("/menus", func(c *gin.Context) {
 			sub := middleware.Subject(c)
 			tree, err := s.perm.UserMenuTree(c.Request.Context(), sub.UserID)
 			if err != nil {
@@ -114,6 +116,9 @@ func (s *HTTPServer) registerRoutes() {
 			response.OK(c, tree)
 		})
 	}
+
+	// ---- 受保护接口：JWT -> RBAC ----
+	protected := v1.Group("", middleware.JWT(s.auth), middleware.RBAC(s.auth))
 
 	users := protected.Group("/users")
 	{

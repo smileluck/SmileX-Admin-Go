@@ -4,7 +4,7 @@
       <n-space>
         <n-input v-model:value="query.name" placeholder="角色名" clearable style="width: 160px" @keyup.enter="load" />
         <n-button type="primary" @click="load">查询</n-button>
-        <n-button type="primary" ghost @click="openCreate">新增角色</n-button>
+        <n-button type="primary" ghost @click="openCreate" v-permission="['role:create']">新增角色</n-button>
       </n-space>
     </template>
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
@@ -41,13 +41,15 @@
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
 import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NTree, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { createRole, deleteRole, getRole, listPermissions, listRoles, setRolePermissions, updateRole } from '../../api'
+import { useUserStore } from '../../stores/user'
 import type { Permission, Role } from '../../api/types'
 
 const message = useMessage()
 const dialog = useDialog()
+const userStore = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
 const rows = ref<Role[]>([])
@@ -185,7 +187,8 @@ async function savePerms() {
   }
 }
 
-const columns: DataTableColumns<Role> = [
+// 操作列依赖按钮权限，computed 使权限变化后重新渲染
+const columns = computed<DataTableColumns<Role>>(() => [
   { title: 'ID', key: 'id', width: 60 },
   { title: '名称', key: 'name' },
   { title: '编码', key: 'code' },
@@ -193,19 +196,26 @@ const columns: DataTableColumns<Role> = [
   {
     title: '操作', key: 'actions', width: 220,
     render(row) {
-      return h(NSpace, {}, {
-        default: () => [
-          h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
-          h(NButton, { size: 'small', type: 'info', onClick: () => openPerms(row) }, { default: () => '分配权限' }),
-          // 超管角色禁止删除，不展示删除按钮
-          row.id !== SUPER_ROLE_ID
-            ? h(NButton, { size: 'small', type: 'error', onClick: () => confirmDelete(row) }, { default: () => '删除' })
-            : h(NTag, { size: 'small', bordered: false }, { default: () => '内置' }),
-        ],
-      })
+      const actions: VNode[] = []
+      if (userStore.has('role:update')) {
+        actions.push(h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }))
+      }
+      if (userStore.has('role:setPermissions')) {
+        actions.push(h(NButton, { size: 'small', type: 'info', onClick: () => openPerms(row) }, { default: () => '分配权限' }))
+      }
+      // 超管角色禁止删除，不展示删除按钮
+      if (row.id !== SUPER_ROLE_ID && userStore.has('role:delete')) {
+        actions.push(h(NButton, { size: 'small', type: 'error', onClick: () => confirmDelete(row) }, { default: () => '删除' }))
+      } else if (row.id === SUPER_ROLE_ID) {
+        actions.push(h(NTag, { size: 'small', bordered: false }, { default: () => '内置' }))
+      }
+      if (actions.length === 0) {
+        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
+      }
+      return h(NSpace, {}, { default: () => actions })
     },
   },
-]
+])
 
 onMounted(load)
 </script>

@@ -23,7 +23,7 @@
       <n-form-item label="昵称" path="nickname"><n-input v-model:value="form.nickname" /></n-form-item>
       <n-form-item label="邮箱" path="email"><n-input v-model:value="form.email" placeholder="选填" /></n-form-item>
       <n-form-item label="角色">
-        <n-select v-model:value="form.role_ids" multiple :options="roleOptions" />
+        <n-select v-model:value="form.role_ids" multiple :options="roleOptions" :disabled="editing && !userStore.has('user:setRoles')" />
       </n-form-item>
       <n-form-item label="状态" v-if="editing">
         <n-switch v-model:value="form.statusOn" :checked-value="1" :unchecked-value="0" />
@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
 import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { createUser, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
 import { useUserStore } from '../../stores/user'
@@ -141,7 +141,10 @@ async function save() {
   try {
     if (editing.value) {
       await updateUser(editId.value, { nickname: form.nickname, email: form.email, status: form.statusOn })
-      await setUserRoles(editId.value, form.role_ids)
+      // 分配角色是独立接口权限，未授权时不发起该调用（角色保持不变）
+      if (userStore.has('user:setRoles')) {
+        await setUserRoles(editId.value, form.role_ids)
+      }
     } else {
       await createUser({ username: form.username.trim(), password: form.password, nickname: form.nickname.trim(), email: form.email.trim(), role_ids: form.role_ids })
     }
@@ -185,7 +188,7 @@ async function savePwd() {
   }
 }
 
-// 操作列依赖按钮权限（user:delete），computed 使权限变化后重新渲染
+// 操作列依赖按钮权限，computed 使权限变化后重新渲染
 const columns = computed<DataTableColumns<UserInfo>>(() => [
   { title: 'ID', key: 'id', width: 60 },
   { title: '用户名', key: 'username' },
@@ -202,15 +205,21 @@ const columns = computed<DataTableColumns<UserInfo>>(() => [
       if (!canOperate(row)) {
         return h('span', { style: 'color: #999; font-size: 12px' }, '—')
       }
-      const actions = [
-        h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
-        h(NButton, { size: 'small', type: 'warning', onClick: () => { editId.value = row.id; newPassword.value = ''; showPwd.value = true } }, { default: () => '重置密码' }),
-      ]
+      const actions: VNode[] = []
+      if (userStore.has('user:update')) {
+        actions.push(h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }))
+      }
+      if (userStore.has('user:resetPassword')) {
+        actions.push(h(NButton, { size: 'small', type: 'warning', onClick: () => { editId.value = row.id; newPassword.value = ''; showPwd.value = true } }, { default: () => '重置密码' }))
+      }
       // 超管账号禁止删除（即使超管本人），不展示删除按钮
       if (row.id !== SUPER_ADMIN_ID && userStore.has('user:delete')) {
         actions.push(
           h(NButton, { size: 'small', type: 'error', onClick: () => confirmDelete(row) }, { default: () => '删除' }),
         )
+      }
+      if (actions.length === 0) {
+        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
       }
       return h(NSpace, {}, { default: () => actions })
     },
