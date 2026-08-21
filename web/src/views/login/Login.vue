@@ -24,19 +24,24 @@
         <div class="pulse-head mono-label">system pulse</div>
         <svg class="pulse-line" viewBox="0 0 560 80" preserveAspectRatio="none" aria-hidden="true">
           <line x1="0" y1="40" x2="560" y2="40" class="pulse-base" />
-          <polyline
-            points="0,40 60,40 80,40 95,12 110,66 125,40 190,40 210,40 225,12 240,66 255,40 330,40 350,40 365,12 380,66 395,40 470,40 490,40 505,12 520,66 535,40 560,40"
-            class="pulse-trace" />
-          <!-- 波峰/波谷高亮点：delay 与描线经过各点的时刻对齐 -->
+          <!-- 波形：进入时画一次，之后保持常驻 -->
+          <path class="pulse-trace"
+            d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
+          <!-- 光束粒子：沿波形从左往右循环扫过（宽柔光段 + 细亮核） -->
+          <path class="pulse-beam"
+            d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
+          <path class="pulse-beam pulse-beam--core"
+            d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
+          <!-- 波峰/波谷高亮点：delay 与光束前沿到达各点的时刻对齐 -->
           <g class="pulse-dots">
-            <circle cx="95" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.42s" />
-            <circle cx="110" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.63s" />
-            <circle cx="225" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.18s" />
-            <circle cx="240" cy="66" r="3" class="pulse-dot" style="animation-delay: 1.39s" />
-            <circle cx="365" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.98s" />
-            <circle cx="380" cy="66" r="3" class="pulse-dot" style="animation-delay: 2.19s" />
-            <circle cx="505" cy="12" r="3" class="pulse-dot" style="animation-delay: 2.78s" />
-            <circle cx="520" cy="66" r="3" class="pulse-dot" style="animation-delay: 2.99s" />
+            <circle cx="95" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.15s" />
+            <circle cx="110" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.28s" />
+            <circle cx="225" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.61s" />
+            <circle cx="240" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.73s" />
+            <circle cx="365" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.09s" />
+            <circle cx="380" cy="66" r="3" class="pulse-dot" style="animation-delay: 1.21s" />
+            <circle cx="505" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.57s" />
+            <circle cx="520" cy="66" r="3" class="pulse-dot" style="animation-delay: 1.69s" />
           </g>
         </svg>
         <div class="pulse-meta mono">
@@ -314,33 +319,62 @@ onMounted(() => {
   stroke: rgba(255, 255, 255, 0.12);
   stroke-width: 1;
 }
+/* 波形：进场由左往右画一次（约 1.9s）后保持常驻，不再整条重发 */
 .pulse-trace {
   fill: none;
-  stroke: #8FC5E8;
+  stroke: #7FD4B8;
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
   stroke-dasharray: 1200;
-  stroke-dashoffset: 1200;
-  animation: trace 4.5s linear infinite;
+  stroke-dashoffset: 349; /* 降级兜底：无动画时全线常显 */
+  opacity: 0.9;
+  animation: trace-once 1.9s linear 1 forwards;
 }
-/* 波峰/波谷点：平时熄灭，描线触及时闪亮一下再暗下去（delay 在模板内联指定） */
+@keyframes trace-once {
+  0% { stroke-dashoffset: 1200; opacity: 0.4; }
+  100% { stroke-dashoffset: 349; opacity: 0.9; }
+}
+/* 光束粒子：44px 柔光段 + 20px 亮核，3s 一轮扫完全线后留白片刻再循环 */
+.pulse-beam {
+  fill: none;
+  stroke: #7FD4B8;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 44 1290;
+  stroke-dashoffset: 200; /* 降级兜底：短划藏在路径外不可见 */
+  opacity: 0.35;
+  filter: drop-shadow(0 0 4px rgba(127, 212, 184, 0.7));
+  animation: beam-sweep 3s linear infinite;
+}
+.pulse-beam--core {
+  stroke-width: 2;
+  stroke-dasharray: 20 1314;
+  stroke-dashoffset: 100;
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
+  animation-name: beam-sweep-core; /* 亮核骑在柔光段前沿 */
+}
+@keyframes beam-sweep {
+  from { stroke-dashoffset: 1334; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes beam-sweep-core {
+  from { stroke-dashoffset: 1310; }
+  to { stroke-dashoffset: -24; }
+}
+/* 波峰/波谷点：平时熄灭，光束前沿触及时闪亮一下再暗下去（delay 在模板内联指定） */
 .pulse-dot {
-  fill: #8FC5E8;
+  fill: #7FD4B8;
   opacity: 0;
-  filter: drop-shadow(0 0 3px rgba(143, 197, 232, 0.9));
-  animation: dot-flash 4.5s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
+  animation: dot-flash 3s linear infinite;
 }
 @keyframes dot-flash {
   0% { opacity: 1; }
-  6% { opacity: 0.35; }
-  14% { opacity: 0; }
+  5% { opacity: 0.35; }
+  15% { opacity: 0; }
   100% { opacity: 0; }
-}
-@keyframes trace {
-  0% { stroke-dashoffset: 1200; opacity: 0.35; }
-  45% { opacity: 1; }
-  100% { stroke-dashoffset: 0; opacity: 0.35; }
 }
 .pulse-meta {
   display: flex;
