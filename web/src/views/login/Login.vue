@@ -44,7 +44,7 @@
         <div class="form-head">
           <div class="seal seal--sm">S</div>
           <div>
-            <h2 class="form-title">登录</h2>
+            <h2 class="form-title">欢迎回来</h2>
             <p class="form-sub">使用你的管理员账号继续</p>
           </div>
         </div>
