@@ -27,7 +27,7 @@
           </div>
         </n-dropdown>
       </n-layout-header>
-      <n-layout-content class="content" content-style="padding: 24px;" :native-scrollbar="false">
+      <n-layout-content class="content" content-style="padding: 8px;" :native-scrollbar="false">
         <router-view />
       </n-layout-content>
     </n-layout>
