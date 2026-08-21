@@ -1,20 +1,24 @@
 <template>
-  <n-card title="菜单与权限">
+  <n-card title="菜单管理">
     <template #header-extra>
       <n-space>
+        <n-button @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
         <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
         <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
       </n-space>
     </template>
-    <n-data-table :columns="columns" :data="tree" :loading="loading" default-expand-all />
+    <n-data-table :columns="columns" :data="tree" :loading="loading" :row-key="rowKey"
+      :expanded-row-keys="expandedKeys" @update:expanded-row-keys="onExpandUpdate" />
   </n-card>
 
   <!-- 菜单 / 权限点编辑：type 区分表单 -->
   <n-modal v-model:show="showModal" preset="dialog" :title="modalTitle" style="width: 480px">
     <n-form ref="formRef" :model="form" :rules="rules" label-placement="left" label-width="80">
-      <n-form-item label="名称" path="name"><n-input v-model:value="form.name" /></n-form-item>
+      <n-form-item label="名称" path="name">
+        <n-input v-model:value="form.name" :maxlength="20" show-word-limit placeholder="最多 20 个字符" />
+      </n-form-item>
       <n-form-item label="编码" path="code" v-if="!editing">
-        <n-input v-model:value="form.code" :placeholder="form.type === 'menu' ? '如 menu:xxx' : '如 user:create'" />
+        <n-input v-model:value="form.code" :maxlength="64" show-word-limit :placeholder="form.type === 'menu' ? '如 menu:xxx' : '如 user:create'" />
       </n-form-item>
       <template v-if="form.type === 'menu'">
         <n-form-item label="路由"><n-input v-model:value="form.path" placeholder="如 /system/xxx" /></n-form-item>
@@ -120,8 +124,14 @@ const methodOptions = ['GET', 'POST', 'PUT', 'DELETE', '*'].map((m) => ({ label:
 const modalTitle = computed(() => `${editing.value ? '编辑' : '新增'}${form.type === 'menu' ? '菜单' : '权限点'}`)
 
 const rules: FormRules = {
-  name: [{ required: true, message: '请输入名称', trigger: ['blur', 'input'] }],
-  code: [{ required: true, message: '请输入编码', trigger: ['blur', 'input'] }],
+  name: [
+    { required: true, message: '请输入名称', trigger: ['blur', 'input'] },
+    { max: 20, message: '名称不能超过 20 个字符', trigger: ['blur', 'input'] },
+  ],
+  code: [
+    { required: true, message: '请输入编码', trigger: ['blur', 'input'] },
+    { max: 64, message: '编码不能超过 64 个字符', trigger: ['blur', 'input'] },
+  ],
 }
 
 // 图标选择器
@@ -170,6 +180,21 @@ function buildTree() {
         return n
       })
   tree.value = build(0)
+}
+
+// 树表受控展开：default-expand-all 对异步加载后才渲染的行不生效，改为手动维护展开行键
+const rowKey = (row: any) => row.id
+const expandedKeys = ref<number[]>([])
+const expandAll = ref(true)
+function collectParentIds(nodes: any[]): number[] {
+  return nodes.flatMap((n) => (n.children?.length ? [n.id, ...collectParentIds(n.children)] : []))
+}
+function onExpandUpdate(keys: Array<string | number>) {
+  expandedKeys.value = keys as number[]
+}
+function toggleExpand() {
+  expandAll.value = !expandAll.value
+  expandedKeys.value = expandAll.value ? collectParentIds(tree.value) : []
 }
 
 // 父级选项：仅菜单可作父级；编辑菜单时排除自身及其后代（防环）
@@ -278,6 +303,8 @@ async function remove(row: any) {
 async function refresh() {
   await load()
   buildTree()
+  // 数据刷新后按当前展开状态重算行键，保证新增的父节点也默认展开
+  if (expandAll.value) expandedKeys.value = collectParentIds(tree.value)
 }
 
 // 操作列依赖按钮权限，computed 使权限变化后重新渲染

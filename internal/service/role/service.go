@@ -14,14 +14,13 @@ type Service struct {
 func NewService(uc *bizrole.Usecase) *Service { return &Service{uc: uc} }
 
 type CreateRequest struct {
-	Name   string `json:"name" binding:"required"`
-	Code   string `json:"code" binding:"required"`
-	Remark string `json:"remark"`
+	Name   string `json:"name" binding:"required,max=20"`
+	Remark string `json:"remark" binding:"max=200"`
 }
 
 type UpdateRequest struct {
-	Name   string `json:"name"`
-	Remark string `json:"remark"`
+	Name   string `json:"name" binding:"omitempty,max=20"` // 空=保持原名
+	Remark string `json:"remark" binding:"max=200"`
 }
 
 type SetPermissionsRequest struct {
@@ -29,7 +28,7 @@ type SetPermissionsRequest struct {
 }
 
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*bizrole.Role, error) {
-	return s.uc.Create(ctx, req.Name, req.Code, req.Remark)
+	return s.uc.Create(ctx, req.Name, req.Remark)
 }
 
 func (s *Service) Update(ctx context.Context, id uint, req UpdateRequest) error {

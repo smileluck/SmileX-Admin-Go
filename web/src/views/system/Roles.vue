@@ -13,11 +13,12 @@
   <!-- 新增/编辑 -->
   <n-modal v-model:show="showModal" preset="dialog" :title="editing ? '编辑角色' : '新增角色'" style="width: 460px">
     <n-form ref="formRef" :model="form" :rules="rules" label-placement="left" label-width="80">
-      <n-form-item label="名称" path="name"><n-input v-model:value="form.name" /></n-form-item>
-      <n-form-item label="编码" path="code" v-if="!editing">
-        <n-input v-model:value="form.code" placeholder="唯一，如 editor" />
+      <n-form-item label="名称" path="name">
+        <n-input v-model:value="form.name" :maxlength="20" show-word-limit placeholder="最多 20 个字符" />
       </n-form-item>
-      <n-form-item label="备注"><n-input v-model:value="form.remark" /></n-form-item>
+      <n-form-item label="备注">
+        <n-input v-model:value="form.remark" :maxlength="200" show-word-limit placeholder="最多 200 个字符" />
+      </n-form-item>
     </n-form>
     <template #action>
       <n-button @click="showModal = false">取消</n-button>
@@ -56,19 +57,22 @@ const saving = ref(false)
 const rows = ref<Role[]>([])
 const query = reactive({ name: '', page: 1, page_size: 10 })
 
-// 超管角色（id=1）禁止删除
+// 超管角色（id=1）系统内置：禁止修改和操作
 const SUPER_ROLE_ID = 1
+const SUPER_ROLE_MSG = '超级管理员角色为系统内置，禁止修改和操作'
 
 const showModal = ref(false)
 const showPerm = ref(false)
 const editing = ref(false)
 const editId = ref(0)
-const form = reactive({ name: '', code: '', remark: '' })
+const form = reactive({ name: '', remark: '' })
 const formRef = ref<FormInst | null>(null)
 
 const rules: FormRules = {
-  name: [{ required: true, message: '请输入角色名称', trigger: ['blur', 'input'] }],
-  code: [{ required: true, message: '请输入角色编码', trigger: ['blur', 'input'] }],
+  name: [
+    { required: true, message: '请输入角色名称', trigger: ['blur', 'input'] },
+    { max: 20, message: '角色名称不能超过 20 个字符', trigger: ['blur', 'input'] },
+  ],
 }
 
 const permTree = ref<any[]>([])
@@ -95,14 +99,15 @@ async function load() {
 
 function openCreate() {
   editing.value = false
-  Object.assign(form, { name: '', code: '', remark: '' })
+  Object.assign(form, { name: '', remark: '' })
   showModal.value = true
 }
 
 function openEdit(row: Role) {
+  if (row.id === SUPER_ROLE_ID) { message.error(SUPER_ROLE_MSG); return }
   editing.value = true
   editId.value = row.id
-  Object.assign(form, { name: row.name, code: row.code, remark: row.remark })
+  Object.assign(form, { name: row.name, remark: row.remark })
   showModal.value = true
 }
 
@@ -115,9 +120,9 @@ async function save() {
   saving.value = true
   try {
     if (editing.value) {
-      await updateRole(editId.value, { name: form.name.trim(), remark: form.remark })
+      await updateRole(editId.value, { name: form.name.trim(), remark: form.remark.trim() })
     } else {
-      await createRole({ name: form.name.trim(), code: form.code.trim(), remark: form.remark })
+      await createRole({ name: form.name.trim(), remark: form.remark.trim() })
     }
     message.success('保存成功')
     showModal.value = false
@@ -130,7 +135,7 @@ async function save() {
 }
 
 function confirmDelete(row: Role) {
-  if (row.id === SUPER_ROLE_ID) { message.error('超级管理员角色禁止删除'); return }
+  if (row.id === SUPER_ROLE_ID) { message.error(SUPER_ROLE_MSG); return }
   dialog.warning({
     title: '删除确认',
     content: `确定删除角色「${row.name}」吗？该操作不可恢复。`,
@@ -150,6 +155,7 @@ function confirmDelete(row: Role) {
 
 // 构造权限树：菜单 + 按钮权限点统一按 parent_id 组树（按钮自然挂在所属菜单下）
 async function openPerms(row: Role) {
+  if (row.id === SUPER_ROLE_ID) { message.error(SUPER_ROLE_MSG); return }
   editId.value = row.id
   try {
     const [{ data: allResp }, { data: roleResp }] = await Promise.all([
@@ -192,11 +198,14 @@ async function savePerms() {
 const columns = computed<DataTableColumns<Role>>(() => [
   { title: 'ID', key: 'id', width: 60 },
   { title: '名称', key: 'name' },
-  { title: '编码', key: 'code' },
   { title: '备注', key: 'remark' },
   {
     title: '操作', key: 'actions', width: 170,
     render(row) {
+      // 超管角色系统内置：禁止修改和操作，仅展示「内置」标记
+      if (row.id === SUPER_ROLE_ID) {
+        return h(NTag, { size: 'small', bordered: false }, { default: () => '内置' })
+      }
       const actions: Array<TableAction | VNode> = []
       if (userStore.has('role:update')) {
         actions.push({ label: '编辑', accent: true, onClick: () => openEdit(row) })
@@ -204,10 +213,7 @@ const columns = computed<DataTableColumns<Role>>(() => [
       if (userStore.has('role:setPermissions')) {
         actions.push({ label: '分配权限', onClick: () => openPerms(row) })
       }
-      // 超管角色禁止删除，以「内置」标记替代删除位
-      if (row.id === SUPER_ROLE_ID) {
-        actions.push(h(NTag, { size: 'small', bordered: false }, { default: () => '内置' }))
-      } else if (userStore.has('role:delete')) {
+      if (userStore.has('role:delete')) {
         actions.push({ label: '删除', danger: true, onClick: () => confirmDelete(row) })
       }
       return renderActions(actions)

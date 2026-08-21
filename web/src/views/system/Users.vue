@@ -20,7 +20,9 @@
       <n-form-item label="密码" path="password" v-if="!editing">
         <n-input v-model:value="form.password" type="password" placeholder="至少 6 位" />
       </n-form-item>
-      <n-form-item label="昵称" path="nickname"><n-input v-model:value="form.nickname" /></n-form-item>
+      <n-form-item label="昵称" path="nickname">
+        <n-input v-model:value="form.nickname" :maxlength="20" show-word-limit placeholder="最多 20 个字符" />
+      </n-form-item>
       <n-form-item label="邮箱" path="email"><n-input v-model:value="form.email" placeholder="选填" /></n-form-item>
       <n-form-item label="角色">
         <n-select v-model:value="form.role_ids" multiple :options="roleOptions" :disabled="editing && !userStore.has('user:setRoles')" />
@@ -75,7 +77,7 @@ const newPassword = ref('')
 const form = reactive({ username: '', password: '', nickname: '', email: '', role_ids: [] as number[], statusOn: 1 })
 const formRef = ref<FormInst | null>(null)
 
-// 与后端 binding 规则保持一致：用户名 3-64、密码 6-64、邮箱格式（选填）
+// 与后端 binding 规则保持一致：用户名 3-64、密码 6-64、昵称最长 20、邮箱格式（选填）
 const rules: FormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: ['blur', 'input'] },
@@ -84,6 +86,9 @@ const rules: FormRules = {
   password: [
     { required: true, message: '请输入密码', trigger: ['blur', 'input'] },
     { min: 6, max: 64, message: '密码长度 6-64 个字符', trigger: ['blur', 'input'] },
+  ],
+  nickname: [
+    { max: 20, message: '昵称不能超过 20 个字符', trigger: ['blur', 'input'] },
   ],
   email: [
     {

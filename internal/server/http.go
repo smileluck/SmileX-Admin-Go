@@ -362,7 +362,7 @@ func (s *HTTPServer) updateRole(c *gin.Context) {
 		return
 	}
 	if err := s.role.Update(c.Request.Context(), id, req); err != nil {
-		response.BadRequest(c, err.Error())
+		s.roleErr(c, err)
 		return
 	}
 	response.OK(c, nil)
@@ -374,7 +374,7 @@ func (s *HTTPServer) deleteRole(c *gin.Context) {
 		return
 	}
 	if err := s.role.Delete(c.Request.Context(), id); err != nil {
-		response.BadRequest(c, err.Error())
+		s.roleErr(c, err)
 		return
 	}
 	response.OK(c, nil)
@@ -391,7 +391,7 @@ func (s *HTTPServer) setRolePermissions(c *gin.Context) {
 		return
 	}
 	if err := s.role.SetPermissions(c.Request.Context(), id, req); err != nil {
-		response.BadRequest(c, err.Error())
+		s.roleErr(c, err)
 		return
 	}
 	response.OK(c, nil)
@@ -471,6 +471,15 @@ func (s *HTTPServer) deletePerm(c *gin.Context) {
 // userErr 用户操作错误映射：超管保护类返回 403，其余返回 400
 func (s *HTTPServer) userErr(c *gin.Context, err error) {
 	if errors.Is(err, user.ErrSuperAdminProtected) || errors.Is(err, user.ErrDeleteSuperAdmin) {
+		response.Forbidden(c, err.Error())
+		return
+	}
+	response.BadRequest(c, err.Error())
+}
+
+// roleErr 角色操作错误映射：超管角色保护类返回 403，其余返回 400
+func (s *HTTPServer) roleErr(c *gin.Context, err error) {
+	if errors.Is(err, role.ErrSuperRoleLocked) {
 		response.Forbidden(c, err.Error())
 		return
 	}

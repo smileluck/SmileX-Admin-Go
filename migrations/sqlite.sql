@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS roles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  code TEXT UNIQUE NOT NULL,
   remark TEXT DEFAULT '',
   created_at DATETIME,
   updated_at DATETIME,
@@ -24,7 +23,6 @@ CREATE TABLE IF NOT EXISTS roles (
 CREATE TABLE IF NOT EXISTS permissions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  code TEXT UNIQUE NOT NULL,
   type TEXT DEFAULT 'menu', -- menu 菜单 | button 按钮权限（api 已废弃，启动迁移自动转为 button）
   method TEXT DEFAULT '',
   path TEXT DEFAULT '',

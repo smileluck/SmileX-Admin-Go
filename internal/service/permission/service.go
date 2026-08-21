@@ -14,22 +14,22 @@ type Service struct {
 func NewService(uc *bizperm.Usecase) *Service { return &Service{uc: uc} }
 
 type CreateRequest struct {
-	Name     string       `json:"name" binding:"required"`
-	Code     string       `json:"code" binding:"required"`
+	Name     string       `json:"name" binding:"required,max=20"`
+	Code     string       `json:"code" binding:"required,max=64"`
 	Type     bizperm.Type `json:"type" binding:"required,oneof=menu button"`
-	Method   string       `json:"method"`
-	Path     string       `json:"path"`
+	Method   string       `json:"method" binding:"omitempty,max=16"`
+	Path     string       `json:"path" binding:"omitempty,max=255"`
 	ParentID uint         `json:"parent_id"`
-	Icon     string       `json:"icon"`
+	Icon     string       `json:"icon" binding:"omitempty,max=512"`
 	Sort     int          `json:"sort"`
 }
 
 type UpdateRequest struct {
-	Name     string  `json:"name"`
-	Method   string  `json:"method"`
-	Path     string  `json:"path"`
-	Icon     *string `json:"icon"`     // 指针：区分未传与清空
-	Sort     *int    `json:"sort"`     // 指针：区分未传与归零
+	Name     string  `json:"name" binding:"omitempty,max=20"` // 空=保持原名
+	Method   string  `json:"method" binding:"omitempty,max=16"`
+	Path     string  `json:"path" binding:"omitempty,max=255"`
+	Icon     *string `json:"icon"`      // 指针：区分未传与清空
+	Sort     *int    `json:"sort"`      // 指针：区分未传与归零
 	ParentID *uint   `json:"parent_id"` // 指针：区分未传与挪到顶级(0)
 }
 

@@ -79,15 +79,6 @@ func (r *repo) FindByID(ctx context.Context, id uint) (*role.Role, error) {
 	return ro, nil
 }
 
-// FindByCode 按编码查询（创建时查重用）
-func (r *repo) FindByCode(ctx context.Context, code string) (*role.Role, error) {
-	var po model.RolePO
-	if err := r.data.DB.WithContext(ctx).Where("code = ?", code).First(&po).Error; err != nil {
-		return nil, mapErr(err)
-	}
-	return model.RoleFromPO(&po), nil
-}
-
 // CountUsers 统计角色下的用户数量（删除保护用）
 func (r *repo) CountUsers(ctx context.Context, roleID uint) (int64, error) {
 	var n int64

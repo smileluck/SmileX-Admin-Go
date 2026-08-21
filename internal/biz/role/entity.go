@@ -7,7 +7,6 @@ import "time"
 type Role struct {
 	ID            uint      `json:"id"`
 	Name          string    `json:"name"`
-	Code          string    `json:"code"`
 	Remark        string    `json:"remark"`
 	PermissionIDs []uint    `json:"permission_ids"`
 	CreatedAt     time.Time `json:"created_at"`

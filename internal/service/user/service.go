@@ -17,14 +17,14 @@ func NewService(uc *bizuser.Usecase) *Service { return &Service{uc: uc} }
 type CreateRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=64"`
 	Password string `json:"password" binding:"required,min=6,max=64"`
-	Nickname string `json:"nickname" binding:"max=64"`
+	Nickname string `json:"nickname" binding:"max=20"`
 	Email    string `json:"email" binding:"omitempty,max=128,email"`
 	RoleIDs  []uint `json:"role_ids"`
 }
 
 // UpdateRequest 更新用户入参
 type UpdateRequest struct {
-	Nickname string `json:"nickname" binding:"max=64"`
+	Nickname string `json:"nickname" binding:"max=20"`
 	Email    string `json:"email" binding:"omitempty,max=128,email"`
 	Status   *int   `json:"status" binding:"omitempty,oneof=0 1"`
 }

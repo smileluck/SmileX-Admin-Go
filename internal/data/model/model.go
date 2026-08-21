@@ -30,7 +30,6 @@ func (UserPO) TableName() string { return "users" }
 type RolePO struct {
 	ID        uint   `gorm:"primaryKey"`
 	Name      string `gorm:"size:64"`
-	Code      string `gorm:"size:64;uniqueIndex"`
 	Remark    string `gorm:"size:255"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -91,11 +90,11 @@ func UserFromPO(p *UserPO) *user.User {
 }
 
 func RoleToPO(r *role.Role) *RolePO {
-	return &RolePO{ID: r.ID, Name: r.Name, Code: r.Code, Remark: r.Remark}
+	return &RolePO{ID: r.ID, Name: r.Name, Remark: r.Remark}
 }
 
 func RoleFromPO(p *RolePO) *role.Role {
-	return &role.Role{ID: p.ID, Name: p.Name, Code: p.Code, Remark: p.Remark, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt}
+	return &role.Role{ID: p.ID, Name: p.Name, Remark: p.Remark, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt}
 }
 
 func PermissionToPO(m *permission.Permission) *PermissionPO {

@@ -53,7 +53,6 @@ export interface MenuNode {
 export interface Role {
   id: number
   name: string
-  code: string
   remark: string
   permission_ids?: number[] | null
 }

@@ -20,19 +20,18 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS roles (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(64) NOT NULL,
-  code VARCHAR(64) NOT NULL,
+
   remark VARCHAR(255) DEFAULT '',
   created_at DATETIME,
   updated_at DATETIME,
   deleted_at DATETIME,
-  UNIQUE KEY uk_code (code),
   KEY idx_deleted (deleted_at)
 );
 
 CREATE TABLE IF NOT EXISTS permissions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(64) NOT NULL,
-  code VARCHAR(64) NOT NULL,
+
   type VARCHAR(16) DEFAULT 'menu', -- menu 菜单 | button 按钮权限（api 已废弃，启动迁移自动转为 button）
   method VARCHAR(16) DEFAULT '',
   path VARCHAR(255) DEFAULT '',
@@ -42,7 +41,6 @@ CREATE TABLE IF NOT EXISTS permissions (
   created_at DATETIME,
   updated_at DATETIME,
   deleted_at DATETIME,
-  UNIQUE KEY uk_code (code),
   KEY idx_deleted (deleted_at)
 );
 
@@ -60,7 +58,7 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 
 -- 种子数据（密码哈希由程序启动时自动补全，此处的哈希对应 123456）
 -- INSERT INTO permissions (id, name, code, type, method, path) VALUES (1, '全部权限', 'all', 'api', '*', '*');
--- INSERT INTO roles (id, name, code, remark) VALUES (1, '超级管理员', 'super_admin', '拥有全部权限');
+-- INSERT INTO roles (id, name, remark) VALUES (1, '超级管理员', '拥有全部权限');
 -- INSERT INTO users (id, username, password, nickname, status) VALUES (1, 'admin', '$2a$10$...', '超级管理员', 1);
 -- INSERT INTO user_roles VALUES (1, 1);
 -- INSERT INTO role_permissions VALUES (1, 1);

@@ -2,7 +2,6 @@ package role
 
 import (
 	"context"
-	"errors"
 
 	"github.com/smilex/smilex-admin-gin/pkg/pagination"
 )
@@ -12,18 +11,13 @@ type Usecase struct {
 	repo Repo
 }
 
-// superAdminRoleID 超管角色固定 ID：禁止删除
+// superAdminRoleID 超管角色固定 ID：禁止修改和操作
 const superAdminRoleID uint = 1
 
 func NewUsecase(repo Repo) *Usecase { return &Usecase{repo: repo} }
 
-func (uc *Usecase) Create(ctx context.Context, name, code, remark string) (*Role, error) {
-	if code != "" {
-		if _, err := uc.repo.FindByCode(ctx, code); err == nil {
-			return nil, ErrDuplicateRoleCode
-		}
-	}
-	r := &Role{Name: name, Code: code, Remark: remark}
+func (uc *Usecase) Create(ctx context.Context, name, remark string) (*Role, error) {
+	r := &Role{Name: name, Remark: remark}
 	if err := uc.repo.Create(ctx, r); err != nil {
 		return nil, err
 	}
@@ -31,6 +25,9 @@ func (uc *Usecase) Create(ctx context.Context, name, code, remark string) (*Role
 }
 
 func (uc *Usecase) Update(ctx context.Context, id uint, name, remark string) error {
+	if id == superAdminRoleID {
+		return ErrSuperRoleLocked
+	}
 	r, err := uc.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
@@ -46,7 +43,7 @@ func (uc *Usecase) Update(ctx context.Context, id uint, name, remark string) err
 
 func (uc *Usecase) Delete(ctx context.Context, id uint) error {
 	if id == superAdminRoleID {
-		return errors.New("超级管理员角色禁止删除")
+		return ErrSuperRoleLocked
 	}
 	if n, err := uc.repo.CountUsers(ctx, id); err != nil {
 		return err
@@ -67,5 +64,8 @@ func (uc *Usecase) List(ctx context.Context, q Query, page, pageSize int) ([]*Ro
 
 // SetPermissions 绑定权限
 func (uc *Usecase) SetPermissions(ctx context.Context, roleID uint, permissionIDs []uint) error {
+	if roleID == superAdminRoleID {
+		return ErrSuperRoleLocked
+	}
 	return uc.repo.SetPermissions(ctx, roleID, permissionIDs)
 }
