@@ -4,7 +4,7 @@
       <n-space>
         <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 160px" @keyup.enter="load" />
         <n-button type="primary" @click="load">查询</n-button>
-        <n-button type="primary" ghost @click="openCreate" v-permission="['menu:user']">新增用户</n-button>
+        <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">新增用户</n-button>
       </n-space>
     </template>
 
@@ -13,15 +13,15 @@
 
   <!-- 新增/编辑 -->
   <n-modal v-model:show="showModal" preset="dialog" :title="editing ? '编辑用户' : '新增用户'" style="width: 480px">
-    <n-form :model="form" label-placement="left" label-width="80">
-      <n-form-item label="用户名" v-if="!editing">
-        <n-input v-model:value="form.username" />
+    <n-form ref="formRef" :model="form" :rules="rules" label-placement="left" label-width="80">
+      <n-form-item label="用户名" path="username" v-if="!editing">
+        <n-input v-model:value="form.username" placeholder="3-64 个字符" />
       </n-form-item>
-      <n-form-item label="密码" v-if="!editing">
-        <n-input v-model:value="form.password" type="password" />
+      <n-form-item label="密码" path="password" v-if="!editing">
+        <n-input v-model:value="form.password" type="password" placeholder="至少 6 位" />
       </n-form-item>
-      <n-form-item label="昵称"><n-input v-model:value="form.nickname" /></n-form-item>
-      <n-form-item label="邮箱"><n-input v-model:value="form.email" /></n-form-item>
+      <n-form-item label="昵称" path="nickname"><n-input v-model:value="form.nickname" /></n-form-item>
+      <n-form-item label="邮箱" path="email"><n-input v-model:value="form.email" placeholder="选填" /></n-form-item>
       <n-form-item label="角色">
         <n-select v-model:value="form.role_ids" multiple :options="roleOptions" />
       </n-form-item>
@@ -46,8 +46,8 @@
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue'
-import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns } from 'naive-ui'
+import { computed, h, onMounted, reactive, ref } from 'vue'
+import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { createUser, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
 import { useUserStore } from '../../stores/user'
 import type { UserInfo } from '../../api/types'
@@ -72,6 +72,26 @@ const editing = ref(false)
 const editId = ref(0)
 const newPassword = ref('')
 const form = reactive({ username: '', password: '', nickname: '', email: '', role_ids: [] as number[], statusOn: 1 })
+const formRef = ref<FormInst | null>(null)
+
+// 与后端 binding 规则保持一致：用户名 3-64、密码 6-64、邮箱格式（选填）
+const rules: FormRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: ['blur', 'input'] },
+    { min: 3, max: 64, message: '用户名长度 3-64 个字符', trigger: ['blur', 'input'] },
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: ['blur', 'input'] },
+    { min: 6, max: 64, message: '密码长度 6-64 个字符', trigger: ['blur', 'input'] },
+  ],
+  email: [
+    {
+      trigger: ['blur', 'input'],
+      validator: (_rule, value: string) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      message: '邮箱格式不正确',
+    },
+  ],
+}
 
 const pagination = reactive({
   page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
@@ -112,13 +132,18 @@ function openEdit(row: UserInfo) {
 }
 
 async function save() {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return // 校验失败，错误已在表单项上展示
+  }
   saving.value = true
   try {
     if (editing.value) {
       await updateUser(editId.value, { nickname: form.nickname, email: form.email, status: form.statusOn })
       await setUserRoles(editId.value, form.role_ids)
     } else {
-      await createUser({ username: form.username, password: form.password, nickname: form.nickname, email: form.email, role_ids: form.role_ids })
+      await createUser({ username: form.username.trim(), password: form.password, nickname: form.nickname.trim(), email: form.email.trim(), role_ids: form.role_ids })
     }
     message.success('保存成功')
     showModal.value = false
@@ -131,6 +156,7 @@ async function save() {
 }
 
 function confirmDelete(row: UserInfo) {
+  if (row.id === SUPER_ADMIN_ID) { message.error('超级管理员账号禁止删除'); return }
   dialog.warning({
     title: '删除确认',
     content: `确定删除用户「${row.username}」吗？该操作不可恢复。`,
@@ -149,13 +175,18 @@ function confirmDelete(row: UserInfo) {
 }
 
 async function savePwd() {
-  if (newPassword.value.length < 6) { message.warning('密码至少 6 位'); return }
-  await resetPassword(editId.value, newPassword.value)
-  message.success('密码已重置')
-  showPwd.value = false
+  if (newPassword.value.length < 6 || newPassword.value.length > 64) { message.warning('密码长度 6-64 位'); return }
+  try {
+    await resetPassword(editId.value, newPassword.value)
+    message.success('密码已重置')
+    showPwd.value = false
+  } catch (e: any) {
+    message.error(e?.response?.data?.msg || '重置失败')
+  }
 }
 
-const columns: DataTableColumns<UserInfo> = [
+// 操作列依赖按钮权限（user:delete），computed 使权限变化后重新渲染
+const columns = computed<DataTableColumns<UserInfo>>(() => [
   { title: 'ID', key: 'id', width: 60 },
   { title: '用户名', key: 'username' },
   { title: '昵称', key: 'nickname' },
@@ -171,19 +202,20 @@ const columns: DataTableColumns<UserInfo> = [
       if (!canOperate(row)) {
         return h('span', { style: 'color: #999; font-size: 12px' }, '—')
       }
-      return h(NSpace, {}, {
-        default: () => [
-          h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
-          h(NButton, { size: 'small', type: 'warning', onClick: () => { editId.value = row.id; newPassword.value = ''; showPwd.value = true } }, { default: () => '重置密码' }),
-          h(NButton, {
-            size: 'small', type: 'error',
-            onClick: () => confirmDelete(row),
-          }, { default: () => '删除' }),
-        ],
-      })
+      const actions = [
+        h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
+        h(NButton, { size: 'small', type: 'warning', onClick: () => { editId.value = row.id; newPassword.value = ''; showPwd.value = true } }, { default: () => '重置密码' }),
+      ]
+      // 超管账号禁止删除（即使超管本人），不展示删除按钮
+      if (row.id !== SUPER_ADMIN_ID && userStore.has('user:delete')) {
+        actions.push(
+          h(NButton, { size: 'small', type: 'error', onClick: () => confirmDelete(row) }, { default: () => '删除' }),
+        )
+      }
+      return h(NSpace, {}, { default: () => actions })
     },
   },
-]
+])
 
 onMounted(() => { load(); loadRoles() })
 </script>

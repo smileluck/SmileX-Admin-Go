@@ -6,10 +6,10 @@ import (
 )
 
 // ErrUserNotFound 用户不存在
-var ErrUserNotFound = errors.New("user not found")
+var ErrUserNotFound = errors.New("用户不存在")
 
 // ErrDuplicateUsername 用户名重复
-var ErrDuplicateUsername = errors.New("duplicate username")
+var ErrDuplicateUsername = errors.New("用户名已存在，请更换")
 
 // Query 用户列表查询条件
 type Query struct {

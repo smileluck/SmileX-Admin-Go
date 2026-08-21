@@ -3,6 +3,7 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -117,12 +118,16 @@ func ensurePostgresDatabase(c conf.Postgres) {
 	}
 }
 
-// migrateAndSeed 自动建表 + 种子数据（超管 admin/123456）
+// migrateAndSeed 自动建表 + 存量迁移 + 种子数据（超管 admin/123456）
 func (d *Data) migrateAndSeed() error {
 	if err := d.DB.AutoMigrate(
 		&model.UserPO{}, &model.RolePO{}, &model.PermissionPO{},
 		&model.UserRolePO{}, &model.RolePermissionPO{},
 	); err != nil {
+		return err
+	}
+
+	if err := d.migrateLegacy(); err != nil {
 		return err
 	}
 
@@ -134,18 +139,20 @@ func (d *Data) migrateAndSeed() error {
 		return nil
 	}
 
-	// 超管角色 + 通配权限
+	// 超管角色 + 通配权限（button 绑定 */*，参与 RBAC 匹配）
 	rolePO := model.RolePO{ID: 1, Name: "超级管理员", Code: "super_admin", Remark: "拥有全部权限"}
-	permPO := model.PermissionPO{ID: 1, Name: "全部权限", Code: "all", Type: string(permission.TypeAPI), Method: "*", Path: "*"}
+	permPO := model.PermissionPO{ID: 1, Name: "全部权限", Code: "all", Type: string(permission.TypeButton), Method: "*", Path: "*"}
 
-	// 菜单种子数据（type=menu）
-	menus := []model.PermissionPO{
+	// 菜单 + 示例按钮权限种子数据
+	perms := []model.PermissionPO{
 		{ID: 100, Name: "首页", Code: "menu:dashboard", Type: "menu", Path: "/dashboard", Icon: "HomeOutline", Sort: 1},
 		{ID: 110, Name: "系统管理", Code: "menu:system", Type: "menu", Path: "/system", Icon: "SettingsOutline", Sort: 2},
 		{ID: 111, Name: "用户管理", Code: "menu:user", Type: "menu", Path: "/system/users", ParentID: 110, Icon: "PersonOutline", Sort: 1},
 		{ID: 112, Name: "角色管理", Code: "menu:role", Type: "menu", Path: "/system/roles", ParentID: 110, Icon: "IdCardOutline", Sort: 2},
-		{ID: 113, Name: "权限管理", Code: "menu:permission", Type: "menu", Path: "/system/permissions", ParentID: 110, Icon: "LockClosedOutline", Sort: 3},
-		{ID: 114, Name: "菜单管理", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
+		{ID: 114, Name: "菜单与权限", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
+		// 示例按钮权限：code 控制前端显隐，绑定接口后同时参与后端 RBAC 校验
+		{ID: 120, Name: "新增用户", Code: "user:create", Type: "button", ParentID: 111, Method: "POST", Path: "/api/v1/users", Sort: 1},
+		{ID: 121, Name: "删除用户", Code: "user:delete", Type: "button", ParentID: 111, Method: "DELETE", Path: "/api/v1/users/*", Sort: 2},
 	}
 	adminPwd, err := user.NewPassword("123456")
 	if err != nil {
@@ -169,15 +176,43 @@ func (d *Data) migrateAndSeed() error {
 		if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: 1}).Error; err != nil {
 			return err
 		}
-		for i := range menus {
-			if err := tx.Create(&menus[i]).Error; err != nil {
+		for i := range perms {
+			if err := tx.Create(&perms[i]).Error; err != nil {
 				return err
 			}
-			if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: menus[i].ID}).Error; err != nil {
+			if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: perms[i].ID}).Error; err != nil {
 				return err
 			}
 		}
 		logger.Info("seeded super admin: admin/123456 (please change password before production)")
 		return nil
 	})
+}
+
+// migrateLegacy 存量库幂等迁移（每次启动执行，无匹配行时零副作用）：
+//  1. api 权限类型并入 button（接口绑定能力由 button 承担）；
+//  2. 移除已并入「菜单与权限」页的旧「权限管理」菜单入口（含角色关联）；
+//  3. 「菜单管理」更名「菜单与权限」
+func (d *Data) migrateLegacy() error {
+	if err := d.DB.Model(&model.PermissionPO{}).Where("type = ?", "api").
+		Update("type", "button").Error; err != nil {
+		return err
+	}
+	var legacyMenu model.PermissionPO
+	err := d.DB.Where("code = ?", "menu:permission").First(&legacyMenu).Error
+	switch {
+	case err == nil:
+		if err := d.DB.Delete(&model.RolePermissionPO{}, "permission_id = ?", legacyMenu.ID).Error; err != nil {
+			return err
+		}
+		if err := d.DB.Delete(&legacyMenu).Error; err != nil {
+			return err
+		}
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		// 不存在则跳过
+	default:
+		return err
+	}
+	return d.DB.Model(&model.PermissionPO{}).Where("code = ?", "menu:menu").
+		Update("name", "菜单与权限").Error
 }

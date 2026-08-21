@@ -26,21 +26,48 @@ func mapErr(err error) error {
 }
 
 func (r *repo) Create(ctx context.Context, m *bizperm.Permission) error {
-	return r.data.DB.WithContext(ctx).Create(model.PermissionToPO(m)).Error
+	po := model.PermissionToPO(m)
+	if err := r.data.DB.WithContext(ctx).Create(po).Error; err != nil {
+		return err
+	}
+	// 回写自增主键与时间戳，供应用层返回给前端
+	m.ID, m.CreatedAt, m.UpdatedAt = po.ID, po.CreatedAt, po.UpdatedAt
+	return nil
 }
 
 func (r *repo) Update(ctx context.Context, m *bizperm.Permission) error {
 	return r.data.DB.WithContext(ctx).Model(&model.PermissionPO{}).Where("id = ?", m.ID).
-		Updates(map[string]interface{}{"name": m.Name, "method": m.Method, "path": m.Path, "icon": m.Icon, "sort": m.Sort}).Error
+		Updates(map[string]interface{}{"name": m.Name, "method": m.Method, "path": m.Path, "icon": m.Icon, "sort": m.Sort, "parent_id": m.ParentID}).Error
 }
 
 func (r *repo) Delete(ctx context.Context, id uint) error {
 	return r.data.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&model.PermissionPO{}, id).Error; err != nil {
-			return err
+		res := tx.Delete(&model.PermissionPO{}, id)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return bizperm.ErrPermissionNotFound
 		}
 		return tx.Where("permission_id = ?", id).Delete(&model.RolePermissionPO{}).Error
 	})
+}
+
+// CountByParentID 统计直接子级数量（删除保护：有子级不允许删除）
+func (r *repo) CountByParentID(ctx context.Context, parentID uint) (int64, error) {
+	var n int64
+	err := r.data.DB.WithContext(ctx).Model(&model.PermissionPO{}).
+		Where("parent_id = ?", parentID).Count(&n).Error
+	return n, err
+}
+
+// FindByCode 按编码查询（创建时查重用）
+func (r *repo) FindByCode(ctx context.Context, code string) (*bizperm.Permission, error) {
+	var po model.PermissionPO
+	if err := r.data.DB.WithContext(ctx).Where("code = ?", code).First(&po).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return model.PermissionFromPO(&po), nil
 }
 
 func (r *repo) FindByID(ctx context.Context, id uint) (*bizperm.Permission, error) {

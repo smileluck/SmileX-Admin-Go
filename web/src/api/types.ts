@@ -24,7 +24,7 @@ export interface Permission {
   id: number
   name: string
   code: string
-  type: 'api' | 'menu'
+  type: 'menu' | 'button' // menu 菜单 | button 按钮权限点（method/path 非空时同时参与后端 RBAC 校验）
   method: string
   path: string
   parent_id: number

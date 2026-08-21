@@ -12,9 +12,17 @@ type Usecase struct {
 	repo Repo
 }
 
+// superAdminRoleID 超管角色固定 ID：禁止删除
+const superAdminRoleID uint = 1
+
 func NewUsecase(repo Repo) *Usecase { return &Usecase{repo: repo} }
 
 func (uc *Usecase) Create(ctx context.Context, name, code, remark string) (*Role, error) {
+	if code != "" {
+		if _, err := uc.repo.FindByCode(ctx, code); err == nil {
+			return nil, ErrDuplicateRoleCode
+		}
+	}
 	r := &Role{Name: name, Code: code, Remark: remark}
 	if err := uc.repo.Create(ctx, r); err != nil {
 		return nil, err
@@ -37,8 +45,13 @@ func (uc *Usecase) Update(ctx context.Context, id uint, name, remark string) err
 }
 
 func (uc *Usecase) Delete(ctx context.Context, id uint) error {
-	if id == 1 {
-		return errors.New("cannot delete super admin role")
+	if id == superAdminRoleID {
+		return errors.New("超级管理员角色禁止删除")
+	}
+	if n, err := uc.repo.CountUsers(ctx, id); err != nil {
+		return err
+	} else if n > 0 {
+		return ErrRoleHasUsers
 	}
 	return uc.repo.Delete(ctx, id)
 }

@@ -16,7 +16,7 @@ func NewService(uc *bizperm.Usecase) *Service { return &Service{uc: uc} }
 type CreateRequest struct {
 	Name     string       `json:"name" binding:"required"`
 	Code     string       `json:"code" binding:"required"`
-	Type     bizperm.Type `json:"type" binding:"required,oneof=api menu"`
+	Type     bizperm.Type `json:"type" binding:"required,oneof=menu button"`
 	Method   string       `json:"method"`
 	Path     string       `json:"path"`
 	ParentID uint         `json:"parent_id"`
@@ -25,11 +25,12 @@ type CreateRequest struct {
 }
 
 type UpdateRequest struct {
-	Name   string  `json:"name"`
-	Method string  `json:"method"`
-	Path   string  `json:"path"`
-	Icon   *string `json:"icon"` // 指针：区分未传与清空
-	Sort   *int    `json:"sort"`
+	Name     string  `json:"name"`
+	Method   string  `json:"method"`
+	Path     string  `json:"path"`
+	Icon     *string `json:"icon"`     // 指针：区分未传与清空
+	Sort     *int    `json:"sort"`     // 指针：区分未传与归零
+	ParentID *uint   `json:"parent_id"` // 指针：区分未传与挪到顶级(0)
 }
 
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*bizperm.Permission, error) {
@@ -41,7 +42,7 @@ func (s *Service) Update(ctx context.Context, id uint, req UpdateRequest) error 
 	if req.Sort != nil {
 		sort = *req.Sort
 	}
-	return s.uc.Update(ctx, id, req.Name, req.Method, req.Path, req.Icon, sort)
+	return s.uc.Update(ctx, id, req.Name, req.Method, req.Path, req.Icon, sort, req.ParentID)
 }
 
 func (s *Service) Delete(ctx context.Context, id uint) error { return s.uc.Delete(ctx, id) }

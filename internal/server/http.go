@@ -448,9 +448,9 @@ func (s *HTTPServer) deletePerm(c *gin.Context) {
 
 // ---- helpers ----
 
-// userErr 用户操作错误映射：超管保护返回 403，其余返回 400
+// userErr 用户操作错误映射：超管保护类返回 403，其余返回 400
 func (s *HTTPServer) userErr(c *gin.Context, err error) {
-	if errors.Is(err, user.ErrSuperAdminProtected) {
+	if errors.Is(err, user.ErrSuperAdminProtected) || errors.Is(err, user.ErrDeleteSuperAdmin) {
 		response.Forbidden(c, err.Error())
 		return
 	}

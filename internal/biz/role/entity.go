@@ -3,13 +3,13 @@ package role
 
 import "time"
 
-// Role 角色聚合根
+// Role 角色聚合根（json tag 与前端 Role 类型字段对齐，缺失会导致列表/详情序列化键大写、前端取不到值）
 type Role struct {
-	ID            uint
-	Name          string
-	Code          string
-	Remark        string
-	PermissionIDs []uint
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID            uint      `json:"id"`
+	Name          string    `json:"name"`
+	Code          string    `json:"code"`
+	Remark        string    `json:"remark"`
+	PermissionIDs []uint    `json:"permission_ids"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }

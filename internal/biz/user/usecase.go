@@ -16,6 +16,9 @@ func (CreatedEvent) Topic() string { return "user.created" }
 // 超级管理员保护：admin（id=1）账号仅允许其本人操作，其余用户一律拒绝
 var ErrSuperAdminProtected = errors.New("无权操作超级管理员账号")
 
+// ErrDeleteSuperAdmin 超级管理员账号一律禁止删除（含其本人）
+var ErrDeleteSuperAdmin = errors.New("超级管理员账号禁止删除")
+
 const superAdminID uint = 1
 
 type operatorKey struct{}
@@ -84,7 +87,7 @@ func (uc *Usecase) Update(ctx context.Context, id uint, nickname, email string, 
 
 func (uc *Usecase) Delete(ctx context.Context, id uint) error {
 	if id == superAdminID {
-		return errors.New("不允许删除超级管理员")
+		return ErrDeleteSuperAdmin
 	}
 	return uc.repo.Delete(ctx, id)
 }

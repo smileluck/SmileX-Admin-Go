@@ -71,8 +71,12 @@ func (r *repo) Update(ctx context.Context, u *user.User) error {
 
 func (r *repo) Delete(ctx context.Context, id uint) error {
 	return r.data.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&model.UserPO{}, id).Error; err != nil {
-			return err
+		res := tx.Delete(&model.UserPO{}, id)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return user.ErrUserNotFound
 		}
 		return tx.Where("user_id = ?", id).Delete(&model.UserRolePO{}).Error
 	})

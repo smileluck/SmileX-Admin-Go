@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS permissions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   code TEXT UNIQUE NOT NULL,
-  type TEXT DEFAULT 'api',
+  type TEXT DEFAULT 'menu', -- menu 菜单 | button 按钮权限（api 已废弃，启动迁移自动转为 button）
   method TEXT DEFAULT '',
   path TEXT DEFAULT '',
   parent_id INTEGER DEFAULT 0,

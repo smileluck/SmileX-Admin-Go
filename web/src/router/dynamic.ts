@@ -12,7 +12,6 @@ const viewModules: Record<string, () => Promise<any>> = {
   'menu:dashboard': () => import('../views/dashboard/Dashboard.vue'),
   'menu:user': () => import('../views/system/Users.vue'),
   'menu:role': () => import('../views/system/Roles.vue'),
-  'menu:permission': () => import('../views/system/Permissions.vue'),
   'menu:menu': () => import('../views/system/Menus.vue'),
 }
 

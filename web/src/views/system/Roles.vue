@@ -12,14 +12,16 @@
 
   <!-- 新增/编辑 -->
   <n-modal v-model:show="showModal" preset="dialog" :title="editing ? '编辑角色' : '新增角色'" style="width: 460px">
-    <n-form :model="form" label-placement="left" label-width="80">
-      <n-form-item label="名称"><n-input v-model:value="form.name" /></n-form-item>
-      <n-form-item label="编码" v-if="!editing"><n-input v-model:value="form.code" /></n-form-item>
+    <n-form ref="formRef" :model="form" :rules="rules" label-placement="left" label-width="80">
+      <n-form-item label="名称" path="name"><n-input v-model:value="form.name" /></n-form-item>
+      <n-form-item label="编码" path="code" v-if="!editing">
+        <n-input v-model:value="form.code" placeholder="唯一，如 editor" />
+      </n-form-item>
       <n-form-item label="备注"><n-input v-model:value="form.remark" /></n-form-item>
     </n-form>
     <template #action>
       <n-button @click="showModal = false">取消</n-button>
-      <n-button type="primary" @click="save">确定</n-button>
+      <n-button type="primary" :loading="saving" @click="save">确定</n-button>
     </template>
   </n-modal>
 
@@ -40,20 +42,31 @@
 
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NTree, useMessage, type DataTableColumns } from 'naive-ui'
+import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NTree, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { createRole, deleteRole, getRole, listPermissions, listRoles, setRolePermissions, updateRole } from '../../api'
-import type { Role } from '../../api/types'
+import type { Permission, Role } from '../../api/types'
 
 const message = useMessage()
+const dialog = useDialog()
 const loading = ref(false)
+const saving = ref(false)
 const rows = ref<Role[]>([])
 const query = reactive({ name: '', page: 1, page_size: 10 })
+
+// 超管角色（id=1）禁止删除
+const SUPER_ROLE_ID = 1
 
 const showModal = ref(false)
 const showPerm = ref(false)
 const editing = ref(false)
 const editId = ref(0)
 const form = reactive({ name: '', code: '', remark: '' })
+const formRef = ref<FormInst | null>(null)
+
+const rules: FormRules = {
+  name: [{ required: true, message: '请输入角色名称', trigger: ['blur', 'input'] }],
+  code: [{ required: true, message: '请输入角色编码', trigger: ['blur', 'input'] }],
+}
 
 const permTree = ref<any[]>([])
 const expandedKeys = ref<number[]>([])
@@ -91,52 +104,85 @@ function openEdit(row: Role) {
 }
 
 async function save() {
-  if (editing.value) {
-    await updateRole(editId.value, { name: form.name, remark: form.remark })
-  } else {
-    await createRole(form)
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return // 校验失败，错误已在表单项上展示
   }
-  message.success('保存成功')
-  showModal.value = false
-  load()
+  saving.value = true
+  try {
+    if (editing.value) {
+      await updateRole(editId.value, { name: form.name.trim(), remark: form.remark })
+    } else {
+      await createRole({ name: form.name.trim(), code: form.code.trim(), remark: form.remark })
+    }
+    message.success('保存成功')
+    showModal.value = false
+    load()
+  } catch (e: any) {
+    message.error(e?.response?.data?.msg || '保存失败')
+  } finally {
+    saving.value = false
+  }
 }
 
-// 构造权限树（API + 菜单平铺到树根）
+function confirmDelete(row: Role) {
+  if (row.id === SUPER_ROLE_ID) { message.error('超级管理员角色禁止删除'); return }
+  dialog.warning({
+    title: '删除确认',
+    content: `确定删除角色「${row.name}」吗？该操作不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteRole(row.id)
+        message.success('已删除')
+        load()
+      } catch (e: any) {
+        message.error(e?.response?.data?.msg || '删除失败')
+      }
+    },
+  })
+}
+
+// 构造权限树：菜单 + 按钮权限点统一按 parent_id 组树（按钮自然挂在所属菜单下）
 async function openPerms(row: Role) {
   editId.value = row.id
-  const [{ data: allResp }, { data: roleResp }] = await Promise.all([
-    listPermissions({ page: 1, page_size: 500 }),
-    getRole(row.id),
-  ])
-  const all = allResp.data.list
-  const menus = all.filter((p) => p.type === 'menu')
-  const apis = all.filter((p) => p.type === 'api')
-  const node = (p: any): any => ({ key: p.id, label: `${p.name}（${p.code}）` })
-  permTree.value = [
-    ...buildTree(menus),
-    { key: -1, label: '接口权限', children: apis.map(node) },
-  ]
-  expandedKeys.value = [-1, ...menus.filter((m) => m.parent_id === 0).map((m) => m.id)]
-  checkedKeys.value = roleResp.data.permission_ids ?? []
-  showPerm.value = true
+  try {
+    const [{ data: allResp }, { data: roleResp }] = await Promise.all([
+      listPermissions({ page: 1, page_size: 500 }),
+      getRole(row.id),
+    ])
+    const all = allResp.data.list
+    permTree.value = buildTree(all)
+    expandedKeys.value = all.filter((p) => p.parent_id === 0).map((p) => p.id)
+    checkedKeys.value = roleResp.data.permission_ids ?? []
+    showPerm.value = true
+  } catch (e: any) {
+    message.error(e?.response?.data?.msg || '加载权限数据失败')
+  }
 }
 
-function buildTree(items: any[], parentID = 0): any[] {
+function buildTree(items: Permission[], parentID = 0): any[] {
   return items
     .filter((p) => p.parent_id === parentID)
+    .sort((a, b) => a.sort - b.sort)
     .map((p) => {
       const children = buildTree(items, p.id)
-      const n: any = { key: p.id, label: `${p.name}（${p.code}）` }
+      const n: any = { key: p.id, label: `${p.name}（${p.code}）${p.type === 'button' ? '［按钮］' : ''}` }
       if (children.length) n.children = children
       return n
     })
 }
 
 async function savePerms() {
-  const ids = (checkedKeys.value as number[]).filter((k) => k > 0)
-  await setRolePermissions(editId.value, ids)
-  message.success('权限已更新')
-  showPerm.value = false
+  try {
+    await setRolePermissions(editId.value, checkedKeys.value as number[])
+    message.success('权限已更新')
+    showPerm.value = false
+  } catch (e: any) {
+    message.error(e?.response?.data?.msg || '保存失败')
+  }
 }
 
 const columns: DataTableColumns<Role> = [
@@ -151,10 +197,10 @@ const columns: DataTableColumns<Role> = [
         default: () => [
           h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
           h(NButton, { size: 'small', type: 'info', onClick: () => openPerms(row) }, { default: () => '分配权限' }),
-          h(NButton, {
-            size: 'small', type: 'error',
-            onClick: async () => { await deleteRole(row.id); message.success('已删除'); load() },
-          }, { default: () => '删除' }),
+          // 超管角色禁止删除，不展示删除按钮
+          row.id !== SUPER_ROLE_ID
+            ? h(NButton, { size: 'small', type: 'error', onClick: () => confirmDelete(row) }, { default: () => '删除' })
+            : h(NTag, { size: 'small', bordered: false }, { default: () => '内置' }),
         ],
       })
     },

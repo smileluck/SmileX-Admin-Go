@@ -37,7 +37,13 @@ func (r *repo) loadPermissions(ctx context.Context, ro *role.Role) error {
 }
 
 func (r *repo) Create(ctx context.Context, ro *role.Role) error {
-	return r.data.DB.WithContext(ctx).Create(model.RoleToPO(ro)).Error
+	po := model.RoleToPO(ro)
+	if err := r.data.DB.WithContext(ctx).Create(po).Error; err != nil {
+		return err
+	}
+	// 回写自增主键与时间戳，供应用层返回给前端
+	ro.ID, ro.CreatedAt, ro.UpdatedAt = po.ID, po.CreatedAt, po.UpdatedAt
+	return nil
 }
 
 func (r *repo) Update(ctx context.Context, ro *role.Role) error {
@@ -47,8 +53,12 @@ func (r *repo) Update(ctx context.Context, ro *role.Role) error {
 
 func (r *repo) Delete(ctx context.Context, id uint) error {
 	return r.data.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&model.RolePO{}, id).Error; err != nil {
-			return err
+		res := tx.Delete(&model.RolePO{}, id)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return role.ErrRoleNotFound
 		}
 		if err := tx.Where("role_id = ?", id).Delete(&model.RolePermissionPO{}).Error; err != nil {
 			return err
@@ -67,6 +77,23 @@ func (r *repo) FindByID(ctx context.Context, id uint) (*role.Role, error) {
 		return nil, err
 	}
 	return ro, nil
+}
+
+// FindByCode 按编码查询（创建时查重用）
+func (r *repo) FindByCode(ctx context.Context, code string) (*role.Role, error) {
+	var po model.RolePO
+	if err := r.data.DB.WithContext(ctx).Where("code = ?", code).First(&po).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return model.RoleFromPO(&po), nil
+}
+
+// CountUsers 统计角色下的用户数量（删除保护用）
+func (r *repo) CountUsers(ctx context.Context, roleID uint) (int64, error) {
+	var n int64
+	err := r.data.DB.WithContext(ctx).Model(&model.UserRolePO{}).
+		Where("role_id = ?", roleID).Count(&n).Error
+	return n, err
 }
 
 func (r *repo) List(ctx context.Context, q role.Query, page, pageSize int) ([]*role.Role, int64, error) {

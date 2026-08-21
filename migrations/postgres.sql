@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS permissions (
   id BIGSERIAL PRIMARY KEY,
   name VARCHAR(64) NOT NULL,
   code VARCHAR(64) UNIQUE NOT NULL,
-  type VARCHAR(16) DEFAULT 'api',
+  type VARCHAR(16) DEFAULT 'menu', -- menu 菜单 | button 按钮权限（api 已废弃，启动迁移自动转为 button）
   method VARCHAR(16) DEFAULT '',
   path VARCHAR(255) DEFAULT '',
   parent_id BIGINT DEFAULT 0,
