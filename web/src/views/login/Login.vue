@@ -4,7 +4,7 @@
     <aside class="brand-panel">
       <!-- 伪3D地图数据流：右偏上留白区的动态点缀 -->
       <div class="geo-flow" aria-hidden="true">
-        <div class="geo-flow-label">geo sync</div>
+        <div class="geo-flow-label">sync</div>
         <MapFlow3D />
       </div>
 
