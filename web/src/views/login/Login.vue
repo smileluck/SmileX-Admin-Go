@@ -32,16 +32,16 @@
             d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
           <path class="pulse-beam pulse-beam--core"
             d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
-          <!-- 波峰/波谷高亮点：delay 与光束前沿到达各点的时刻对齐 -->
+          <!-- 波峰/波谷高亮点：delay 与光束队列前沿到达各点的时刻对齐 -->
           <g class="pulse-dots">
-            <circle cx="95" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.15s" />
-            <circle cx="110" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.28s" />
-            <circle cx="225" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.61s" />
-            <circle cx="240" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.73s" />
-            <circle cx="365" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.09s" />
-            <circle cx="380" cy="66" r="3" class="pulse-dot" style="animation-delay: 1.21s" />
-            <circle cx="505" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.57s" />
-            <circle cx="520" cy="66" r="3" class="pulse-dot" style="animation-delay: 1.69s" />
+            <circle cx="95" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.38s" />
+            <circle cx="110" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.69s" />
+            <circle cx="225" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.30s" />
+            <circle cx="240" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.61s" />
+            <circle cx="365" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.29s" />
+            <circle cx="380" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.60s" />
+            <circle cx="505" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.27s" />
+            <circle cx="520" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.58s" />
           </g>
         </svg>
         <div class="pulse-meta mono">
@@ -335,32 +335,33 @@ onMounted(() => {
   0% { stroke-dashoffset: 1200; opacity: 0.4; }
   100% { stroke-dashoffset: 349; opacity: 0.9; }
 }
-/* 光束粒子：44px 柔光段 + 20px 亮核，3s 一轮扫完全线后留白片刻再循环 */
+/* 光束粒子队列：短划周期 216 ≈ 1/4 波形长度，多条光束等距并发；
+   1.2s 滑过一个周期（约 180 单位/s，全线穿行约 4.7s） */
 .pulse-beam {
   fill: none;
   stroke: #7FD4B8;
   stroke-width: 5;
   stroke-linecap: round;
-  stroke-dasharray: 44 1290;
-  stroke-dashoffset: 200; /* 降级兜底：短划藏在路径外不可见 */
+  stroke-dasharray: 44 172;
+  stroke-dashoffset: 216;
   opacity: 0.35;
   filter: drop-shadow(0 0 4px rgba(127, 212, 184, 0.7));
-  animation: beam-sweep 3s linear infinite;
+  animation: beam-sweep 1.2s linear infinite;
 }
 .pulse-beam--core {
   stroke-width: 2;
-  stroke-dasharray: 20 1314;
-  stroke-dashoffset: 100;
+  stroke-dasharray: 20 196;
+  stroke-dashoffset: 192;
   opacity: 1;
   filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
   animation-name: beam-sweep-core; /* 亮核骑在柔光段前沿 */
 }
 @keyframes beam-sweep {
-  from { stroke-dashoffset: 1334; }
+  from { stroke-dashoffset: 216; }
   to { stroke-dashoffset: 0; }
 }
 @keyframes beam-sweep-core {
-  from { stroke-dashoffset: 1310; }
+  from { stroke-dashoffset: 192; }
   to { stroke-dashoffset: -24; }
 }
 /* 波峰/波谷点：平时熄灭，光束前沿触及时闪亮一下再暗下去（delay 在模板内联指定） */
@@ -368,13 +369,19 @@ onMounted(() => {
   fill: #7FD4B8;
   opacity: 0;
   filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
-  animation: dot-flash 3s linear infinite;
+  animation: dot-flash 1.2s linear infinite;
 }
 @keyframes dot-flash {
   0% { opacity: 1; }
-  5% { opacity: 0.35; }
-  15% { opacity: 0; }
+  12% { opacity: 0.35; }
+  38% { opacity: 0; }
   100% { opacity: 0; }
+}
+/* 降级：队列无法用 offset 藏到路径外，直接隐藏光束 */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-beam {
+    opacity: 0;
+  }
 }
 .pulse-meta {
   display: flex;
