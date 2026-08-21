@@ -8,7 +8,7 @@
       <path :ref="el => setEl(softEls, i, el)" class="pulse-beam" :d="D" />
       <path :ref="el => setEl(coreEls, i, el)" class="pulse-beam pulse-beam--core" :d="D" />
     </template>
-    <!-- 波峰/波谷高亮点：光束前沿扫过时闪亮后衰减（JS 驱动 opacity） -->
+    <!-- 波峰/波谷高亮点：初始描线或光束前沿扫过时闪亮后衰减（JS 驱动 opacity） -->
     <g>
       <circle v-for="(cx, j) in DOT_CX" :key="j" :ref="el => setEl(dotEls, j, el)" :cx="cx" :cy="DOT_CY[j]" r="3"
         class="pulse-dot" />
@@ -35,10 +35,10 @@ const DOT_CX = [95, 110, 225, 240, 365, 380, 505, 520]
 const DOT_CY = [12, 66, 12, 66, 12, 66, 12, 66]
 const DOT_S = [111.8, 167.8, 314.6, 370.6, 527.4, 583.4, 740.2, 796.2] // 各点沿路径累计长度
 
-/* 光束队列：速度、发射间隔各带 ±15% 随机差；delay 为描线完成后的逐条发射时刻 */
+/* 光束队列：速度、发射间隔各带 ±15% 随机差；描线完成后再逐条发射 */
 const beams = Array.from({ length: 4 }, (_, i) => ({
   dur: SWEEP_S * (1 + (Math.random() * 2 - 1) * 0.15),
-  delay: i * EMISSION_S * (1 + (Math.random() * 2 - 1) * 0.15),
+  delay: TRACE_S + i * EMISSION_S * (1 + (Math.random() * 2 - 1) * 0.15),
 }))
 
 const softEls: (SVGPathElement | null)[] = []
@@ -49,9 +49,10 @@ function setEl<T>(arr: T[], i: number, el: unknown) {
 }
 
 let rafId = 0
-let startTimer = 0
 let lastNow = 0
-let elapsed = 0 // 自身时钟：描线完成后归零推进，隐藏页期间不计时
+let elapsed = 0 // 自身时钟：挂载后归零推进，隐藏页期间不计时
+let prevTraceFront = 0 // 初始描线前沿的上帧位置
+const TRACE_RATE = PATH_LEN / TRACE_S // 描线前沿速度
 const lastFlash = DOT_S.map(() => -FLASH_S * 1000)
 const prevFront = beams.map(() => 0)
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -61,6 +62,16 @@ function frame(now: number) {
   const dt = Math.min((now - lastNow) / 1000, 0.05)
   lastNow = now
   elapsed += dt
+
+  // 初始描线：前沿扫过转折点时点亮（仅描线阶段）
+  if (elapsed < TRACE_S) {
+    const front = TRACE_RATE * elapsed
+    DOT_S.forEach((s, j) => {
+      if (s > prevTraceFront && s <= front) lastFlash[j] = now
+    })
+    prevTraceFront = front
+  }
+
   beams.forEach((b, i) => {
     // 未到发射时刻：光束藏于路径外
     const pos = elapsed >= b.delay ? (((elapsed - b.delay) / b.dur) % 1) * PERIOD : HIDDEN_POS
@@ -100,16 +111,12 @@ function onVisibility() {
 
 onMounted(() => {
   if (reducedMotion) return // 降级：波形常显，光束与点保持隐藏（CSS 基线已藏于路径外）
-  // 等初始描线触碰最右端后，才开始逐条发射光束
-  startTimer = window.setTimeout(() => {
-    lastNow = 0
-    rafId = requestAnimationFrame(frame)
-    document.addEventListener('visibilitychange', onVisibility)
-  }, TRACE_S * 1000)
+  lastNow = 0
+  rafId = requestAnimationFrame(frame)
+  document.addEventListener('visibilitychange', onVisibility)
 })
 
 onBeforeUnmount(() => {
-  clearTimeout(startTimer)
   cancelAnimationFrame(rafId)
   document.removeEventListener('visibilitychange', onVisibility)
 })
