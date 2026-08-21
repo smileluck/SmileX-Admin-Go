@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS permissions (
   method VARCHAR(16) DEFAULT '',
   path VARCHAR(255) DEFAULT '',
   parent_id BIGINT DEFAULT 0,
+  icon VARCHAR(512) DEFAULT '',
+  sort INT DEFAULT 0,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ

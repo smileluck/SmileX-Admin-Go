@@ -39,6 +39,7 @@ import { computed, h, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown } from 'naive-ui'
 import { useUserStore } from '../stores/user'
+import { renderMenuIcon } from '../utils/menuIcon'
 import type { MenuNode } from '../api/types'
 
 const route = useRoute()
@@ -46,10 +47,8 @@ const router = useRouter()
 const userStore = useUserStore()
 const collapsed = ref(false)
 
-const iconMap: Record<string, string> = {
-  HomeFilled: '🏠', Setting: '⚙️', User: '👤', Avatar: '🎭', Lock: '🔒', Menu: '📋',
-}
-const renderIcon = (icon?: string) => () => h('span', { style: 'margin-right:6px' }, icon ? (iconMap[icon] || '📄') : '📄')
+// 图标支持本地 ionicons5 名称 / 网络图片 URL，统一走 menuIcon 渲染
+const renderIcon = (icon?: string) => () => h('span', { style: 'display:inline-flex;align-items:center' }, renderMenuIcon(icon))
 
 function toOptions(nodes: MenuNode[]): any[] {
   return (nodes ?? []).map((m) => ({

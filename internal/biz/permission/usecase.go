@@ -21,8 +21,8 @@ func (uc *Usecase) Create(ctx context.Context, name, code string, t Type, method
 	return p, nil
 }
 
-// Update 更新权限（空字符串字段不更新）
-func (uc *Usecase) Update(ctx context.Context, id uint, name, method, path, icon string, sort int) error {
+// Update 更新权限（空字符串字段不更新；icon 为指针，传空字符串可清空图标）
+func (uc *Usecase) Update(ctx context.Context, id uint, name, method, path string, icon *string, sort int) error {
 	p, err := uc.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
@@ -36,8 +36,8 @@ func (uc *Usecase) Update(ctx context.Context, id uint, name, method, path, icon
 	if path != "" {
 		p.Path = path
 	}
-	if icon != "" {
-		p.Icon = icon
+	if icon != nil {
+		p.Icon = *icon
 	}
 	p.Sort = sort
 	return uc.repo.Update(ctx, p)

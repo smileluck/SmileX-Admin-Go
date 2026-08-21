@@ -140,12 +140,12 @@ func (d *Data) migrateAndSeed() error {
 
 	// 菜单种子数据（type=menu）
 	menus := []model.PermissionPO{
-		{ID: 100, Name: "首页", Code: "menu:dashboard", Type: "menu", Path: "/dashboard", Icon: "HomeFilled", Sort: 1},
-		{ID: 110, Name: "系统管理", Code: "menu:system", Type: "menu", Path: "/system", Icon: "Setting", Sort: 2},
-		{ID: 111, Name: "用户管理", Code: "menu:user", Type: "menu", Path: "/system/users", ParentID: 110, Icon: "User", Sort: 1},
-		{ID: 112, Name: "角色管理", Code: "menu:role", Type: "menu", Path: "/system/roles", ParentID: 110, Icon: "Avatar", Sort: 2},
-		{ID: 113, Name: "权限管理", Code: "menu:permission", Type: "menu", Path: "/system/permissions", ParentID: 110, Icon: "Lock", Sort: 3},
-		{ID: 114, Name: "菜单管理", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "Menu", Sort: 4},
+		{ID: 100, Name: "首页", Code: "menu:dashboard", Type: "menu", Path: "/dashboard", Icon: "HomeOutline", Sort: 1},
+		{ID: 110, Name: "系统管理", Code: "menu:system", Type: "menu", Path: "/system", Icon: "SettingsOutline", Sort: 2},
+		{ID: 111, Name: "用户管理", Code: "menu:user", Type: "menu", Path: "/system/users", ParentID: 110, Icon: "PersonOutline", Sort: 1},
+		{ID: 112, Name: "角色管理", Code: "menu:role", Type: "menu", Path: "/system/roles", ParentID: 110, Icon: "IdCardOutline", Sort: 2},
+		{ID: 113, Name: "权限管理", Code: "menu:permission", Type: "menu", Path: "/system/permissions", ParentID: 110, Icon: "LockClosedOutline", Sort: 3},
+		{ID: 114, Name: "菜单管理", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
 	}
 	adminPwd, err := user.NewPassword("123456")
 	if err != nil {

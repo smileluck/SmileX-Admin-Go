@@ -25,11 +25,11 @@ type CreateRequest struct {
 }
 
 type UpdateRequest struct {
-	Name   string `json:"name"`
-	Method string `json:"method"`
-	Path   string `json:"path"`
-	Icon   string `json:"icon"`
-	Sort   *int   `json:"sort"`
+	Name   string  `json:"name"`
+	Method string  `json:"method"`
+	Path   string  `json:"path"`
+	Icon   *string `json:"icon"` // 指针：区分未传与清空
+	Sort   *int    `json:"sort"`
 }
 
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*bizperm.Permission, error) {

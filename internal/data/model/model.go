@@ -48,7 +48,7 @@ type PermissionPO struct {
 	Method    string `gorm:"size:16"`
 	Path      string `gorm:"size:255"`
 	ParentID  uint
-	Icon      string `gorm:"size:64"`
+	Icon      string `gorm:"size:512"`
 	Sort      int
 	CreatedAt time.Time
 	UpdatedAt time.Time
