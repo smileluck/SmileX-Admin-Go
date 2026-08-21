@@ -9,7 +9,15 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
  * 伪 3D 地图发射效果：透视倾斜的点阵中国地图 + 城市呼吸光柱/上行发射 + 城市间飞线。
  * 纯 Canvas 手写透视投影，地图轮廓为硬编码经纬度多边形，无外部地图资源。
  */
-const SKY = '143, 197, 232' // 与本页 seal/pulse 同源的清水蓝点缀色
+/* 高亮色运行时读取 tokens 的 --sx-accent-bright（hex → RGB 三元组），保持主题单一来源 */
+function readAccentBright(): string {
+  const hex = getComputedStyle(document.documentElement).getPropertyValue('--sx-accent-bright').trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    return `${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}`
+  }
+  return '143, 197, 232' // 兜底：浅清水蓝
+}
+const SKY = readAccentBright()
 
 /* —— 地图轮廓（[经度, 纬度]，手工简化的中国形状）—— */
 const CHINA: [number, number][] = [

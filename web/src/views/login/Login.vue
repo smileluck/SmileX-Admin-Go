@@ -248,7 +248,7 @@ onMounted(() => {
   font-weight: 700;
   font-size: 20px;
   color: var(--sx-ink);
-  background: #8FC5E8;
+  background: var(--sx-accent-bright);
 }
 .brand-name {
   font-family: var(--sx-font-mono);
@@ -265,7 +265,7 @@ onMounted(() => {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #8FC5E8;
+  color: var(--sx-accent-bright);
   margin: 0 0 16px;
 }
 .headline {
@@ -303,13 +303,13 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #8FC5E8;
+  color: var(--sx-accent-bright);
 }
 .live i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #8FC5E8;
+  background: var(--sx-accent-bright);
   animation: blink 2.4s ease-in-out infinite;
 }
 @keyframes blink {

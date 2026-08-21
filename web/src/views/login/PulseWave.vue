@@ -137,7 +137,7 @@ onBeforeUnmount(() => {
 /* 波形：进场由左往右画一次（约 1.9s）后保持常驻，不再整条重发 */
 .pulse-trace {
   fill: none;
-  stroke: #7FD4B8;
+  stroke: var(--sx-accent-bright);
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -155,26 +155,26 @@ onBeforeUnmount(() => {
    基线 offset 藏于路径外（兼顾降级时不可见） */
 .pulse-beam {
   fill: none;
-  stroke: #7FD4B8;
+  stroke: var(--sx-accent-bright);
   stroke-width: 5;
   stroke-linecap: round;
   stroke-dasharray: 44 1200;
   stroke-dashoffset: 244;
   opacity: 0.35;
-  filter: drop-shadow(0 0 4px rgba(127, 212, 184, 0.7));
+  filter: drop-shadow(0 0 4px rgba(var(--sx-accent-bright-rgb), 0.7));
 }
 .pulse-beam--core {
   stroke-width: 2;
   stroke-dasharray: 20 1224;
   stroke-dashoffset: 220;
   opacity: 1;
-  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
+  filter: drop-shadow(0 0 3px rgba(var(--sx-accent-bright-rgb), 0.9));
 }
 
 /* 转折点：opacity 由 JS 驱动，基线熄灭 */
 .pulse-dot {
-  fill: #7FD4B8;
+  fill: var(--sx-accent-bright);
   opacity: 0;
-  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
+  filter: drop-shadow(0 0 3px rgba(var(--sx-accent-bright-rgb), 0.9));
 }
 </style>
