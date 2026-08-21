@@ -72,8 +72,6 @@
         <n-button class="login-btn" type="primary" size="large" block :loading="loading" @click="onLogin">
           登 录
         </n-button>
-
-        <p class="form-foot mono">authorized personnel only</p>
       </div>
     </main>
   </div>
@@ -420,11 +418,6 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   margin: 2px 0 10px;
-}
-
-.form-foot {
-  margin: 28px 0 0;
-  text-align: center;
 }
 
 /* 中等屏：右上留白不足时收起数据流 */
