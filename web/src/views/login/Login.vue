@@ -312,17 +312,18 @@ onMounted(() => {
   stroke-dashoffset: 1200;
   animation: trace 4.5s linear infinite;
 }
-/* 波峰/波谷点：常亮微光，随描线节奏依次闪亮（delay 在模板内联指定） */
+/* 波峰/波谷点：平时熄灭，描线触及时闪亮一下再暗下去（delay 在模板内联指定） */
 .pulse-dot {
   fill: #7FD4B8;
-  opacity: 0.55;
+  opacity: 0;
   filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
-  animation: dot-glow 4.5s linear infinite;
+  animation: dot-flash 4.5s linear infinite;
 }
-@keyframes dot-glow {
+@keyframes dot-flash {
   0% { opacity: 1; }
-  10% { opacity: 0.55; }
-  100% { opacity: 0.55; }
+  6% { opacity: 0.35; }
+  14% { opacity: 0; }
+  100% { opacity: 0; }
 }
 @keyframes trace {
   0% { stroke-dashoffset: 1200; opacity: 0.35; }
