@@ -47,7 +47,15 @@ mysql -uroot -p < migrations/mysql.sql   # 建库
 make web-build run
 ```
 
-前后端分离开发（热更新）：
+前后端热更新开发（推荐，一条命令）：
+
+```bash
+go install github.com/air-verse/air@latest  # 首次需安装 air
+make dev    # 后端 air 热加载 :8080 + 前端 Vite 热更新 :5173（/api 自动代理到后端）
+# 打开 http://localhost:5173
+```
+
+或分开启动：
 
 ```bash
 make run        # 终端1：后端 :8080

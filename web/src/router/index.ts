@@ -60,10 +60,12 @@ router.beforeEach(async (to, _from, next) => {
       await userStore.loadUserContext()
       const dynamic = menuToRoutes(userStore.menus)
       for (const r of dynamic) {
-        // 菜单 path 为绝对路径，作为 layout-root 的子路由注册
         router.addRoute('layout-root', r)
       }
-      next({ ...to, replace: true })
+      userStore.routesLoaded = true
+      // 重导航以匹配刚注册的动态路由；'/' 落到第一个菜单
+      const target = to.path === '/' && dynamic.length ? dynamic[0].path : to.path
+      next({ path: target, query: to.query, replace: true })
     } catch {
       userStore.logout()
       next('/login')

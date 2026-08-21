@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NCard, NForm, NFormItem, NInput, NButton, useMessage, type FormInst } from 'naive-ui'
 import { useUserStore } from '../../stores/user'
@@ -25,7 +25,7 @@ const userStore = useUserStore()
 const message = useMessage()
 const formRef = ref<FormInst | null>(null)
 const loading = ref(false)
-const form = { username: 'admin', password: '' }
+const form = reactive({ username: 'admin', password: '' })
 const rules = {
   username: { required: true, message: '请输入用户名', trigger: 'blur' },
   password: { required: true, message: '请输入密码', trigger: 'blur' },
@@ -36,8 +36,8 @@ async function onLogin() {
   loading.value = true
   try {
     await userStore.login(form.username, form.password)
-    await userStore.loadUserContext()
     message.success('登录成功')
+    // 不在这里 loadUserContext——交由路由守卫统一加载并注册动态路由
     router.push('/')
   } catch (e: any) {
     message.error(e?.response?.data?.msg || '登录失败')
@@ -49,7 +49,7 @@ async function onLogin() {
 
 <style scoped>
 .login-page {
-  height: 100%;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;

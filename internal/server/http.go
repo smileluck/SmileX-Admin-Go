@@ -158,12 +158,14 @@ func (s *HTTPServer) registerStatic() {
 	}
 	if index, err := filepath.Abs(filepath.Join(dir, "index.html")); err == nil {
 		if _, err := os.Stat(index); err == nil {
+			// assets 文件名带 hash，可长期缓存；index.html 禁止缓存避免发版后白屏
 			s.engine.Static("/assets", filepath.Join(dir, "assets"))
 			s.engine.NoRoute(func(c *gin.Context) {
 				if strings.HasPrefix(c.Request.URL.Path, "/api/") {
 					response.NotFound(c, "not found")
 					return
 				}
+				c.Header("Cache-Control", "no-cache")
 				c.File(index)
 			})
 			logger.Info("serving static frontend", zap.String("dir", dir))

@@ -2,11 +2,13 @@
 package data
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/conf"
@@ -17,6 +19,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
+	"go.uber.org/zap"
 )
 
 // Data 持久化入口（对应 Kratos 的 Data struct）
@@ -35,10 +38,12 @@ func NewData(c *conf.Bootstrap) (*Data, func(), error) {
 	}
 	switch c.DB.Driver {
 	case "mysql":
+		ensureMySQLDatabase(c.DB.MySQL)
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
 			c.DB.MySQL.User, c.DB.MySQL.Password, c.DB.MySQL.Host, c.DB.MySQL.Port, c.DB.MySQL.DBName, c.DB.MySQL.Charset)
 		db, err = gorm.Open(mysql.Open(dsn), gormCfg)
 	case "postgres":
+		ensurePostgresDatabase(c.DB.Postgres)
 		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			c.DB.Postgres.Host, c.DB.Postgres.Port, c.DB.Postgres.User, c.DB.Postgres.Password, c.DB.Postgres.DBName, c.DB.Postgres.SSLMode)
 		db, err = gorm.Open(postgres.Open(dsn), gormCfg)
@@ -75,6 +80,41 @@ func NewData(c *conf.Bootstrap) (*Data, func(), error) {
 	}
 	cleanup := func() { _ = sqlDB.Close() }
 	return d, cleanup, nil
+}
+
+// ensureMySQLDatabase 库不存在时自动创建（连接 information_schema 建库后再正常连接）
+func ensureMySQLDatabase(c conf.MySQL) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local",
+		c.User, c.Password, c.Host, c.Port, c.Charset)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+	if _, err := db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s", c.DBName, c.Charset)); err != nil {
+		logger.Warn("auto create mysql database failed", zap.Error(err))
+	}
+}
+
+// ensurePostgresDatabase 库不存在时自动创建（先连 postgres 库执行 CREATE DATABASE）
+func ensurePostgresDatabase(c conf.Postgres) {
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=postgres sslmode=%s",
+		c.Host, c.Port, c.User, c.Password, c.SSLMode)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return
+	}
+	defer sqlDB.Close()
+	if _, err := sqlDB.Exec(fmt.Sprintf(`SELECT 'CREATE DATABASE %s' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '%s')`, c.DBName, c.DBName)); err != nil {
+		return
+	}
+	if _, err := sqlDB.Exec("CREATE DATABASE " + c.DBName); err != nil {
+		logger.Warn("auto create postgres database failed", zap.Error(err))
+	}
 }
 
 // migrateAndSeed 自动建表 + 种子数据（超管 admin/123456）
