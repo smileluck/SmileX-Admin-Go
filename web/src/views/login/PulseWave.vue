@@ -1,8 +1,8 @@
 <template>
   <svg class="pulse-wave" viewBox="0 0 560 80" preserveAspectRatio="none" aria-hidden="true">
     <line x1="0" y1="40" x2="560" y2="40" class="pulse-base" />
-    <!-- 波形：进入时画一次，之后保持常驻 -->
-    <path class="pulse-trace" :d="D" />
+    <!-- 波形：进入时画一次，之后保持常驻；时长绑定 TRACE_S 单一来源 -->
+    <path class="pulse-trace" :d="D" :style="{ animationDuration: `${TRACE_S}s` }" />
     <!-- 光束粒子：每条速度 ±15% 随机、初始相位随机，JS 逐帧驱动 -->
     <template v-for="(b, i) in beams" :key="i">
       <path :ref="el => setEl(softEls, i, el)" class="pulse-beam" :d="D" />
@@ -25,17 +25,20 @@ const PATH_LEN = 851 // 折线累计长度（勾股近似）
 const DASH = 44 // 光束柔光段长度
 const CORE_GAP = 24 // 亮核相对柔光段前沿的后移量
 const PERIOD = 1244 // dasharray 周期（44 + 1200），大于全线长保证每条仅一束
+const TRACE_S = 1.9 // 初始描线时长；光束在描线触碰最右端后才开始发射
 const SWEEP_S = 6.5 // 基准周期，实际每条 ±15% 随机
+const EMISSION_S = 1.1 // 相邻光束发射间隔基准（约等于 1/4 波形长的穿行时间）
 const FLASH_S = 0.5 // 转折点闪亮衰减时长
+const HIDDEN_POS = 1000 // 路径外位置（未发射时光束藏于此，与 CSS 基线 offset 一致）
 
 const DOT_CX = [95, 110, 225, 240, 365, 380, 505, 520]
 const DOT_CY = [12, 66, 12, 66, 12, 66, 12, 66]
 const DOT_S = [111.8, 167.8, 314.6, 370.6, 527.4, 583.4, 740.2, 796.2] // 各点沿路径累计长度
 
-/* 光束队列：速度与初始相位各带随机差，形成不均匀的呼吸节奏 */
-const beams = Array.from({ length: 4 }, () => ({
+/* 光束队列：速度、发射间隔各带 ±15% 随机差；delay 为描线完成后的逐条发射时刻 */
+const beams = Array.from({ length: 4 }, (_, i) => ({
   dur: SWEEP_S * (1 + (Math.random() * 2 - 1) * 0.15),
-  phase: Math.random(),
+  delay: i * EMISSION_S * (1 + (Math.random() * 2 - 1) * 0.15),
 }))
 
 const softEls: (SVGPathElement | null)[] = []
@@ -46,37 +49,46 @@ function setEl<T>(arr: T[], i: number, el: unknown) {
 }
 
 let rafId = 0
+let startTimer = 0
+let lastNow = 0
+let elapsed = 0 // 自身时钟：描线完成后归零推进，隐藏页期间不计时
 const lastFlash = DOT_S.map(() => -FLASH_S * 1000)
 const prevFront = beams.map(() => 0)
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 function frame(now: number) {
-  const t = now / 1000
+  if (!lastNow) lastNow = now
+  const dt = Math.min((now - lastNow) / 1000, 0.05)
+  lastNow = now
+  elapsed += dt
   beams.forEach((b, i) => {
-    const pos = ((t / b.dur + b.phase) % 1) * PERIOD
+    // 未到发射时刻：光束藏于路径外
+    const pos = elapsed >= b.delay ? (((elapsed - b.delay) / b.dur) % 1) * PERIOD : HIDDEN_POS
     const front = pos + DASH
     const soft = softEls[i]
     const core = coreEls[i]
     if (soft) soft.style.strokeDashoffset = `${PERIOD - pos}`
     if (core) core.style.strokeDashoffset = `${PERIOD - pos - CORE_GAP}`
     // 光束前沿扫过转折点则触发闪亮（front 发生回绕时分两段判断）
-    DOT_S.forEach((s, j) => {
-      const crossed = front >= prevFront[i]
-        ? s > prevFront[i] && s <= front
-        : s > prevFront[i] || s <= front
-      if (crossed) lastFlash[j] = now
-    })
+    if (elapsed >= b.delay) {
+      DOT_S.forEach((s, j) => {
+        const crossed = front >= prevFront[i]
+          ? s > prevFront[i] && s <= front
+          : s > prevFront[i] || s <= front
+        if (crossed) lastFlash[j] = now
+      })
+    }
     prevFront[i] = front
   })
   dotEls.forEach((el, j) => {
     if (!el) return
-    const elapsed = (now - lastFlash[j]) / 1000
-    el.style.opacity = `${Math.max(0, 1 - elapsed / FLASH_S)}`
+    const since = (now - lastFlash[j]) / 1000
+    el.style.opacity = `${Math.max(0, 1 - since / FLASH_S)}`
   })
   rafId = requestAnimationFrame(frame)
 }
 
-/* 标签页隐藏时挂起循环，回来自动续播 */
+/* 标签页隐藏时挂起循环，回来自动续播（自身时钟不跳变） */
 function onVisibility() {
   if (document.hidden) {
     cancelAnimationFrame(rafId)
@@ -88,11 +100,16 @@ function onVisibility() {
 
 onMounted(() => {
   if (reducedMotion) return // 降级：波形常显，光束与点保持隐藏（CSS 基线已藏于路径外）
-  rafId = requestAnimationFrame(frame)
-  document.addEventListener('visibilitychange', onVisibility)
+  // 等初始描线触碰最右端后，才开始逐条发射光束
+  startTimer = window.setTimeout(() => {
+    lastNow = 0
+    rafId = requestAnimationFrame(frame)
+    document.addEventListener('visibilitychange', onVisibility)
+  }, TRACE_S * 1000)
 })
 
 onBeforeUnmount(() => {
+  clearTimeout(startTimer)
   cancelAnimationFrame(rafId)
   document.removeEventListener('visibilitychange', onVisibility)
 })
@@ -120,7 +137,7 @@ onBeforeUnmount(() => {
   stroke-dasharray: 1200;
   stroke-dashoffset: 349; /* 降级兜底：无动画时全线常显 */
   opacity: 0.9;
-  animation: trace-once 1.9s linear 1 forwards;
+  animation: trace-once linear 1 forwards; /* 时长由模板内联绑定 TRACE_S */
 }
 @keyframes trace-once {
   0% { stroke-dashoffset: 1200; opacity: 0.4; }
