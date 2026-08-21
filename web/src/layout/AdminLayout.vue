@@ -25,11 +25,7 @@
         </n-dropdown>
       </n-layout-header>
       <n-layout-content class="content" content-style="padding: 20px;" :native-scrollbar="false">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
+        <router-view />
       </n-layout-content>
     </n-layout>
   </n-layout>
@@ -173,15 +169,5 @@ async function onUserAction(key: string) {
 /* 内容区 */
 .content {
   background: transparent !important;
-}
-
-/* 路由切换淡入 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.18s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 </style>
