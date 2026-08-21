@@ -2,10 +2,10 @@
   <div class="login-page">
     <!-- 品牌面板：签名元素「系统脉搏」 -->
     <aside class="brand-panel">
-      <!-- 拓扑数据流：右偏上留白区的动态点缀 -->
-      <div class="dataflow" aria-hidden="true">
-        <div class="dataflow-label">topology sync</div>
-        <DataFlowCanvas />
+      <!-- 伪3D地图数据流：右偏上留白区的动态点缀 -->
+      <div class="geo-flow" aria-hidden="true">
+        <div class="geo-flow-label">geo sync</div>
+        <MapFlow3D />
       </div>
 
       <div class="brand-top">
@@ -85,7 +85,7 @@ import { useRouter } from 'vue-router'
 import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst } from 'naive-ui'
 import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
-import DataFlowCanvas from './DataFlowCanvas.vue'
+import MapFlow3D from './MapFlow3D.vue'
 
 const REMEMBER_KEY = 'remember_account'
 
@@ -205,8 +205,8 @@ onMounted(() => {
   pointer-events: none;
 }
 
-/* 拓扑数据流：右偏上，绝对定位不参与纵向弹性分布 */
-.dataflow {
+/* 伪3D地图数据流：右偏上，绝对定位不参与纵向弹性分布 */
+.geo-flow {
   position: absolute;
   top: 96px;
   right: 0;
@@ -216,7 +216,7 @@ onMounted(() => {
   flex-direction: column;
   pointer-events: none;
 }
-.dataflow-label {
+.geo-flow-label {
   margin: 0 48px 10px; /* 与面板右内边距对齐 */
   font-family: var(--sx-font-mono);
   font-size: 11px;
@@ -429,7 +429,7 @@ onMounted(() => {
 
 /* 中等屏：右上留白不足时收起数据流 */
 @media (max-width: 1180px) {
-  .dataflow {
+  .geo-flow {
     display: none;
   }
 }
