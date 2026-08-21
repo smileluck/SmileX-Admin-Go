@@ -1,6 +1,6 @@
 <template>
   <n-layout has-sider style="height: 100vh">
-    <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="224" :collapsed="collapsed">
+    <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="200" :collapsed="collapsed">
       <div class="logo">
         <div class="seal">S</div>
         <div v-if="!collapsed" class="logo-text">
@@ -8,7 +8,7 @@
           <span class="logo-sub mono">admin console</span>
         </div>
       </div>
-      <n-menu class="sider-menu" :collapsed="collapsed" :collapsed-width="64"
+      <n-menu class="sider-menu" :collapsed="collapsed" :collapsed-width="64" :root-indent="16" :indent="20"
         :options="menuOptions" :value="activeKey" @update:value="onMenuSelect" />
       <div class="sider-foot mono">{{ collapsed ? 'v1.0' : 'v1.0 · internal' }}</div>
     </n-layout-sider>

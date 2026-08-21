@@ -47,7 +47,8 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
-import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { renderActions, type TableAction } from '../../utils/tableActions'
 import { createUser, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
 import { useUserStore } from '../../stores/user'
 import type { UserInfo } from '../../api/types'
@@ -200,28 +201,23 @@ const columns = computed<DataTableColumns<UserInfo>>(() => [
   },
   { title: '创建时间', key: 'created_at', width: 170 },
   {
-    title: '操作', key: 'actions', width: 220,
+    title: '操作', key: 'actions', width: 160,
     render(row) {
       if (!canOperate(row)) {
-        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
+        return renderActions([])
       }
-      const actions: VNode[] = []
+      const actions: Array<TableAction | VNode> = []
       if (userStore.has('user:update')) {
-        actions.push(h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }))
+        actions.push({ label: '编辑', accent: true, onClick: () => openEdit(row) })
       }
       if (userStore.has('user:resetPassword')) {
-        actions.push(h(NButton, { size: 'small', type: 'warning', onClick: () => { editId.value = row.id; newPassword.value = ''; showPwd.value = true } }, { default: () => '重置密码' }))
+        actions.push({ label: '重置密码', onClick: () => { editId.value = row.id; newPassword.value = ''; showPwd.value = true } })
       }
       // 超管账号禁止删除（即使超管本人），不展示删除按钮
       if (row.id !== SUPER_ADMIN_ID && userStore.has('user:delete')) {
-        actions.push(
-          h(NButton, { size: 'small', type: 'error', onClick: () => confirmDelete(row) }, { default: () => '删除' }),
-        )
+        actions.push({ label: '删除', danger: true, onClick: () => confirmDelete(row) })
       }
-      if (actions.length === 0) {
-        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
-      }
-      return h(NSpace, {}, { default: () => actions })
+      return renderActions(actions)
     },
   },
 ])

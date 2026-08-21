@@ -42,7 +42,8 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
-import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NTree, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NTree, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { renderActions, type TableAction } from '../../utils/tableActions'
 import { createRole, deleteRole, getRole, listPermissions, listRoles, setRolePermissions, updateRole } from '../../api'
 import { useUserStore } from '../../stores/user'
 import type { Permission, Role } from '../../api/types'
@@ -194,25 +195,22 @@ const columns = computed<DataTableColumns<Role>>(() => [
   { title: '编码', key: 'code' },
   { title: '备注', key: 'remark' },
   {
-    title: '操作', key: 'actions', width: 220,
+    title: '操作', key: 'actions', width: 170,
     render(row) {
-      const actions: VNode[] = []
+      const actions: Array<TableAction | VNode> = []
       if (userStore.has('role:update')) {
-        actions.push(h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }))
+        actions.push({ label: '编辑', accent: true, onClick: () => openEdit(row) })
       }
       if (userStore.has('role:setPermissions')) {
-        actions.push(h(NButton, { size: 'small', type: 'info', onClick: () => openPerms(row) }, { default: () => '分配权限' }))
+        actions.push({ label: '分配权限', onClick: () => openPerms(row) })
       }
-      // 超管角色禁止删除，不展示删除按钮
-      if (row.id !== SUPER_ROLE_ID && userStore.has('role:delete')) {
-        actions.push(h(NButton, { size: 'small', type: 'error', onClick: () => confirmDelete(row) }, { default: () => '删除' }))
-      } else if (row.id === SUPER_ROLE_ID) {
+      // 超管角色禁止删除，以「内置」标记替代删除位
+      if (row.id === SUPER_ROLE_ID) {
         actions.push(h(NTag, { size: 'small', bordered: false }, { default: () => '内置' }))
+      } else if (userStore.has('role:delete')) {
+        actions.push({ label: '删除', danger: true, onClick: () => confirmDelete(row) })
       }
-      if (actions.length === 0) {
-        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
-      }
-      return h(NSpace, {}, { default: () => actions })
+      return renderActions(actions)
     },
   },
 ])

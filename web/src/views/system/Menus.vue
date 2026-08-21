@@ -87,7 +87,8 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
-import { NCard, NSpace, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NInputGroup, NTabs, NTabPane, NTreeSelect, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { NCard, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NInputGroup, NTabs, NTabPane, NTreeSelect, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { renderActions, type TableAction } from '../../utils/tableActions'
 import * as icons from '@vicons/ionicons5'
 import { createPermission, deletePermission, listPermissions, updatePermission } from '../../api'
 import { renderMenuIcon } from '../../utils/menuIcon'
@@ -306,28 +307,23 @@ const columns = computed<DataTableColumns<any>>(() => [
   },
   { title: '排序', key: 'sort', width: 70 },
   {
-    title: '操作', key: 'actions', width: 290,
+    title: '操作', key: 'actions', width: 210,
     render(row) {
-      const actions: VNode[] = []
+      const actions: Array<TableAction | VNode> = []
       if (userStore.has('menu:update')) {
-        actions.push(h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }))
+        actions.push({ label: '编辑', accent: true, onClick: () => openEdit(row) })
       }
       if (row.type === 'menu' && userStore.has('menu:create')) {
         actions.push(
-          h(NButton, { size: 'small', type: 'info', onClick: () => openCreate(row.id, 'menu') }, { default: () => '加子菜单' }),
-          h(NButton, { size: 'small', type: 'info', ghost: true, onClick: () => openCreate(row.id, 'button') }, { default: () => '加权限点' }),
+          { label: '加子菜单', onClick: () => openCreate(row.id, 'menu') },
+          { label: '加权限点', onClick: () => openCreate(row.id, 'button') },
         )
       }
       // 超管通配权限（all）禁止删除，不展示删除按钮
       if (row.id !== WILDCARD_PERM_ID && userStore.has('menu:delete')) {
-        actions.push(
-          h(NButton, { size: 'small', type: 'error', onClick: () => remove(row) }, { default: () => '删除' }),
-        )
+        actions.push({ label: '删除', danger: true, onClick: () => remove(row) })
       }
-      if (actions.length === 0) {
-        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
-      }
-      return h(NSpace, {}, { default: () => actions })
+      return renderActions(actions)
     },
   },
 ])
