@@ -1,0 +1,64 @@
+/* ============================================================
+   SmileX Admin 设计规范（Design Tokens）
+   所有自定义样式与 Naive UI themeOverrides 均从本文件取值。
+   修改主题只改这里。
+   ============================================================ */
+
+:root {
+  /* 色板 */
+  --sx-ink: #16211D;          /* 墨绿黑：品牌面板底色、主文字 */
+  --sx-ink-soft: #233129;     /* 墨黑浅一档：面板内层次 */
+  --sx-bg: #F6F7F5;           /* 暖灰白：全局底 */
+  --sx-surface: #FFFFFF;      /* 纯净面：卡片、表格 */
+  --sx-accent: #0F7B5F;       /* 松绿：主色、链接、主按钮 */
+  --sx-accent-hover: #149373; /* 主色 hover */
+  --sx-accent-pressed: #0B5F4A;
+  --sx-accent-soft: #E3F0EB;  /* 浅绿衬底：选中态、标签 */
+  --sx-line: #E4E7E4;         /* 分隔线、描边 */
+  --sx-muted: #6B7570;        /* 次级文字 */
+  --sx-danger: #C2453A;       /* 危险操作 */
+
+  /* 字体 */
+  --sx-font-body: -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --sx-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* 圆角与投影 */
+  --sx-radius: 8px;
+  --sx-radius-lg: 14px;
+  --sx-shadow: 0 1px 3px rgba(22, 33, 29, 0.06), 0 8px 24px rgba(22, 33, 29, 0.05);
+}
+
+/* 全局基础 */
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  font-family: var(--sx-font-body);
+  color: var(--sx-ink);
+  background: var(--sx-bg);
+}
+
+/* 等宽数字/功能标签通用 */
+.sx-mono {
+  font-family: var(--sx-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sx-muted);
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

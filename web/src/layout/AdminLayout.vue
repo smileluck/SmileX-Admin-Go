@@ -1,30 +1,33 @@
 <template>
   <n-layout has-sider style="height: 100vh">
-    <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="232" :collapsed="collapsed"
-      :native-scrollbar="false" show-trigger @collapse="collapsed = true" @expand="collapsed = false">
+    <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="224" :collapsed="collapsed"
+      show-trigger @collapse="collapsed = true" @expand="collapsed = false">
       <div class="logo">
-        <div class="logo-mark">S</div>
-        <span v-if="!collapsed" class="logo-text">SmileX Admin</span>
+        <div class="seal">S</div>
+        <div v-if="!collapsed" class="logo-text">
+          <span class="logo-name">SmileX</span>
+          <span class="logo-sub mono">admin console</span>
+        </div>
       </div>
-      <n-menu class="sider-menu" :collapsed="collapsed" :collapsed-width="64" :inverted="true"
+      <n-menu class="sider-menu" :collapsed="collapsed" :collapsed-width="64"
         :options="menuOptions" :value="activeKey" @update:value="onMenuSelect" />
+      <div class="sider-foot mono">{{ collapsed ? 'v1.0' : 'v1.0 · internal' }}</div>
     </n-layout-sider>
 
     <n-layout class="main">
       <n-layout-header bordered class="header">
         <div class="header-left">
-          <n-breadcrumb>
-            <n-breadcrumb-item>{{ route.meta?.title || '首页' }}</n-breadcrumb-item>
-          </n-breadcrumb>
+          <span class="crumb-eyebrow mono">section</span>
+          <span class="crumb-title">{{ route.meta?.title || '首页' }}</span>
         </div>
         <n-dropdown :options="userOptions" @select="onUserAction">
           <div class="user-chip">
             <div class="avatar">{{ avatarChar }}</div>
-            <span>{{ userStore.user?.nickname || userStore.user?.username }}</span>
+            <span class="user-name">{{ userStore.user?.nickname || userStore.user?.username }}</span>
           </div>
         </n-dropdown>
       </n-layout-header>
-      <n-layout-content class="content" content-style="padding: 20px;" :native-scrollbar="false">
+      <n-layout-content class="content" content-style="padding: 24px;" :native-scrollbar="false">
         <router-view />
       </n-layout-content>
     </n-layout>
@@ -34,7 +37,7 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NBreadcrumb, NBreadcrumbItem } from 'naive-ui'
+import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown } from 'naive-ui'
 import { useUserStore } from '../stores/user'
 import type { MenuNode } from '../api/types'
 
@@ -82,52 +85,83 @@ async function onUserAction(key: string) {
 </script>
 
 <style scoped>
-/* 侧边栏：深色渐变 */
+/* 侧边栏：浅色线框式，安静克制 */
 .sider {
-  background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 60%, #0c1322 100%) !important;
+  background: var(--sx-surface) !important;
+}
+/* flex 作用到 naive 原生滚动容器，保证 logo/菜单/脚注三段式撑满整列 */
+.sider :deep(.n-layout-sider-scroll-container) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden auto;
+  scrollbar-width: thin;
 }
 .logo {
   height: 64px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 8px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--sx-line);
+  margin-bottom: 4px;
 }
-.logo-mark {
-  width: 32px;
-  height: 32px;
+.seal {
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  font-size: 16px;
-  font-weight: 800;
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45);
-}
-.logo-text {
+  font-family: var(--sx-font-mono);
   font-weight: 700;
   font-size: 17px;
   color: #fff;
-  letter-spacing: 0.5px;
+  background: var(--sx-accent);
+}
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
   white-space: nowrap;
 }
-.sider-menu {
-  background: transparent !important;
+.logo-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--sx-ink);
 }
-.sider-menu :deep(.n-menu .n-menu-item-content::before) {
-  left: 10px;
-  right: 10px;
-  border-radius: 8px;
+.logo-sub {
+  font-size: 10px;
 }
 
-/* 顶部栏 */
+.sider-menu {
+  flex: 1;
+  background: transparent !important;
+  padding: 4px 8px;
+}
+.sider-menu :deep(.n-menu .n-menu-item-content::before) {
+  left: 8px;
+  right: 8px;
+  border-radius: 7px;
+}
+
+.sider-foot {
+  flex-shrink: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--sx-line);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 顶部栏：eyebrow + 标题的层级读法 */
 .main {
-  background: #f3f5f9 !important;
+  background: var(--sx-bg) !important;
 }
 .header {
   height: 64px;
@@ -135,23 +169,39 @@ async function onUserAction(key: string) {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  background: var(--sx-surface);
+  box-shadow: var(--sx-shadow);
   position: relative;
   z-index: 1;
 }
+.header-left {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.crumb-eyebrow {
+  font-size: 10px;
+}
+.crumb-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sx-ink);
+}
+
 .user-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 12px 5px 5px;
+  gap: 9px;
+  padding: 5px 14px 5px 6px;
   border-radius: 999px;
+  border: 1px solid var(--sx-line);
+  background: var(--sx-surface);
   cursor: pointer;
-  transition: background 0.2s ease;
-  font-size: 14px;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 .user-chip:hover {
-  background: #f1f3f7;
+  border-color: var(--sx-accent);
+  background: var(--sx-accent-soft);
 }
 .avatar {
   width: 30px;
@@ -163,7 +213,11 @@ async function onUserAction(key: string) {
   color: #fff;
   font-weight: 700;
   font-size: 13px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--sx-accent);
+}
+.user-name {
+  font-size: 13px;
+  color: var(--sx-ink);
 }
 
 /* 内容区 */
