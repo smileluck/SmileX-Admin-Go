@@ -1,50 +1,25 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { setupDynamicRoutes } from './dynamic'
 
-// 菜单 code -> 页面组件 映射（新增页面在此登记）
-const viewModules: Record<string, () => Promise<any>> = {
-  'menu:dashboard': () => import('../views/dashboard/Dashboard.vue'),
-  'menu:user': () => import('../views/system/Users.vue'),
-  'menu:role': () => import('../views/system/Roles.vue'),
-  'menu:permission': () => import('../views/system/Permissions.vue'),
-  'menu:menu': () => import('../views/system/Menus.vue'),
-}
-
-// 将后端菜单树转换为路由
-export function menuToRoutes(menus: any[], parentPath = ''): RouteRecordRaw[] {
-  const routes: RouteRecordRaw[] = []
-  for (const m of menus ?? []) {
-    const comp = viewModules[m.code]
-    const route: RouteRecordRaw = {
-      path: m.path,
-      name: m.code,
-      component: comp,
-      meta: { title: m.name, icon: m.icon },
-      children: [],
-    }
-    if (m.children?.length) {
-      route.children = menuToRoutes(m.children, m.path)
-    }
-    routes.push(route)
-  }
-  return routes
-}
+// 静态路由：登录页、主布局壳、404 兜底
+const staticRoutes: RouteRecordRaw[] = [
+  { path: '/login', name: 'login', component: () => import('../views/login/Login.vue'), meta: { title: '登录' } },
+  {
+    path: '/',
+    name: 'layout-root',
+    component: () => import('../layout/AdminLayout.vue'),
+    children: [], // 动态菜单路由运行时注入（菜单 path 为绝对路径），见 ./dynamic.ts
+  },
+  { path: '/:pathMatch(.*)*', redirect: '/' },
+]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [
-    { path: '/login', name: 'login', component: () => import('../views/login/Login.vue'), meta: { title: '登录' } },
-    {
-      path: '/',
-      name: 'layout-root',
-      component: () => import('../layout/AdminLayout.vue'),
-      children: [], // 动态菜单路由运行时注入（菜单 path 为绝对路径）
-    },
-    { path: '/:pathMatch(.*)*', redirect: '/' },
-  ],
+  routes: staticRoutes,
 })
 
-// 路由守卫：未登录跳登录页；登录后按菜单动态注册路由
+// 路由守卫：未登录跳登录页；登录后按菜单动态注册路由（静态/动态分离见 ./dynamic.ts）
 router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
   if (to.path === '/login') {
@@ -57,14 +32,9 @@ router.beforeEach(async (to, _from, next) => {
   }
   if (!userStore.routesLoaded) {
     try {
-      await userStore.loadUserContext()
-      const dynamic = menuToRoutes(userStore.menus)
-      for (const r of dynamic) {
-        router.addRoute('layout-root', r)
-      }
-      userStore.routesLoaded = true
+      const firstPath = await setupDynamicRoutes()
       // 重导航以匹配刚注册的动态路由；'/' 落到第一个菜单
-      const target = to.path === '/' && dynamic.length ? dynamic[0].path : to.path
+      const target = to.path === '/' ? firstPath : to.path
       next({ path: target, query: to.query, replace: true })
     } catch {
       userStore.logout()

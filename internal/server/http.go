@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -238,8 +239,8 @@ func (s *HTTPServer) updateUser(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	if err := s.user.Update(c.Request.Context(), id, req); err != nil {
-		response.BadRequest(c, err.Error())
+	if err := s.user.Update(user.WithOperator(c.Request.Context(), middleware.Subject(c).UserID), id, req); err != nil {
+		s.userErr(c, err)
 		return
 	}
 	response.OK(c, nil)
@@ -251,7 +252,7 @@ func (s *HTTPServer) deleteUser(c *gin.Context) {
 		return
 	}
 	if err := s.user.Delete(c.Request.Context(), id); err != nil {
-		response.BadRequest(c, err.Error())
+		s.userErr(c, err)
 		return
 	}
 	response.OK(c, nil)
@@ -267,8 +268,8 @@ func (s *HTTPServer) setUserRoles(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	if err := s.user.SetRoles(c.Request.Context(), id, req); err != nil {
-		response.BadRequest(c, err.Error())
+	if err := s.user.SetRoles(user.WithOperator(c.Request.Context(), middleware.Subject(c).UserID), id, req); err != nil {
+		s.userErr(c, err)
 		return
 	}
 	response.OK(c, nil)
@@ -284,8 +285,8 @@ func (s *HTTPServer) resetUserPassword(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	if err := s.user.ResetPassword(c.Request.Context(), id, req); err != nil {
-		response.BadRequest(c, err.Error())
+	if err := s.user.ResetPassword(user.WithOperator(c.Request.Context(), middleware.Subject(c).UserID), id, req); err != nil {
+		s.userErr(c, err)
 		return
 	}
 	response.OK(c, nil)
@@ -446,6 +447,15 @@ func (s *HTTPServer) deletePerm(c *gin.Context) {
 }
 
 // ---- helpers ----
+
+// userErr 用户操作错误映射：超管保护返回 403，其余返回 400
+func (s *HTTPServer) userErr(c *gin.Context, err error) {
+	if errors.Is(err, user.ErrSuperAdminProtected) {
+		response.Forbidden(c, err.Error())
+		return
+	}
+	response.BadRequest(c, err.Error())
+}
 
 func pageParams(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

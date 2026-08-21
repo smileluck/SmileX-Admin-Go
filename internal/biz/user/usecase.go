@@ -13,6 +13,33 @@ type CreatedEvent struct{ UserID uint }
 
 func (CreatedEvent) Topic() string { return "user.created" }
 
+// 超级管理员保护：admin（id=1）账号仅允许其本人操作，其余用户一律拒绝
+var ErrSuperAdminProtected = errors.New("无权操作超级管理员账号")
+
+const superAdminID uint = 1
+
+type operatorKey struct{}
+
+// WithOperator 将当前操作者 ID 注入 context（由传输层从认证信息中取出）
+func WithOperator(ctx context.Context, userID uint) context.Context {
+	return context.WithValue(ctx, operatorKey{}, userID)
+}
+
+func operatorFrom(ctx context.Context) uint {
+	if v, ok := ctx.Value(operatorKey{}).(uint); ok {
+		return v
+	}
+	return 0
+}
+
+// guardSuperAdmin 目标为超管且操作者不是超管本人时拒绝
+func guardSuperAdmin(ctx context.Context, targetID uint) error {
+	if targetID == superAdminID && operatorFrom(ctx) != superAdminID {
+		return ErrSuperAdminProtected
+	}
+	return nil
+}
+
 // Usecase 用户领域用例
 type Usecase struct {
 	repo Repo
@@ -36,6 +63,9 @@ func (uc *Usecase) Create(ctx context.Context, username, password, nickname, ema
 }
 
 func (uc *Usecase) Update(ctx context.Context, id uint, nickname, email string, status *Status) error {
+	if err := guardSuperAdmin(ctx, id); err != nil {
+		return err
+	}
 	u, err := uc.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
@@ -53,8 +83,8 @@ func (uc *Usecase) Update(ctx context.Context, id uint, nickname, email string, 
 }
 
 func (uc *Usecase) Delete(ctx context.Context, id uint) error {
-	if id == 1 {
-		return errors.New("cannot delete super admin")
+	if id == superAdminID {
+		return errors.New("不允许删除超级管理员")
 	}
 	return uc.repo.Delete(ctx, id)
 }
@@ -70,11 +100,17 @@ func (uc *Usecase) List(ctx context.Context, q Query, page, pageSize int) ([]*Us
 
 // SetRoles 分配角色
 func (uc *Usecase) SetRoles(ctx context.Context, userID uint, roleIDs []uint) error {
+	if err := guardSuperAdmin(ctx, userID); err != nil {
+		return err
+	}
 	return uc.repo.SetRoles(ctx, userID, roleIDs)
 }
 
 // ResetPassword 管理员重置密码
 func (uc *Usecase) ResetPassword(ctx context.Context, userID uint, newPlain string) error {
+	if err := guardSuperAdmin(ctx, userID); err != nil {
+		return err
+	}
 	u, err := uc.repo.FindByID(ctx, userID)
 	if err != nil {
 		return err

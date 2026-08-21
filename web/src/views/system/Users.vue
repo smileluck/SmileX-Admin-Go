@@ -47,11 +47,18 @@
 
 <script setup lang="ts">
 import { h, onMounted, reactive, ref } from 'vue'
-import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, type DataTableColumns } from 'naive-ui'
+import { NCard, NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns } from 'naive-ui'
 import { createUser, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
+import { useUserStore } from '../../stores/user'
 import type { UserInfo } from '../../api/types'
 
 const message = useMessage()
+const dialog = useDialog()
+const userStore = useUserStore()
+
+// admin（id=1）超管账号：仅其本人可见操作按钮
+const SUPER_ADMIN_ID = 1
+const canOperate = (row: UserInfo) => row.id !== SUPER_ADMIN_ID || userStore.user?.id === SUPER_ADMIN_ID
 const loading = ref(false)
 const saving = ref(false)
 const rows = ref<UserInfo[]>([])
@@ -123,6 +130,24 @@ async function save() {
   }
 }
 
+function confirmDelete(row: UserInfo) {
+  dialog.warning({
+    title: '删除确认',
+    content: `确定删除用户「${row.username}」吗？该操作不可恢复。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteUser(row.id)
+        message.success('已删除')
+        load()
+      } catch (e: any) {
+        message.error(e?.response?.data?.msg || '删除失败')
+      }
+    },
+  })
+}
+
 async function savePwd() {
   if (newPassword.value.length < 6) { message.warning('密码至少 6 位'); return }
   await resetPassword(editId.value, newPassword.value)
@@ -143,17 +168,16 @@ const columns: DataTableColumns<UserInfo> = [
   {
     title: '操作', key: 'actions', width: 220,
     render(row) {
+      if (!canOperate(row)) {
+        return h('span', { style: 'color: #999; font-size: 12px' }, '—')
+      }
       return h(NSpace, {}, {
         default: () => [
           h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
           h(NButton, { size: 'small', type: 'warning', onClick: () => { editId.value = row.id; newPassword.value = ''; showPwd.value = true } }, { default: () => '重置密码' }),
           h(NButton, {
             size: 'small', type: 'error',
-            onClick: async () => {
-              await deleteUser(row.id)
-              message.success('已删除')
-              load()
-            },
+            onClick: () => confirmDelete(row),
           }, { default: () => '删除' }),
         ],
       })
