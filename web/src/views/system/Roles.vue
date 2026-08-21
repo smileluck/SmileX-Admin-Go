@@ -45,7 +45,7 @@
 import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
 import { NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NTree, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { renderActions, type TableAction } from '../../utils/tableActions'
-import { createRole, deleteRole, getRole, listPermissions, listRoles, setRolePermissions, updateRole } from '../../api'
+import { createRole, deleteRole, getRole, listAllPermissions, listRoles, setRolePermissions, updateRole } from '../../api'
 import { useUserStore } from '../../stores/user'
 import type { Permission, Role } from '../../api/types'
 
@@ -158,8 +158,9 @@ async function openPerms(row: Role) {
   if (row.id === SUPER_ROLE_ID) { message.error(SUPER_ROLE_MSG); return }
   editId.value = row.id
   try {
+    // 权限树需整表构建，走全量接口（page_size=0），分页会截断子节点
     const [{ data: allResp }, { data: roleResp }] = await Promise.all([
-      listPermissions({ page: 1, page_size: 500 }),
+      listAllPermissions(),
       getRole(row.id),
     ])
     const all = allResp.data.list

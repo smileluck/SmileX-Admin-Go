@@ -94,7 +94,7 @@ import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
 import { NCard, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NInputGroup, NTabs, NTabPane, NTreeSelect, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import * as icons from '@vicons/ionicons5'
-import { createPermission, deletePermission, listPermissions, updatePermission } from '../../api'
+import { createPermission, deletePermission, listAllPermissions, updatePermission } from '../../api'
 import { renderMenuIcon } from '../../utils/menuIcon'
 import { useUserStore } from '../../stores/user'
 import type { Permission } from '../../api/types'
@@ -159,7 +159,8 @@ function pickIcon(v: string) {
 async function load() {
   loading.value = true
   try {
-    const { data } = await listPermissions({ page: 1, page_size: 500 })
+    // 树目录需整表构建，走全量接口（page_size=0），分页会截断子节点
+    const { data } = await listAllPermissions()
     all.value = data.data.list
   } finally {
     loading.value = false

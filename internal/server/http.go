@@ -401,6 +401,10 @@ func (s *HTTPServer) setRolePermissions(c *gin.Context) {
 
 func (s *HTTPServer) listPerms(c *gin.Context) {
 	page, size := pageParams(c)
+	// page_size=0：全量返回（菜单管理树/角色分配权限树需要整表构建，分页会静默截断）
+	if c.Query("page_size") == "0" {
+		size = 0
+	}
 	q := bizperm.Query{Type: c.Query("type")}
 	ps, pg, err := s.perm.List(c.Request.Context(), q, page, size)
 	if err != nil {

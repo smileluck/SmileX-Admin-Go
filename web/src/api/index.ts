@@ -39,6 +39,9 @@ export const setRolePermissions = (id: number, permission_ids: number[]) =>
 // ---- 权限 / 菜单 ----
 export const listPermissions = (params: { page: number; page_size: number; type?: string }) =>
   request.get<R<PageResult<Permission>>>('/permissions', { params })
+// 全量权限点（page_size=0 不分页）：菜单管理树 / 角色分配权限树需整表构建，分页会静默截断
+export const listAllPermissions = (params?: { type?: string }) =>
+  request.get<R<PageResult<Permission>>>('/permissions', { params: { page_size: 0, ...params } })
 export const createPermission = (data: Partial<Permission>) =>
   request.post<R<Permission>>('/permissions', data)
 export const updatePermission = (id: number, data: Partial<Permission>) =>

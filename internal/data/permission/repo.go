@@ -88,7 +88,11 @@ func (r *repo) List(ctx context.Context, q bizperm.Query, page, pageSize int) ([
 		return nil, 0, err
 	}
 	var pos []model.PermissionPO
-	if err := tx.Offset((page - 1) * pageSize).Limit(pageSize).Order("id").Find(&pos).Error; err != nil {
+	list := tx
+	if pageSize > 0 { // pageSize<=0 表示全量（不分页），供菜单树/权限树整表构建
+		list = list.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if err := list.Order("id").Find(&pos).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]*bizperm.Permission, 0, len(pos))

@@ -98,6 +98,9 @@ func (uc *Usecase) Get(ctx context.Context, id uint) (*Permission, error) {
 
 func (uc *Usecase) List(ctx context.Context, q Query, page, pageSize int) ([]*Permission, pagination.Page, error) {
 	ps, total, err := uc.repo.List(ctx, q, page, pageSize)
+	if pageSize <= 0 { // 全量返回时分页元信息按单页全量填充
+		page, pageSize = 1, int(total)
+	}
 	return ps, pagination.Page{Page: page, PageSize: pageSize, Total: total}, err
 }
 
