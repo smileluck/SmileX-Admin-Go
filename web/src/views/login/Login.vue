@@ -55,7 +55,7 @@
             <div class="captcha-row">
               <n-input v-model:value="form.captchaCode" size="large" placeholder="验证码" @keyup.enter="onLogin" />
               <img v-if="captchaImage" class="captcha-img" :src="captchaImage" alt="验证码" title="点击刷新"
-                @click="loadCaptcha" />
+                draggable="false" @click="loadCaptcha" />
               <div v-else class="captcha-img captcha-img--empty" @click="loadCaptcha">刷新</div>
             </div>
           </n-form-item>
@@ -374,6 +374,9 @@ onMounted(() => {
   border-radius: var(--sx-radius);
   cursor: pointer;
   background: var(--sx-accent-soft);
+  /* 禁止拖拽成幽灵图（Safari 需前缀属性，其余浏览器 draggable=false 已足够） */
+  -webkit-user-drag: none;
+  user-select: none;
 }
 .captcha-img--empty {
   display: flex;
