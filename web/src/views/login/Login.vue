@@ -105,7 +105,7 @@ async function onLogin() {
 /* ---- 品牌面板（签名区域，唯一的大胆处）---- */
 .brand-panel {
   position: relative;
-  flex: 0 0 44%;
+  flex: 7;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -244,7 +244,8 @@ async function onLogin() {
 
 /* ---- 表单面板（克制、安静）---- */
 .form-panel {
-  flex: 1;
+  flex: 3;
+  min-width: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
