@@ -27,6 +27,17 @@
           <polyline
             points="0,40 60,40 80,40 95,12 110,66 125,40 190,40 210,40 225,12 240,66 255,40 330,40 350,40 365,12 380,66 395,40 470,40 490,40 505,12 520,66 535,40 560,40"
             class="pulse-trace" />
+          <!-- 波峰/波谷高亮点：delay 与描线经过各点的时刻对齐 -->
+          <g class="pulse-dots">
+            <circle cx="95" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.42s" />
+            <circle cx="110" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.63s" />
+            <circle cx="225" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.18s" />
+            <circle cx="240" cy="66" r="3" class="pulse-dot" style="animation-delay: 1.39s" />
+            <circle cx="365" cy="12" r="3" class="pulse-dot" style="animation-delay: 1.98s" />
+            <circle cx="380" cy="66" r="3" class="pulse-dot" style="animation-delay: 2.19s" />
+            <circle cx="505" cy="12" r="3" class="pulse-dot" style="animation-delay: 2.78s" />
+            <circle cx="520" cy="66" r="3" class="pulse-dot" style="animation-delay: 2.99s" />
+          </g>
         </svg>
         <div class="pulse-meta mono">
           <span>uptime 99.98%</span>
@@ -294,12 +305,24 @@ onMounted(() => {
 .pulse-trace {
   fill: none;
   stroke: #7FD4B8;
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
   stroke-dasharray: 1200;
   stroke-dashoffset: 1200;
   animation: trace 4.5s linear infinite;
+}
+/* 波峰/波谷点：常亮微光，随描线节奏依次闪亮（delay 在模板内联指定） */
+.pulse-dot {
+  fill: #7FD4B8;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
+  animation: dot-glow 4.5s linear infinite;
+}
+@keyframes dot-glow {
+  0% { opacity: 1; }
+  10% { opacity: 0.55; }
+  100% { opacity: 0.55; }
 }
 @keyframes trace {
   0% { stroke-dashoffset: 1200; opacity: 0.35; }
