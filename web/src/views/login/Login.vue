@@ -2,6 +2,12 @@
   <div class="login-page">
     <!-- 品牌面板：签名元素「系统脉搏」 -->
     <aside class="brand-panel">
+      <!-- 拓扑数据流：右偏上留白区的动态点缀 -->
+      <div class="dataflow" aria-hidden="true">
+        <div class="dataflow-label">topology sync</div>
+        <DataFlowCanvas />
+      </div>
+
       <div class="brand-top">
         <div class="seal">S</div>
         <span class="brand-name">SmileX Admin</span>
@@ -79,6 +85,7 @@ import { useRouter } from 'vue-router'
 import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst } from 'naive-ui'
 import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
+import DataFlowCanvas from './DataFlowCanvas.vue'
 
 const REMEMBER_KEY = 'remember_account'
 
@@ -196,6 +203,26 @@ onMounted(() => {
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at 30% 40%, black 20%, transparent 80%);
   pointer-events: none;
+}
+
+/* 拓扑数据流：右偏上，绝对定位不参与纵向弹性分布 */
+.dataflow {
+  position: absolute;
+  top: 96px;
+  right: 0;
+  width: min(44vw, 500px);
+  height: min(36vh, 300px);
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.dataflow-label {
+  margin: 0 48px 10px; /* 与面板右内边距对齐 */
+  font-family: var(--sx-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(237, 242, 239, 0.4);
 }
 
 .brand-top {
@@ -398,6 +425,13 @@ onMounted(() => {
 .form-foot {
   margin: 28px 0 0;
   text-align: center;
+}
+
+/* 中等屏：右上留白不足时收起数据流 */
+@media (max-width: 1180px) {
+  .dataflow {
+    display: none;
+  }
 }
 
 /* 响应式：窄屏时品牌面板退化为顶部条 */
