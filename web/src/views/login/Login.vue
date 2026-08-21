@@ -22,28 +22,7 @@
       <!-- 系统脉搏波形 -->
       <div class="pulse">
         <div class="pulse-head mono-label">system pulse</div>
-        <svg class="pulse-line" viewBox="0 0 560 80" preserveAspectRatio="none" aria-hidden="true">
-          <line x1="0" y1="40" x2="560" y2="40" class="pulse-base" />
-          <!-- 波形：进入时画一次，之后保持常驻 -->
-          <path class="pulse-trace"
-            d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
-          <!-- 光束粒子：沿波形从左往右循环扫过（宽柔光段 + 细亮核） -->
-          <path class="pulse-beam"
-            d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
-          <path class="pulse-beam pulse-beam--core"
-            d="M0 40 H60 H80 L95 12 L110 66 L125 40 H190 H210 L225 12 L240 66 L255 40 H330 H350 L365 12 L380 66 L395 40 H470 H490 L505 12 L520 66 L535 40 H560" />
-          <!-- 波峰/波谷高亮点：delay 与光束队列前沿到达各点的时刻对齐 -->
-          <g class="pulse-dots">
-            <circle cx="95" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.38s" />
-            <circle cx="110" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.69s" />
-            <circle cx="225" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.30s" />
-            <circle cx="240" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.61s" />
-            <circle cx="365" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.29s" />
-            <circle cx="380" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.60s" />
-            <circle cx="505" cy="12" r="3" class="pulse-dot" style="animation-delay: 0.27s" />
-            <circle cx="520" cy="66" r="3" class="pulse-dot" style="animation-delay: 0.58s" />
-          </g>
-        </svg>
+        <PulseWave />
         <div class="pulse-meta mono">
           <span>uptime 99.98%</span>
           <span>region cn-east</span>
@@ -100,6 +79,7 @@ import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst
 import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
 import MapFlow3D from './MapFlow3D.vue'
+import PulseWave from './PulseWave.vue'
 
 const REMEMBER_KEY = 'remember_account'
 
@@ -310,79 +290,7 @@ onMounted(() => {
   color: rgba(237, 242, 248, 0.5);
   margin-bottom: 10px;
 }
-.pulse-line {
-  width: 100%;
-  height: 72px;
-  display: block;
-}
-.pulse-base {
-  stroke: rgba(255, 255, 255, 0.12);
-  stroke-width: 1;
-}
-/* 波形：进场由左往右画一次（约 1.9s）后保持常驻，不再整条重发 */
-.pulse-trace {
-  fill: none;
-  stroke: #7FD4B8;
-  stroke-width: 2.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  stroke-dasharray: 1200;
-  stroke-dashoffset: 349; /* 降级兜底：无动画时全线常显 */
-  opacity: 0.9;
-  animation: trace-once 1.9s linear 1 forwards;
-}
-@keyframes trace-once {
-  0% { stroke-dashoffset: 1200; opacity: 0.4; }
-  100% { stroke-dashoffset: 349; opacity: 0.9; }
-}
-/* 光束粒子队列：短划周期 216 ≈ 1/4 波形长度，多条光束等距并发；
-   1.2s 滑过一个周期（约 180 单位/s，全线穿行约 4.7s） */
-.pulse-beam {
-  fill: none;
-  stroke: #7FD4B8;
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-dasharray: 44 172;
-  stroke-dashoffset: 216;
-  opacity: 0.35;
-  filter: drop-shadow(0 0 4px rgba(127, 212, 184, 0.7));
-  animation: beam-sweep 1.2s linear infinite;
-}
-.pulse-beam--core {
-  stroke-width: 2;
-  stroke-dasharray: 20 196;
-  stroke-dashoffset: 192;
-  opacity: 1;
-  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
-  animation-name: beam-sweep-core; /* 亮核骑在柔光段前沿 */
-}
-@keyframes beam-sweep {
-  from { stroke-dashoffset: 216; }
-  to { stroke-dashoffset: 0; }
-}
-@keyframes beam-sweep-core {
-  from { stroke-dashoffset: 192; }
-  to { stroke-dashoffset: -24; }
-}
-/* 波峰/波谷点：平时熄灭，光束前沿触及时闪亮一下再暗下去（delay 在模板内联指定） */
-.pulse-dot {
-  fill: #7FD4B8;
-  opacity: 0;
-  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
-  animation: dot-flash 1.2s linear infinite;
-}
-@keyframes dot-flash {
-  0% { opacity: 1; }
-  12% { opacity: 0.35; }
-  38% { opacity: 0; }
-  100% { opacity: 0; }
-}
-/* 降级：队列无法用 offset 藏到路径外，直接隐藏光束 */
-@media (prefers-reduced-motion: reduce) {
-  .pulse-beam {
-    opacity: 0;
-  }
-}
+/* 波形本体（描线/光束/转折点）见 PulseWave.vue */
 .pulse-meta {
   display: flex;
   gap: 20px;
