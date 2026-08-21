@@ -10,6 +10,7 @@ type Bootstrap struct {
 	Server Server `mapstructure:"server"`
 	DB     DB     `mapstructure:"db"`
 	JWT    JWT    `mapstructure:"jwt"`
+	Auth   Auth   `mapstructure:"auth"`
 }
 
 type Server struct {
@@ -59,10 +60,17 @@ type JWT struct {
 	RefreshHours  int    `mapstructure:"refreshHours"`
 }
 
+type Auth struct {
+	// CaptchaEnabled 登录图形验证码开关（本地调试可临时关闭，生产必须开启）
+	CaptchaEnabled bool `mapstructure:"captchaEnabled"`
+}
+
 // Load 从指定路径加载配置
 func Load(path string) (*Bootstrap, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
+	// 默认值：验证码默认开启，未配置时行为不变
+	v.SetDefault("auth.captchaEnabled", true)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}

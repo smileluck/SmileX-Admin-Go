@@ -9,7 +9,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
  * 伪 3D 地图发射效果：透视倾斜的点阵中国地图 + 城市呼吸光柱/上行发射 + 城市间飞线。
  * 纯 Canvas 手写透视投影，地图轮廓为硬编码经纬度多边形，无外部地图资源。
  */
-const MINT = '127, 212, 184' // 与本页 seal/pulse 同源的薄荷绿点缀色
+const SKY = '143, 197, 232' // 与本页 seal/pulse 同源的清水蓝点缀色
 
 /* —— 地图轮廓（[经度, 纬度]，手工简化的中国形状）—— */
 const CHINA: [number, number][] = [
@@ -154,7 +154,7 @@ function draw(time: number) {
 
   // 地图轮廓（投影后的多边形）
   g.lineWidth = 1
-  g.strokeStyle = `rgba(${MINT}, 0.16)`
+  g.strokeStyle = `rgba(${SKY}, 0.16)`
   polygons.forEach(p => {
     g.beginPath()
     p.forEach(([pu, pv], i) => {
@@ -170,12 +170,12 @@ function draw(time: number) {
   dots.forEach(d => {
     g.beginPath()
     g.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-    g.fillStyle = `rgba(${MINT}, ${d.a})`
+    g.fillStyle = `rgba(${SKY}, ${d.a})`
     g.fill()
   })
 
   // 飞线骨架
-  g.strokeStyle = `rgba(${MINT}, 0.08)`
+  g.strokeStyle = `rgba(${SKY}, 0.08)`
   arcs.forEach(a => {
     g.beginPath()
     a.pts.forEach(([x, y], i) => (i === 0 ? g.moveTo(x, y) : g.lineTo(x, y)))
@@ -186,8 +186,8 @@ function draw(time: number) {
   hubs.forEach(h => {
     const hpx = h.beam * (0.82 + 0.18 * Math.sin(time * h.speed + h.phase)) * h.s
     const beam = g.createLinearGradient(h.x, h.y, h.x, h.y - hpx)
-    beam.addColorStop(0, `rgba(${MINT}, ${0.4 + h.activity * 0.4})`)
-    beam.addColorStop(1, `rgba(${MINT}, 0)`)
+    beam.addColorStop(0, `rgba(${SKY}, ${0.4 + h.activity * 0.4})`)
+    beam.addColorStop(1, `rgba(${SKY}, 0)`)
     g.strokeStyle = beam
     g.lineWidth = 4
     g.beginPath()
@@ -201,7 +201,7 @@ function draw(time: number) {
       const zt = easeOutCubic(Math.min(h.launchT, 1)) * hpx
       const ly = h.y - zt
       const fade = h.launchT < 0.7 ? 1 : 1 - (h.launchT - 0.7) / 0.3
-      g.strokeStyle = `rgba(${MINT}, ${0.35 * fade})`
+      g.strokeStyle = `rgba(${SKY}, ${0.35 * fade})`
       g.lineWidth = 1.4
       g.beginPath()
       g.moveTo(h.x, ly + 10)
@@ -209,7 +209,7 @@ function draw(time: number) {
       g.stroke()
       g.beginPath()
       g.arc(h.x, ly, 1.9, 0, Math.PI * 2)
-      g.fillStyle = `rgba(${MINT}, ${0.95 * fade})`
+      g.fillStyle = `rgba(${SKY}, ${0.95 * fade})`
       g.fill()
     }
   })
@@ -220,14 +220,14 @@ function draw(time: number) {
     const arc = arcs[p.arc]
     const [hx, hy] = arcPos(arc, p.d)
     const [tx, ty] = arcPos(arc, p.d - p.dir * 14)
-    g.strokeStyle = `rgba(${MINT}, 0.4)`
+    g.strokeStyle = `rgba(${SKY}, 0.4)`
     g.beginPath()
     g.moveTo(tx, ty)
     g.lineTo(hx, hy)
     g.stroke()
     g.beginPath()
     g.arc(hx, hy, 2, 0, Math.PI * 2)
-    g.fillStyle = `rgba(${MINT}, 0.95)`
+    g.fillStyle = `rgba(${SKY}, 0.95)`
     g.fill()
   })
 
@@ -237,7 +237,7 @@ function draw(time: number) {
     const r = 3 + rp.t * 13
     g.beginPath()
     g.ellipse(h.x, h.y, r * h.s, r * 0.5 * h.s, 0, 0, Math.PI * 2)
-    g.strokeStyle = `rgba(${MINT}, ${(1 - rp.t) * 0.5})`
+    g.strokeStyle = `rgba(${SKY}, ${(1 - rp.t) * 0.5})`
     g.stroke()
   })
 
@@ -245,11 +245,11 @@ function draw(time: number) {
   hubs.forEach(h => {
     g.beginPath()
     g.arc(h.x, h.y, 3 * h.s + 1, 0, Math.PI * 2)
-    g.fillStyle = `rgba(${MINT}, ${0.16 + h.activity * 0.3})`
+    g.fillStyle = `rgba(${SKY}, ${0.16 + h.activity * 0.3})`
     g.fill()
     g.beginPath()
     g.arc(h.x, h.y, 1.6 * h.s + 0.9, 0, Math.PI * 2)
-    g.fillStyle = `rgba(${MINT}, ${0.85 + h.activity * 0.15})`
+    g.fillStyle = `rgba(${SKY}, ${0.85 + h.activity * 0.15})`
     g.fill()
   })
 }

@@ -356,11 +356,11 @@ onMounted(refresh)
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .icon-cell:hover {
-  border-color: var(--sx-accent, #2f5d50);
+  border-color: var(--sx-accent, #3F75AB);
 }
 .icon-cell.active {
-  border-color: var(--sx-accent, #2f5d50);
-  background: var(--sx-accent-soft, #eef5f0);
+  border-color: var(--sx-accent, #3F75AB);
+  background: var(--sx-accent-soft, #E4EDF6);
 }
 .icon-cell :deep(svg) {
   width: 20px;

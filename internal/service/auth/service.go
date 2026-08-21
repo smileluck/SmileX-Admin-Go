@@ -24,8 +24,8 @@ func NewService(uc *bizauth.Usecase, captcha *bizcaptcha.Usecase) *Service {
 type LoginRequest struct {
 	Username    string `json:"username" binding:"required"`
 	Password    string `json:"password" binding:"required"`
-	CaptchaID   string `json:"captcha_id" binding:"required"`
-	CaptchaCode string `json:"captcha_code" binding:"required"`
+	CaptchaID   string `json:"captcha_id"`   // 验证码停用时可空
+	CaptchaCode string `json:"captcha_code"` // 验证码停用时可空
 }
 
 // RefreshRequest 刷新入参
@@ -41,15 +41,19 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*bizauth.TokenPa
 type CaptchaVO struct {
 	CaptchaID    string `json:"captcha_id"`
 	CaptchaImage string `json:"captcha_image"`
+	Enabled      bool   `json:"enabled"` // false 时前端隐藏验证码表单
 }
 
-// GenerateCaptcha 生成一次性图形验证码
+// GenerateCaptcha 生成一次性图形验证码；验证码停用时返回 enabled=false 的空视图
 func (s *Service) GenerateCaptcha() (*CaptchaVO, error) {
+	if !s.captcha.Enabled() {
+		return &CaptchaVO{Enabled: false}, nil
+	}
 	id, b64, err := s.captcha.Generate()
 	if err != nil {
 		return nil, err
 	}
-	return &CaptchaVO{CaptchaID: id, CaptchaImage: b64}, nil
+	return &CaptchaVO{CaptchaID: id, CaptchaImage: b64, Enabled: true}, nil
 }
 
 func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*bizauth.TokenPair, error) {

@@ -68,7 +68,7 @@
             <n-input v-model:value="form.password" size="large" type="password" show-password-on="click" placeholder="密码"
               @keyup.enter="onLogin" />
           </n-form-item>
-          <n-form-item path="captchaCode">
+          <n-form-item v-if="captchaEnabled" path="captchaCode">
             <div class="captcha-row">
               <n-input v-model:value="form.captchaCode" size="large" placeholder="验证码" @keyup.enter="onLogin" />
               <img v-if="captchaImage" class="captcha-img" :src="captchaImage" alt="验证码" title="点击刷新"
@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst } from 'naive-ui'
 import { getCaptcha } from '../../api'
@@ -104,11 +104,15 @@ const message = useMessage()
 const formRef = ref<FormInst | null>(null)
 const loading = ref(false)
 const form = reactive({ username: 'admin', password: '', captchaCode: '' })
-const rules = {
+// 服务端 auth.captchaEnabled=false 时隐藏验证码表单并跳过其校验
+const captchaEnabled = ref(true)
+const rules = computed(() => ({
   username: { required: true, message: '请输入用户名', trigger: 'blur' },
   password: { required: true, message: '请输入密码', trigger: 'blur' },
-  captchaCode: { required: true, message: '请输入验证码', trigger: 'blur' },
-}
+  ...(captchaEnabled.value
+    ? { captchaCode: { required: true, message: '请输入验证码', trigger: 'blur' } }
+    : {}),
+}))
 
 // 验证码：id 不参与表单校验，随登录请求提交
 const captchaId = ref('')
@@ -119,6 +123,14 @@ async function loadCaptcha() {
   form.captchaCode = ''
   try {
     const { data: resp } = await getCaptcha()
+    // 服务端停用验证码：隐藏表单，登录时提交空验证码即可
+    if (resp.data.enabled === false) {
+      captchaEnabled.value = false
+      captchaId.value = ''
+      captchaImage.value = ''
+      return
+    }
+    captchaEnabled.value = true
     captchaId.value = resp.data.captcha_id
     captchaImage.value = resp.data.captcha_image
   } catch {
@@ -198,7 +210,7 @@ onMounted(() => {
   justify-content: space-between;
   padding: 40px 48px;
   background: var(--sx-ink);
-  color: #EDF2EF;
+  color: #EDF2F8;
   overflow: hidden;
 }
 /* 面板内的工程网格 */
@@ -231,7 +243,7 @@ onMounted(() => {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(237, 242, 239, 0.4);
+  color: rgba(237, 242, 248, 0.4);
 }
 
 .brand-top {
@@ -251,13 +263,13 @@ onMounted(() => {
   font-weight: 700;
   font-size: 20px;
   color: var(--sx-ink);
-  background: #7FD4B8;
+  background: #8FC5E8;
 }
 .brand-name {
   font-family: var(--sx-font-mono);
   font-size: 14px;
   letter-spacing: 0.06em;
-  color: rgba(237, 242, 239, 0.85);
+  color: rgba(237, 242, 248, 0.85);
 }
 
 .brand-copy {
@@ -268,7 +280,7 @@ onMounted(() => {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7FD4B8;
+  color: #8FC5E8;
   margin: 0 0 16px;
 }
 .headline {
@@ -281,7 +293,7 @@ onMounted(() => {
 .sub {
   margin: 0;
   font-size: 15px;
-  color: rgba(237, 242, 239, 0.6);
+  color: rgba(237, 242, 248, 0.6);
 }
 
 /* 系统脉搏 */
@@ -290,7 +302,7 @@ onMounted(() => {
   margin-top: 48px;
 }
 .pulse-head {
-  color: rgba(237, 242, 239, 0.5);
+  color: rgba(237, 242, 248, 0.5);
   margin-bottom: 10px;
 }
 .pulse-line {
@@ -304,7 +316,7 @@ onMounted(() => {
 }
 .pulse-trace {
   fill: none;
-  stroke: #7FD4B8;
+  stroke: #8FC5E8;
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -314,9 +326,9 @@ onMounted(() => {
 }
 /* 波峰/波谷点：平时熄灭，描线触及时闪亮一下再暗下去（delay 在模板内联指定） */
 .pulse-dot {
-  fill: #7FD4B8;
+  fill: #8FC5E8;
   opacity: 0;
-  filter: drop-shadow(0 0 3px rgba(127, 212, 184, 0.9));
+  filter: drop-shadow(0 0 3px rgba(143, 197, 232, 0.9));
   animation: dot-flash 4.5s linear infinite;
 }
 @keyframes dot-flash {
@@ -336,19 +348,19 @@ onMounted(() => {
   margin-top: 12px;
   font-family: var(--sx-font-mono);
   font-size: 11px;
-  color: rgba(237, 242, 239, 0.45);
+  color: rgba(237, 242, 248, 0.45);
 }
 .live {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #7FD4B8;
+  color: #8FC5E8;
 }
 .live i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7FD4B8;
+  background: #8FC5E8;
   animation: blink 2.4s ease-in-out infinite;
 }
 @keyframes blink {
@@ -359,7 +371,7 @@ onMounted(() => {
 .brand-foot {
   position: relative;
   font-size: 11px;
-  color: rgba(237, 242, 239, 0.3);
+  color: rgba(237, 242, 248, 0.3);
 }
 
 /* ---- 表单面板（克制、安静）---- */

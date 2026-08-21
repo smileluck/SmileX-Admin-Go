@@ -14,6 +14,8 @@ export interface CaptchaInfo {
   captcha_id: string
   // PNG 的 dataURL（data:image/png;base64,...），可直接作 <img src>
   captcha_image: string
+  // false 表示服务端已停用验证码（本地调试），前端隐藏验证码表单
+  enabled?: boolean
 }
 
 export interface UserInfo {

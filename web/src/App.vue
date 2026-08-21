@@ -14,16 +14,16 @@ import { NConfigProvider, NMessageProvider, NDialogProvider, zhCN, dateZhCN, typ
 // 主题规范：色值与 src/styles/tokens.css 同源，改主题两处同步调整
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#0F7B5F',
-    primaryColorHover: '#149373',
-    primaryColorPressed: '#0B5F4A',
-    primaryColorSuppl: '#149373',
+    primaryColor: '#3F75AB',
+    primaryColorHover: '#518CC8',
+    primaryColorPressed: '#315E8C',
+    primaryColorSuppl: '#518CC8',
     borderRadius: '8px',
     borderRadiusSmall: '5px',
-    bodyColor: '#F6F7F5',
+    bodyColor: '#F5F7FA',
     cardColor: '#FFFFFF',
-    textColorBase: '#16211D',
-    borderColor: '#E4E7E4',
+    textColorBase: '#151E2B',
+    borderColor: '#E3E8EF',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif",
   },
 }

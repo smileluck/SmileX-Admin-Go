@@ -39,7 +39,7 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	repo := user.NewRepo(dataData)
 	permissionRepo := permission.NewRepo(dataData)
 	tokenIssuer := data.NewJWTIssuer(bootstrap)
-	usecase := captcha.NewUsecase()
+	usecase := captcha.NewUsecase(bootstrap)
 	authUsecase := auth.NewUsecase(repo, permissionRepo, tokenIssuer, usecase)
 	service := auth2.NewService(authUsecase, usecase)
 	userUsecase := user2.NewUsecase(repo)
