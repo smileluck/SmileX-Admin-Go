@@ -1,7 +1,7 @@
 <template>
   <n-layout has-sider style="height: 100vh">
     <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="200" :collapsed="collapsed">
-      <div class="logo">
+      <div class="logo" :class="{ 'logo-collapsed': collapsed }">
         <div class="seal">S</div>
         <div v-if="!collapsed" class="logo-text">
           <span class="logo-name">SmileX</span>
@@ -156,10 +156,27 @@ async function onUserAction(key: string) {
   background: transparent !important;
   padding: 4px 8px;
 }
+/* 收起态：清零水平内边距。naive-ui 按 collapsedWidth/2 - 图标宽/2 计算缩进居中图标，
+   前提是菜单占满整个窄栏；保留 8px 内边距会让图标整体偏右 8px */
+.sider-menu.n-menu--collapsed {
+  padding-left: 0;
+  padding-right: 0;
+}
 .sider-menu :deep(.n-menu .n-menu-item-content::before) {
   left: 8px;
   right: 8px;
   border-radius: 7px;
+}
+/* 收起态 hover 背景占满整行（内边距已清零） */
+.sider-menu.n-menu--collapsed :deep(.n-menu-item-content::before) {
+  left: 0;
+  right: 0;
+  border-radius: 0;
+}
+/* 收起态：仅显示印章，在 64px 窄栏内居中 */
+.logo.logo-collapsed {
+  padding: 0;
+  justify-content: center;
 }
 
 .sider-foot {

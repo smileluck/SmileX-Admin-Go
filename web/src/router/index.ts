@@ -2,7 +2,10 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { setupDynamicRoutes } from './dynamic'
 
-// 静态路由：登录页、主布局壳、404 兜底
+// 静态路由：登录页、主布局壳
+// 注意：404 兜底不能静态注册——刷新深链接时动态菜单路由尚未注册，静态 catch-all 的
+// redirect:'/' 会先把原始路径吞掉（to.path 变成 '/'），导致刷新回到首页。兜底在
+// 动态路由注册完成后于 ./dynamic.ts 中补充。
 const staticRoutes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: () => import('../views/login/Login.vue'), meta: { title: '登录' } },
   {
@@ -11,7 +14,6 @@ const staticRoutes: RouteRecordRaw[] = [
     component: () => import('../layout/AdminLayout.vue'),
     children: [], // 动态菜单路由运行时注入（菜单 path 为绝对路径），见 ./dynamic.ts
   },
-  { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
 const router = createRouter({

@@ -43,6 +43,10 @@ export async function setupDynamicRoutes(): Promise<string> {
   for (const r of dynamic) {
     router.addRoute('layout-root', r)
   }
+  // 菜单路由注册完成后再挂 404 兜底，避免刷新深链接时原始路径被吞（见 ./index.ts）
+  if (!router.hasRoute('not-found')) {
+    router.addRoute({ path: '/:pathMatch(.*)*', name: 'not-found', redirect: '/' })
+  }
   userStore.routesLoaded = true
   return dynamic.length ? dynamic[0].path : '/'
 }
