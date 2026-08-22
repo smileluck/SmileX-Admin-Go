@@ -55,15 +55,15 @@
 
     <!-- 修改密码（右上角用户下拉触发；成功后强制重新登录） -->
     <n-modal v-model:show="showPwd" preset="dialog" title="修改密码" style="width: 420px">
-      <n-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-placement="left" label-width="90">
+      <n-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-placement="left" label-width="110">
         <n-form-item label="原密码" path="oldPassword">
           <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" placeholder="请输入原密码" />
         </n-form-item>
         <n-form-item label="新密码" path="newPassword">
-          <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" placeholder="6-64 位" />
+          <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" :maxlength="20" placeholder="6-20 位" />
         </n-form-item>
         <n-form-item label="确认新密码" path="confirmPassword">
-          <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" placeholder="再次输入新密码" />
+          <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" :maxlength="20" placeholder="再次输入新密码" />
         </n-form-item>
       </n-form>
       <template #action>
@@ -198,12 +198,12 @@ const showPwd = ref(false)
 const pwdSaving = ref(false)
 const pwdFormRef = ref<FormInst | null>(null)
 const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
-// 与后端 binding 保持一致：6-64 位，两次输入须一致
+// 与后端 binding 保持一致：新密码 6-20 位（旧密码不限上限，兼容历史长密码），两次输入须一致
 const pwdRules: FormRules = {
   oldPassword: [{ required: true, message: '请输入原密码', trigger: ['blur', 'input'] }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: ['blur', 'input'] },
-    { min: 6, max: 64, message: '密码长度 6-64 位', trigger: ['blur', 'input'] },
+    { min: 6, max: 20, message: '密码长度 6-20 位', trigger: ['blur', 'input'] },
   ],
   confirmPassword: [
     { required: true, message: '请再次输入新密码', trigger: ['blur', 'input'] },

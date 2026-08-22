@@ -55,10 +55,10 @@
                 <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" placeholder="请输入原密码" />
               </n-form-item>
               <n-form-item label="新密码" path="newPassword">
-                <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" placeholder="6-64 位" />
+                <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" :maxlength="20" placeholder="6-20 位" />
               </n-form-item>
               <n-form-item label="确认新密码" path="confirmPassword">
-                <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" placeholder="再次输入新密码" />
+                <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" :maxlength="20" placeholder="再次输入新密码" />
               </n-form-item>
               <div class="form-actions">
                 <n-button type="primary" :loading="pwdSaving" @click="savePwd">修改密码</n-button>
@@ -143,7 +143,7 @@ const pwdRules: FormRules = {
   oldPassword: [{ required: true, message: '请输入原密码', trigger: ['blur', 'input'] }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: ['blur', 'input'] },
-    { min: 6, max: 64, message: '密码长度 6-64 位', trigger: ['blur', 'input'] },
+    { min: 6, max: 20, message: '密码长度 6-20 位', trigger: ['blur', 'input'] },
   ],
   confirmPassword: [
     { required: true, message: '请再次输入新密码', trigger: ['blur', 'input'] },

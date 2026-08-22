@@ -23,7 +23,7 @@
         <n-input v-model:value="form.username" placeholder="3-64 个字符" />
       </n-form-item>
       <n-form-item label="密码" path="password" v-if="!editing">
-        <n-input v-model:value="form.password" type="password" placeholder="至少 6 位" />
+        <n-input v-model:value="form.password" type="password" :maxlength="20" placeholder="6-20 位" />
       </n-form-item>
       <n-form-item label="昵称" path="nickname">
         <n-input v-model:value="form.nickname" :maxlength="20" show-word-limit placeholder="最多 20 个字符" />
@@ -44,7 +44,7 @@
 
   <!-- 重置密码 -->
   <n-modal v-model:show="showPwd" preset="dialog" title="重置密码" style="width: 420px">
-    <n-input v-model:value="newPassword" type="password" placeholder="新密码（至少 6 位）" />
+    <n-input v-model:value="newPassword" type="password" :maxlength="20" placeholder="新密码（6-20 位）" />
     <template #action>
       <n-button @click="showPwd = false">取消</n-button>
       <n-button type="primary" @click="savePwd">确定</n-button>
@@ -82,7 +82,7 @@ const newPassword = ref('')
 const form = reactive({ username: '', password: '', nickname: '', email: '', role_ids: [] as number[], statusOn: 1 })
 const formRef = ref<FormInst | null>(null)
 
-// 与后端 binding 规则保持一致：用户名 3-64、密码 6-64、昵称最长 20、邮箱格式（选填）
+// 与后端 binding 规则保持一致：用户名 3-64、密码 6-20、昵称最长 20、邮箱格式（选填）
 const rules: FormRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: ['blur', 'input'] },
@@ -90,7 +90,7 @@ const rules: FormRules = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: ['blur', 'input'] },
-    { min: 6, max: 64, message: '密码长度 6-64 个字符', trigger: ['blur', 'input'] },
+    { min: 6, max: 20, message: '密码长度 6-20 个字符', trigger: ['blur', 'input'] },
   ],
   nickname: [
     { max: 20, message: '昵称不能超过 20 个字符', trigger: ['blur', 'input'] },
@@ -195,7 +195,7 @@ function confirmDelete(row: UserInfo) {
 }
 
 async function savePwd() {
-  if (newPassword.value.length < 6 || newPassword.value.length > 64) { message.warning('密码长度 6-64 位'); return }
+  if (newPassword.value.length < 6 || newPassword.value.length > 20) { message.warning('密码长度 6-20 位'); return }
   try {
     await resetPassword(editId.value, newPassword.value)
     message.success('密码已重置')

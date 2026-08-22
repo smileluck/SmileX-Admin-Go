@@ -16,7 +16,7 @@ func NewService(uc *bizuser.Usecase) *Service { return &Service{uc: uc} }
 // CreateRequest 创建用户入参
 type CreateRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=64"`
-	Password string `json:"password" binding:"required,min=6,max=64"`
+	Password string `json:"password" binding:"required,min=6,max=20"`
 	Nickname string `json:"nickname" binding:"max=20"`
 	Email    string `json:"email" binding:"omitempty,max=128,email"`
 	RoleIDs  []uint `json:"role_ids"`
@@ -34,7 +34,7 @@ type SetRolesRequest struct {
 }
 
 type ResetPasswordRequest struct {
-	Password string `json:"password" binding:"required,min=6,max=64"`
+	Password string `json:"password" binding:"required,min=6,max=20"`
 }
 
 // ListVO 列表视图（隐藏密码）

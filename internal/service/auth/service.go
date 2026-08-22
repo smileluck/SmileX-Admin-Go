@@ -119,9 +119,10 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uint, req UpdateProf
 }
 
 // ChangePasswordRequest 本人修改密码入参
+// 新密码限 6-20 位；旧密码保留 64 位上限以兼容历史长密码
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required,min=6,max=64"`
-	NewPassword string `json:"new_password" binding:"required,min=6,max=64"`
+	NewPassword string `json:"new_password" binding:"required,min=6,max=20"`
 }
 
 // ChangePassword 本人修改密码（校验旧密码；成功后吊销其他端会话，当前会话由调用方传入）
