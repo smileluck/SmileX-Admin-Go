@@ -62,3 +62,24 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 -- INSERT INTO users (id, username, password, nickname, status) VALUES (1, 'admin', '$2a$10$...', '超级管理员', 1);
 -- INSERT INTO user_roles VALUES (1, 1);
 -- INSERT INTO role_permissions VALUES (1, 1);
+
+-- 文件元数据表（对象本体在 driver 对应的存储后端）
+CREATE TABLE IF NOT EXISTS files (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  driver VARCHAR(16) NOT NULL,          -- local | oss | cos | tos | minio（落库时的存储后端）
+  object_key VARCHAR(512) NOT NULL,     -- 服务端生成的对象 key
+  name VARCHAR(255) NOT NULL,           -- 原始文件名
+  ext VARCHAR(16) DEFAULT '',
+  size BIGINT DEFAULT 0,
+  content_type VARCHAR(128) DEFAULT '',
+  uploader_id BIGINT UNSIGNED DEFAULT 0,
+  uploader_name VARCHAR(64) DEFAULT '',
+  created_at DATETIME,
+  updated_at DATETIME,
+  deleted_at DATETIME,
+  UNIQUE KEY uk_object_key (object_key),
+  KEY idx_driver (driver),
+  KEY idx_ext (ext),
+  KEY idx_uploader_id (uploader_id),
+  KEY idx_deleted (deleted_at)
+);

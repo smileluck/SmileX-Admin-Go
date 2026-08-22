@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
@@ -23,6 +26,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/internal/server/middleware"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
@@ -42,15 +46,19 @@ type HTTPServer struct {
 	perm     *permsvc.Service
 	session  *sessionsvc.Service
 	log      *logsvc.Service
+	file     *filesvc.Service
 	engine   *gin.Engine
 	srv      *http.Server
 }
 
 // NewHTTPServer 构造并注册路由
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
-	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service) *HTTPServer {
+	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service,
+	file *filesvc.Service) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
+	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
+	e.MaxMultipartMemory = 8 << 20
 	e.Use(gin.Recovery(),
 		middleware.SecurityHeaders(),
 		middleware.CORS(),
@@ -58,7 +66,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 		middleware.SQLInjectionGuard(),
 	)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -271,6 +279,15 @@ func (s *HTTPServer) registerRoutes() {
 	{
 		opLogs.GET("", s.listOperationLogs)
 		opLogs.DELETE("", s.clearOperationLogs)
+	}
+
+	files := protected.Group("/files")
+	{
+		files.GET("", s.listFiles)
+		files.POST("", s.uploadFile)
+		// 下载/预览：云存储 302 到预签名 URL，本地存储后端代理流式输出
+		files.GET("/:id/raw", s.downloadFile)
+		files.DELETE("/:id", s.deleteFile)
 	}
 }
 
@@ -725,6 +742,111 @@ func (s *HTTPServer) clearOperationLogs(c *gin.Context) {
 		return
 	}
 	response.OK(c, gin.H{"deleted": n})
+}
+
+// ---- 文件 ----
+
+func (s *HTTPServer) listFiles(c *gin.Context) {
+	page, size := pageParams(c)
+	files, pg, err := s.file.List(c.Request.Context(), bizfile.Query{Name: c.Query("name")}, page, size)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.OK(c, listResult{List: files, Page: pg})
+}
+
+func (s *HTTPServer) uploadFile(c *gin.Context) {
+	sub := middleware.Subject(c)
+	fh, err := c.FormFile("file")
+	if err != nil {
+		response.BadRequest(c, "请选择要上传的文件（表单字段 file）")
+		return
+	}
+	if max := s.cfg.Storage.MaxSizeMB << 20; max > 0 && fh.Size > max {
+		response.BadRequest(c, fmt.Sprintf("文件大小超出限制（上限 %dMB）", s.cfg.Storage.MaxSizeMB))
+		return
+	}
+	src, err := fh.Open()
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	defer src.Close()
+	vo, err := s.file.Upload(c.Request.Context(), fh.Filename, src, fh.Size, sub.UserID, sub.Username)
+	if err != nil {
+		s.fileErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) downloadFile(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	d, err := s.file.ResolveDownload(c.Request.Context(), id)
+	if err != nil {
+		s.fileErr(c, err)
+		return
+	}
+	// 云存储：鉴权通过后 302 到短时效预签名 URL
+	if d.URL != "" {
+		c.Redirect(http.StatusFound, d.URL)
+		return
+	}
+	// 本地存储：后端代理流式输出
+	defer d.Body.Close()
+	disposition := "attachment"
+	if d.Inline && c.Query("download") == "" {
+		disposition = "inline"
+	}
+	c.Header("Content-Type", d.ContentType)
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Disposition", contentDisposition(disposition, d.File.Name))
+	if d.File.Size > 0 {
+		c.Header("Content-Length", strconv.FormatInt(d.File.Size, 10))
+	}
+	c.Status(http.StatusOK)
+	_, _ = io.Copy(c.Writer, d.Body)
+}
+
+func (s *HTTPServer) deleteFile(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	if err := s.file.Delete(c.Request.Context(), id); err != nil {
+		s.fileErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// fileErr 文件操作错误映射：不存在 404，入参类 400，存储后端未配置 503，其余 500
+func (s *HTTPServer) fileErr(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, bizfile.ErrFileNotFound):
+		response.NotFound(c, err.Error())
+	case errors.Is(err, bizfile.ErrFileTooLarge), errors.Is(err, bizfile.ErrFileTypeDenied):
+		response.BadRequest(c, err.Error())
+	case errors.Is(err, bizfile.ErrDriverUnavailable):
+		response.Fail(c, http.StatusServiceUnavailable, response.CodeErr, err.Error())
+	default:
+		response.ServerError(c, err.Error())
+	}
+}
+
+// contentDisposition 生成 Content-Disposition 头：ASCII 回退名 + RFC 5987 UTF-8 编码名
+func contentDisposition(disposition, filename string) string {
+	fallback := strings.Map(func(r rune) rune {
+		if r < 32 || r > 126 || r == '"' || r == '\\' {
+			return '_'
+		}
+		return r
+	}, filename)
+	return fmt.Sprintf(`%s; filename="%s"; filename*=UTF-8''%s`, disposition, fallback, url.PathEscape(filename))
 }
 
 // parseUnixParam 解析 unix 秒级时间戳查询参数（空/非法返回 false 表示不限）

@@ -1,5 +1,5 @@
 import request from './request'
-import type { CaptchaInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
+import type { CaptchaInfo, FileInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -73,3 +73,17 @@ export const clearLoginLogs = () => request.delete<R<{ deleted: number }>>('/log
 export const listOperationLogs = (params: { page: number; page_size: number; username?: string; method?: string; kw?: string; start?: number; end?: number }) =>
   request.get<R<LogPageResult<OperationLogInfo>>>('/operation-logs', { params })
 export const clearOperationLogs = () => request.delete<R<{ deleted: number }>>('/operation-logs')
+
+// ---- 文件 ----
+export const listFiles = (params: { page: number; page_size: number; name?: string }) =>
+  request.get<R<PageResult<FileInfo>>>('/files', { params })
+// 大文件上传：覆写默认 15s 超时
+export const uploadFile = (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return request.post<R<FileInfo>>('/files', fd, { timeout: 0 })
+}
+export const deleteFile = (id: number) => request.delete<R<null>>(`/files/${id}`)
+// 下载/预览均走鉴权接口：云存储会 302 到预签名 URL（axios 自动跟随），统一按 blob 取回
+export const getFileBlob = (id: number, download = false) =>
+  request.get<Blob>(`/files/${id}/raw`, { responseType: 'blob', timeout: 0, params: download ? { download: 1 } : {} })

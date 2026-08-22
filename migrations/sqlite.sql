@@ -45,3 +45,23 @@ CREATE TABLE IF NOT EXISTS role_permissions (
   permission_id INTEGER NOT NULL,
   PRIMARY KEY (role_id, permission_id)
 );
+
+-- 文件元数据表（对象本体在 driver 对应的存储后端）
+CREATE TABLE IF NOT EXISTS files (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  driver TEXT NOT NULL,                 -- local | oss | cos | tos | minio（落库时的存储后端）
+  object_key TEXT NOT NULL UNIQUE,      -- 服务端生成的对象 key
+  name TEXT NOT NULL,                   -- 原始文件名
+  ext TEXT DEFAULT '',
+  size INTEGER DEFAULT 0,
+  content_type TEXT DEFAULT '',
+  uploader_id INTEGER DEFAULT 0,
+  uploader_name TEXT DEFAULT '',
+  created_at DATETIME,
+  updated_at DATETIME,
+  deleted_at DATETIME
+);
+CREATE INDEX IF NOT EXISTS idx_files_driver ON files (driver);
+CREATE INDEX IF NOT EXISTS idx_files_ext ON files (ext);
+CREATE INDEX IF NOT EXISTS idx_files_uploader_id ON files (uploader_id);
+CREATE INDEX IF NOT EXISTS idx_files_deleted_at ON files (deleted_at);

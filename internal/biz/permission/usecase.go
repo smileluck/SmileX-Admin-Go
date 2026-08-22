@@ -121,15 +121,18 @@ func (uc *Usecase) UserMenuTree(ctx context.Context, userID uint) ([]*MenuNode, 
 }
 
 // MenuHit 菜单搜索命中项（顶栏命令面板用；Parents 为父级链提示，不含自身）
+// Dir 标记目录（含子菜单，无对应路由，前端选中时软提示选择具体菜单）
 type MenuHit struct {
 	Name    string `json:"name"`
 	Path    string `json:"path"`
 	Icon    string `json:"icon"`
 	Parents string `json:"parents"`
+	Dir     bool   `json:"dir"`
 }
 
 // SearchUserMenus 当前用户可见菜单中按关键词模糊搜索（名称/路径，不区分大小写），上限 limit 条。
-// 空关键词返回空；父级菜单无页面组件，命中时落到其第一个叶子路由。
+// 空关键词返回空。命中目录（含子菜单）时，该目录本身与其全部子孙一并纳入结果，
+// 便于输入"系统"这类目录词时看到目录下的全部菜单。
 func (uc *Usecase) SearchUserMenus(ctx context.Context, userID uint, kw string, limit int) ([]*MenuHit, error) {
 	if kw == "" {
 		return nil, nil
@@ -140,32 +143,29 @@ func (uc *Usecase) SearchUserMenus(ctx context.Context, userID uint, kw string, 
 	}
 	lkwl := strings.ToLower(kw)
 	var out []*MenuHit
-	var walk func(nodes []*MenuNode, parents string)
-	walk = func(nodes []*MenuNode, parents string) {
+	// forceIn：祖先已命中，整棵子树纳入
+	var walk func(nodes []*MenuNode, parents string, forceIn bool)
+	walk = func(nodes []*MenuNode, parents string, forceIn bool) {
 		for _, n := range nodes {
 			if limit > 0 && len(out) >= limit {
 				return
 			}
-			if strings.Contains(strings.ToLower(n.Name), lkwl) || strings.Contains(strings.ToLower(n.Path), lkwl) {
-				out = append(out, &MenuHit{Name: n.Name, Path: menuFirstLeafPath(n), Icon: n.Icon, Parents: parents})
+			selfHit := strings.Contains(strings.ToLower(n.Name), lkwl) || strings.Contains(strings.ToLower(n.Path), lkwl)
+			if forceIn || selfHit {
+				out = append(out, &MenuHit{
+					Name: n.Name, Path: n.Path, Icon: n.Icon,
+					Parents: parents, Dir: len(n.Children) > 0,
+				})
 			}
 			if len(n.Children) > 0 {
 				trail := n.Name
 				if parents != "" {
 					trail = parents + " / " + trail
 				}
-				walk(n.Children, trail)
+				walk(n.Children, trail, forceIn || selfHit)
 			}
 		}
 	}
-	walk(tree, "")
+	walk(tree, "", false)
 	return out, nil
-}
-
-// menuFirstLeafPath 取菜单（子树）第一个叶子节点的路由
-func menuFirstLeafPath(n *MenuNode) string {
-	if len(n.Children) > 0 {
-		return menuFirstLeafPath(n.Children[0])
-	}
-	return n.Path
 }

@@ -42,3 +42,38 @@ auth:
 
 log:
   retentionDays: 90 # 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
+
+storage:
+  driver: local # 当前写入的存储后端：local | oss | cos | tos | minio
+  # 切换 driver 只影响新上传；读/删按文件记录落库时的后端解析，升级后端后旧文件仍可访问（旧后端配置需保留）
+  maxSizeMB: 20 # 单文件上传大小上限
+  signExpireMinutes: 15 # 云存储预签名下载 URL 有效期（分钟）
+  denyExts: [] # 禁止上传的扩展名（如 ["exe","sh"]），空则用内置黑名单
+  local:
+    dir: ./data/uploads # 本地存储根目录
+  oss: # 阿里云 OSS
+    endpoint: "" # 如 oss-cn-hangzhou.aliyuncs.com
+    bucket: ""
+    accessKeyId: ""
+    accessKeySecret: ""
+    prefix: "" # 对象 key 前缀，如 uploads/
+  cos: # 腾讯云 COS
+    region: "" # 如 ap-guangzhou
+    bucket: "" # 形如 example-1250000000
+    secretId: ""
+    secretKey: ""
+    prefix: ""
+  tos: # 火山引擎 TOS
+    endpoint: "" # 如 tos-cn-beijing.volces.com
+    region: "" # 如 cn-beijing
+    bucket: ""
+    accessKey: ""
+    secretKey: ""
+    prefix: ""
+  minio: # 自定义 S3 兼容存储（如 JuiceFS + MinIO）
+    endpoint: "" # 不含 scheme，如 127.0.0.1:9000
+    bucket: ""
+    accessKey: ""
+    secretKey: ""
+    useSSL: false
+    prefix: ""

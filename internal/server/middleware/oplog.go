@@ -49,6 +49,8 @@ var actionNames = map[string]string{
 	"DELETE /api/v1/online-users/:sid":      "下线会话",
 	"DELETE /api/v1/login-logs":             "清理登录日志",
 	"DELETE /api/v1/operation-logs":         "清理操作日志",
+	"POST /api/v1/files":                    "上传文件",
+	"DELETE /api/v1/files/:id":              "删除文件",
 }
 
 // OpLog 写请求自动审计
@@ -122,6 +124,10 @@ func maskParams(c *gin.Context, body []byte) string {
 	// 修改密码接口 body 全是凭据，整体脱敏
 	if c.FullPath() == "/api/v1/auth/password" {
 		return "（已脱敏）"
+	}
+	// multipart 上传 body 是二进制内容，不入参数摘要
+	if strings.HasPrefix(c.GetHeader("Content-Type"), "multipart/") {
+		return "（multipart 表单）"
 	}
 	if len(body) > 0 {
 		var payload interface{}

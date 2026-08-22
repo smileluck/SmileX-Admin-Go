@@ -7,12 +7,14 @@ import (
 	"github.com/google/wire"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
+	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	bizrole "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
+	datafile "github.com/smilex/smilex-admin-gin/internal/data/file"
 	datalog "github.com/smilex/smilex-admin-gin/internal/data/log"
 	dataperm "github.com/smilex/smilex-admin-gin/internal/data/permission"
 	datarole "github.com/smilex/smilex-admin-gin/internal/data/role"
@@ -20,6 +22,7 @@ import (
 	datauser "github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
@@ -34,6 +37,7 @@ var bizSet = wire.NewSet(
 	bizcaptcha.NewUsecase,
 	bizsession.NewUsecase,
 	bizlog.NewUsecase,
+	bizfile.NewUsecase,
 	auth.NewUsecase,
 	// 跨上下文最小依赖接口绑定（provider 与 bind 需同 set）
 	wire.Bind(new(auth.CaptchaVerifier), new(*bizcaptcha.Usecase)),
@@ -50,6 +54,8 @@ var dataRepoSet = wire.NewSet(
 	dataperm.NewRepo,
 	datasession.NewRepo,
 	datalog.NewRepo,
+	datafile.NewRepo,
+	datafile.NewStorageManager,
 	// 跨上下文最小依赖接口绑定
 	wire.Bind(new(auth.UserStore), new(bizuser.Repo)),
 	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
@@ -64,6 +70,7 @@ var serviceSet = wire.NewSet(
 	permsvc.NewService,
 	sessionsvc.NewService,
 	logsvc.NewService,
+	filesvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

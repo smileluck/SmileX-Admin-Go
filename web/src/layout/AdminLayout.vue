@@ -92,23 +92,30 @@
         <div ref="cmdListRef" class="cmd-list">
           <div v-if="searchLoading" class="cmd-empty">搜索中…</div>
           <div v-else-if="!searchKw.trim()" class="cmd-empty">输入关键词搜索菜单</div>
-          <div v-else-if="!searchMatches.length" class="cmd-empty">未找到匹配的菜单</div>
+          <div v-else-if="!menuCount" class="cmd-empty">未找到匹配的菜单</div>
           <template v-else>
-            <div class="cmd-group">菜单</div>
-            <div
-              v-for="(it, i) in searchMatches"
-              :key="it.path + it.name"
-              class="cmd-item"
-              :class="{ active: i === activeIndex }"
-              :data-idx="i"
-              @mouseenter="activeIndex = i"
-              @click="gotoSearchItem(it)"
-            >
-              <span class="cmd-item-icon"><MenuIcon :icon="it.icon" /></span>
-              <span class="cmd-item-name">{{ it.name }}</span>
-              <span v-if="it.parents" class="cmd-item-trail mono">{{ it.parents }}</span>
-              <span v-show="i === activeIndex" class="kbd">↵</span>
-            </div>
+            <template v-for="(it, i) in searchMatches" :key="it.path + it.name">
+              <!-- 目录：不可选中的分组标题，仅作视觉分层（无路由、不可跳转） -->
+              <div v-if="it.dir" class="cmd-group cmd-group-dir">
+                <span class="cmd-item-icon"><MenuIcon :icon="it.icon" /></span>
+                <span>{{ it.name }}</span>
+                <span class="dir-badge mono">目录</span>
+              </div>
+              <!-- 菜单：可选中跳转 -->
+              <div
+                v-else
+                class="cmd-item"
+                :class="{ active: i === activeIndex, 'cmd-item-child': !!it.parents }"
+                :data-idx="i"
+                @mouseenter="activeIndex = i"
+                @click="gotoSearchItem(it)"
+              >
+                <span class="cmd-item-icon"><MenuIcon :icon="it.icon" /></span>
+                <span class="cmd-item-name">{{ it.name }}</span>
+                <span v-if="it.parents" class="cmd-item-trail mono">{{ it.parents }}</span>
+                <span v-show="i === activeIndex" class="kbd">↵</span>
+              </div>
+            </template>
           </template>
         </div>
 
@@ -116,7 +123,7 @@
           <span><span class="kbd">↑</span><span class="kbd">↓</span> 切换</span>
           <span><span class="kbd">↵</span> 跳转</span>
           <span><span class="kbd">esc</span> 关闭</span>
-          <span v-if="!searchLoading && searchMatches.length" class="cmd-foot-count mono">{{ searchMatches.length }} 项</span>
+          <span v-if="!searchLoading && menuCount" class="cmd-foot-count mono">{{ menuCount }} 项</span>
         </div>
       </div>
     </n-modal>
@@ -252,6 +259,8 @@ const cmdListRef = ref<HTMLElement | null>(null)
 // 命中项：空态保持空列表，输入后由防抖接口搜索填充
 const searchMatches = ref<MenuHit[]>([])
 const searchLoading = ref(false)
+// 可选项（菜单）数量：目录仅作分组标题，不参与计数与选中
+const menuCount = computed(() => searchMatches.value.filter((m) => !m.dir).length)
 
 function openSearch() {
   searchKw.value = ''
@@ -283,7 +292,10 @@ watch(searchKw, (kw) => {
   searchTimer = window.setTimeout(async () => {
     try {
       const { data } = await searchMenus(kw.trim())
-      if (seq === searchSeq) searchMatches.value = data.data
+      if (seq === searchSeq) {
+        searchMatches.value = data.data
+        activeIndex.value = firstSelectable()
+      }
     } catch {
       if (seq === searchSeq) searchMatches.value = []
     } finally {
@@ -292,15 +304,30 @@ watch(searchKw, (kw) => {
   }, 300)
 })
 
+// 第一个可选项（非目录）下标；无则 -1
+function firstSelectable(): number {
+  return searchMatches.value.findIndex((m) => !m.dir)
+}
+
+// ↑↓ 步进：跳过目录分组标题，只在可选菜单项间移动
+function stepSelectable(from: number, delta: 1 | -1): number {
+  let i = from
+  for (;;) {
+    i += delta
+    if (i < 0 || i >= searchMatches.value.length) return from
+    if (!searchMatches.value[i].dir) return i
+  }
+}
+
 // 键盘导航：↑↓ 切换高亮、Enter 跳转（Esc 由 n-modal 的 close-on-esc 处理）
 function onCmdKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    activeIndex.value = Math.min(activeIndex.value + 1, searchMatches.value.length - 1)
+    activeIndex.value = stepSelectable(activeIndex.value, 1)
     scrollActiveIntoView()
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
-    activeIndex.value = Math.max(activeIndex.value - 1, 0)
+    activeIndex.value = stepSelectable(activeIndex.value, -1)
     scrollActiveIntoView()
   } else if (e.key === 'Enter') {
     e.preventDefault()
@@ -317,6 +344,8 @@ function scrollActiveIntoView() {
 }
 
 function gotoSearchItem(it: MenuHit) {
+  // 目录无对应路由且渲染为分组标题，正常不可达；防御性拦截
+  if (it.dir) return
   showSearch.value = false
   if (it.path !== route.path) {
     router.push(it.path)
@@ -603,6 +632,21 @@ onUnmounted(() => {
   color: var(--sx-muted);
   padding: 7px 10px 3px;
 }
+/* 目录分组标题：仅视觉分层，无 hover/点击交互（不可选中） */
+.cmd-group-dir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 9px;
+  font-size: 12px;
+  color: var(--sx-ink);
+  user-select: none;
+  cursor: default;
+}
+/* 目录下的子菜单项缩进，与分组标题形成层级 */
+.cmd-item-child {
+  margin-left: 14px;
+}
 .cmd-item {
   display: flex;
   align-items: center;
@@ -624,6 +668,16 @@ onUnmounted(() => {
   font-size: 13px;
   color: var(--sx-ink);
   white-space: nowrap;
+}
+/* 目录分组标题名称旁的小徽标 */
+.dir-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--sx-muted);
+  border: 1px solid var(--sx-line);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 16px;
 }
 .cmd-item-trail {
   margin-left: auto;

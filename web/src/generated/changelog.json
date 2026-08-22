@@ -1,6 +1,27 @@
 {
-  "generatedAt": "2026-08-22T07:51:16.139Z",
+  "generatedAt": "2026-08-22T08:51:22.435Z",
   "commits": [
+    {
+      "hash": "fc493f9",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "server,web",
+      "message": "日志清理按钮改为按保留期清理，与自动策略一致"
+    },
+    {
+      "hash": "5ca94b1",
+      "date": "2026-08-22",
+      "type": "fix",
+      "scope": "web",
+      "message": "token 过期白屏根因修复——refresh 401 自等待死锁"
+    },
+    {
+      "hash": "e87a2bd",
+      "date": "2026-08-22",
+      "type": "chore",
+      "scope": "web",
+      "message": "刷新 changelog 与构建缓存"
+    },
     {
       "hash": "044148e",
       "date": "2026-08-22",

@@ -53,11 +53,13 @@ export interface MenuNode {
 }
 
 // 菜单搜索命中项（顶栏命令面板；parents 为父级链提示，不含自身）
+// dir 标记目录（含子菜单、无路由，选中时软提示选择具体菜单）
 export interface MenuHit {
   name: string
   path: string
   icon: string
   parents: string
+  dir?: boolean
 }
 
 export interface Role {
@@ -120,4 +122,17 @@ export interface LogPageResult<T> {
   list: T[]
   page: { page: number; page_size: number; total: number }
   retention_days: number
+}
+
+// 文件元数据（后端 files 表；object_key 不下发）
+export interface FileInfo {
+  id: number
+  driver: string // 落库时的存储后端：local | oss | cos | tos | minio
+  name: string
+  ext: string
+  size: number
+  content_type: string
+  uploader_id: number
+  uploader_name: string
+  created_at: string
 }

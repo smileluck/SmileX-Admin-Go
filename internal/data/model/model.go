@@ -5,6 +5,7 @@ package model
 import (
 	"time"
 
+	"github.com/smilex/smilex-admin-gin/internal/biz/file"
 	"github.com/smilex/smilex-admin-gin/internal/biz/log"
 	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
@@ -106,6 +107,24 @@ type OperationLogPO struct {
 
 func (OperationLogPO) TableName() string { return "operation_logs" }
 
+// FilePO 文件元数据表（对象本体在 driver 对应的存储后端；driver 落库保证后端升级后旧文件仍可访问）
+type FilePO struct {
+	ID           uint   `gorm:"primaryKey"`
+	Driver       string `gorm:"size:16;index"`   // local | oss | cos | tos | minio
+	ObjectKey    string `gorm:"size:512;uniqueIndex"` // 服务端生成的对象 key
+	Name         string `gorm:"size:255"`        // 原始文件名
+	Ext          string `gorm:"size:16;index"`   // 扩展名（小写，不含点）
+	Size         int64
+	ContentType  string `gorm:"size:128"`
+	UploaderID   uint   `gorm:"index"`
+	UploaderName string `gorm:"size:64"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
+}
+
+func (FilePO) TableName() string { return "files" }
+
 // ---- 转换器 ----
 
 func UserToPO(u *user.User) *UserPO {
@@ -177,5 +196,22 @@ func OperationLogFromPO(p *OperationLogPO) *log.OperationLog {
 		Path: p.Path, Route: p.Route, Action: p.Action, Params: p.Params,
 		IP: p.IP, UserAgent: p.UserAgent, StatusCode: p.StatusCode,
 		LatencyMs: p.LatencyMs, CreatedAt: p.CreatedAt,
+	}
+}
+
+func FileToPO(f *file.File) *FilePO {
+	return &FilePO{
+		ID: f.ID, Driver: f.Driver, ObjectKey: f.ObjectKey, Name: f.Name,
+		Ext: f.Ext, Size: f.Size, ContentType: f.ContentType,
+		UploaderID: f.UploaderID, UploaderName: f.UploaderName,
+	}
+}
+
+func FileFromPO(p *FilePO) *file.File {
+	return &file.File{
+		ID: p.ID, Driver: p.Driver, ObjectKey: p.ObjectKey, Name: p.Name,
+		Ext: p.Ext, Size: p.Size, ContentType: p.ContentType,
+		UploaderID: p.UploaderID, UploaderName: p.UploaderName,
+		CreatedAt: p.CreatedAt,
 	}
 }
