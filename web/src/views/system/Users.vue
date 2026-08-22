@@ -1,14 +1,17 @@
 <template>
   <n-card>
     <template #header>
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 180px" @keyup.enter="load" />
-          <n-button type="primary" @click="load">查询</n-button>
-        </div>
+      <div class="page-actions">
         <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">新增用户</n-button>
       </div>
     </template>
+
+    <!-- 搜索栏独立一行：筛选项增多时换行生长，不与操作按钮挤占同一行 -->
+    <div class="search-bar">
+      <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 180px" @keyup.enter="load" />
+      <n-button type="primary" @click="load">查询</n-button>
+      <n-button quaternary @click="resetQuery">重置</n-button>
+    </div>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
   </n-card>
@@ -119,6 +122,12 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function resetQuery() {
+  query.username = ''
+  query.page = 1
+  load()
 }
 
 async function loadRoles() {
@@ -233,18 +242,20 @@ onMounted(() => { load(); loadRoles() })
 </script>
 
 <style scoped>
-/* 工具行：页面标题已由顶栏展示，卡头只保留搜索与操作 */
-.toolbar {
+/* 卡头只放操作按钮（页面标题由顶栏展示） */
+.page-actions {
   width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-end;
 }
-.toolbar-left,
-.toolbar-right {
+/* 搜索栏独立一行：发丝线与表格分区，筛选项增多时自动换行 */
+.search-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--sx-line);
 }
 </style>

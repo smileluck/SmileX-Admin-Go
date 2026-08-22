@@ -1,16 +1,17 @@
 <template>
   <n-card>
     <template #header>
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <n-button @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
-        </div>
-        <div class="toolbar-right">
-          <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
-          <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
-        </div>
+      <div class="page-actions">
+        <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
+        <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
       </div>
     </template>
+
+    <!-- 表格控制行：与用户/角色页的搜索栏同层，保持三页节奏一致 -->
+    <div class="search-bar">
+      <n-button @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
+    </div>
+
     <n-data-table :columns="columns" :data="tree" :loading="loading" :row-key="rowKey"
       :expanded-row-keys="expandedKeys" @update:expanded-row-keys="onExpandUpdate" />
   </n-card>
@@ -364,19 +365,22 @@ onMounted(refresh)
 </script>
 
 <style scoped>
-/* 工具行：页面标题已由顶栏展示，卡头只保留操作按钮 */
-.toolbar {
+/* 卡头只放操作按钮（页面标题由顶栏展示） */
+.page-actions {
   width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
 }
-.toolbar-left,
-.toolbar-right {
+/* 表格控制行：发丝线与表格分区，与其他系统页的搜索栏同层 */
+.search-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--sx-line);
 }
 .icon-grid {
   max-height: 360px;
