@@ -1,17 +1,15 @@
 <template>
+  <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
+  <SearchCard storage-key="users" @search="load" @reset="resetQuery">
+    <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 180px" @keyup.enter="load" />
+  </SearchCard>
+
   <n-card>
     <template #header>
       <div class="page-actions">
         <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">新增用户</n-button>
       </div>
     </template>
-
-    <!-- 搜索栏独立一行：筛选项增多时换行生长，不与操作按钮挤占同一行 -->
-    <div class="search-bar">
-      <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 180px" @keyup.enter="load" />
-      <n-button type="primary" @click="load">查询</n-button>
-      <n-button quaternary @click="resetQuery">重置</n-button>
-    </div>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
   </n-card>
@@ -56,6 +54,7 @@
 import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
 import { NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { renderActions, type TableAction } from '../../utils/tableActions'
+import SearchCard from '../../components/SearchCard.vue'
 import { createUser, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
 import { useUserStore } from '../../stores/user'
 import type { UserInfo } from '../../api/types'
@@ -247,15 +246,5 @@ onMounted(() => { load(); loadRoles() })
   width: 100%;
   display: flex;
   justify-content: flex-end;
-}
-/* 搜索栏独立一行：发丝线与表格分区，筛选项增多时自动换行 */
-.search-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--sx-line);
 }
 </style>

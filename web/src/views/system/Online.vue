@@ -1,4 +1,10 @@
 <template>
+  <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
+  <SearchCard storage-key="online" @search="load" @reset="resetQuery">
+    <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 180px" @keyup.enter="load" />
+    <n-select v-model:value="query.device" :options="deviceOptions" clearable placeholder="设备端" style="width: 140px" />
+  </SearchCard>
+
   <n-card>
     <template #header>
       <div class="page-actions">
@@ -9,14 +15,6 @@
       </div>
     </template>
 
-    <!-- 搜索栏独立一行：筛选项增多时换行生长，不与操作按钮挤占同一行 -->
-    <div class="search-bar">
-      <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 180px" @keyup.enter="load" />
-      <n-select v-model:value="query.device" :options="deviceOptions" clearable placeholder="设备端" style="width: 140px" />
-      <n-button type="primary" @click="load">查询</n-button>
-      <n-button quaternary @click="resetQuery">重置</n-button>
-    </div>
-
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
   </n-card>
 </template>
@@ -26,6 +24,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NButton, NCard, NDataTable, NEllipsis, NIcon, NInput, NSelect, NTag, useMessage, useDialog, type DataTableColumns } from 'naive-ui'
 import { RefreshOutline } from '@vicons/ionicons5'
 import { renderActions, type TableAction } from '../../utils/tableActions'
+import SearchCard from '../../components/SearchCard.vue'
 import { kickOnlineSession, kickUserSessions, listOnlineUsers } from '../../api'
 import { useUserStore } from '../../stores/user'
 import type { OnlineSession } from '../../api/types'
@@ -173,15 +172,5 @@ onMounted(() => { load() })
   width: 100%;
   display: flex;
   justify-content: flex-end;
-}
-/* 搜索栏独立一行：发丝线与表格分区，筛选项增多时自动换行 */
-.search-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--sx-line);
 }
 </style>
