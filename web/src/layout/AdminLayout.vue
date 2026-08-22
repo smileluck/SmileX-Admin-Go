@@ -3,14 +3,14 @@
     <n-layout-sider class="sider" collapse-mode="width" :collapsed-width="64" :width="200" :collapsed="collapsed">
       <div class="logo" :class="{ 'logo-collapsed': collapsed }">
         <div class="seal">S</div>
-        <div v-if="!collapsed" class="logo-text">
+        <div class="logo-text">
           <span class="logo-name">SmileX</span>
           <span class="logo-sub mono">admin console</span>
         </div>
       </div>
       <n-menu class="sider-menu" :collapsed="collapsed" :collapsed-width="64" :root-indent="16" :indent="20"
         :options="menuOptions" :value="activeKey" @update:value="onMenuSelect" />
-      <div class="sider-foot mono">{{ collapsed ? 'v1.0' : 'v1.0 · internal' }}</div>
+      <div class="sider-foot mono" :class="{ 'foot-collapsed': collapsed }">v1.0<span class="foot-ext"> · internal</span></div>
     </n-layout-sider>
 
     <n-layout class="main">
@@ -301,6 +301,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   overflow: hidden auto;
   scrollbar-width: thin;
 }
+/* 折叠过渡与 naive-ui sider 的宽度动画同步：.3s cubic-bezier(.4, 0, .2, 1) */
 .logo {
   height: 64px;
   flex-shrink: 0;
@@ -310,6 +311,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   padding: 0 16px;
   border-bottom: 1px solid var(--sx-line);
   margin-bottom: 4px;
+  transition: padding .3s cubic-bezier(.4, 0, .2, 1), gap .3s cubic-bezier(.4, 0, .2, 1);
 }
 .seal {
   width: 34px;
@@ -325,11 +327,16 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   color: #fff;
   background: var(--sx-accent);
 }
+/* 文字固定宽度，收起时宽度过渡收缩（v-if 瞬时移除会让宽度动画跳变） */
 .logo-text {
   display: flex;
   flex-direction: column;
   line-height: 1.25;
   white-space: nowrap;
+  flex-shrink: 0;
+  width: 92px;
+  overflow: hidden;
+  transition: width .3s cubic-bezier(.4, 0, .2, 1), opacity .2s cubic-bezier(.4, 0, .2, 1), margin-left .3s cubic-bezier(.4, 0, .2, 1);
 }
 .logo-name {
   font-weight: 700;
@@ -344,6 +351,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   flex: 1;
   background: transparent !important;
   padding: 4px 8px;
+  transition: padding .3s cubic-bezier(.4, 0, .2, 1);
 }
 /* 收起态：清零水平内边距。naive-ui 按 collapsedWidth/2 - 图标宽/2 计算缩进居中图标，
    前提是菜单占满整个窄栏；保留 8px 内边距会让图标整体偏右 8px */
@@ -355,6 +363,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   left: 8px;
   right: 8px;
   border-radius: 7px;
+  transition: left .3s cubic-bezier(.4, 0, .2, 1), right .3s cubic-bezier(.4, 0, .2, 1);
 }
 /* 收起态 hover 背景占满整行（内边距已清零） */
 .sider-menu.n-menu--collapsed :deep(.n-menu-item-content::before) {
@@ -362,10 +371,15 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   right: 0;
   border-radius: 0;
 }
-/* 收起态：仅显示印章，在 64px 窄栏内居中 */
+/* 收起态：印章经 padding 精确居中（(64-34)/2 = 15px），文字宽度收缩至 0 */
 .logo.logo-collapsed {
-  padding: 0;
-  justify-content: center;
+  padding: 0 0 0 15px;
+  gap: 0;
+}
+.logo.logo-collapsed .logo-text {
+  width: 0;
+  opacity: 0;
+  margin-left: -10px;
 }
 
 .sider-foot {
@@ -378,6 +392,19 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   font-size: 10px;
   white-space: nowrap;
   overflow: hidden;
+}
+/* 后缀与主版本号一起过渡收缩，避免文字瞬时跳变 */
+.foot-ext {
+  display: inline-block;
+  max-width: 80px;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  transition: max-width .3s cubic-bezier(.4, 0, .2, 1), opacity .25s cubic-bezier(.4, 0, .2, 1);
+}
+.sider-foot.foot-collapsed .foot-ext {
+  max-width: 0;
+  opacity: 0;
 }
 
 /* 顶部栏：eyebrow + 标题的层级读法 */
