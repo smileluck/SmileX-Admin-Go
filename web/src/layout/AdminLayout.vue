@@ -28,17 +28,18 @@
           </div>
         </div>
         <div class="header-right">
-          <n-auto-complete
-            ref="searchRef"
-            v-model:value="searchKw"
-            class="menu-search"
-            :options="searchOptions"
-            :render-label="renderSearchLabel"
-            :input-props="{ autocomplete: 'off' }"
-            :placeholder="`搜索菜单页面 ${searchKbd}`"
-            clearable
-            @select="onSearchSelect"
-          />
+          <n-button
+            class="search-trigger"
+            quaternary
+            circle
+            :focusable="false"
+            :aria-label="`搜索菜单页面 ${searchKbd}`"
+            @click="openSearch"
+          >
+            <template #icon>
+              <n-icon :component="SearchOutline" />
+            </template>
+          </n-button>
           <n-dropdown :options="userOptions" @select="onUserAction">
             <div class="user-chip">
               <div class="avatar">{{ avatarChar }}</div>
@@ -70,18 +71,34 @@
         <n-button type="primary" :loading="pwdSaving" @click="savePwd">确定</n-button>
       </template>
     </n-modal>
+
+    <!-- 顶栏搜索：点击搜索图标弹出，选中后跳转对应页面 -->
+    <n-modal v-model:show="showSearch" preset="card" :bordered="false" style="width: 520px">
+      <n-auto-complete
+        ref="searchRef"
+        v-model:value="searchKw"
+        class="search-palette"
+        size="large"
+        :options="searchOptions"
+        :render-label="renderSearchLabel"
+        :input-props="{ autocomplete: 'off' }"
+        :placeholder="`搜索菜单页面 ${searchKbd}`"
+        clearable
+        @select="onSearchSelect"
+      />
+    </n-modal>
   </n-layout>
 </template>
 
 <script setup lang="ts">
-import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NButton, NIcon,
   NAutoComplete, NModal, NForm, NFormItem, NInput, useMessage,
   type DropdownOption, type FormInst, type FormRules,
 } from 'naive-ui'
-import { MenuOutline } from '@vicons/ionicons5'
+import { MenuOutline, SearchOutline } from '@vicons/ionicons5'
 import { useUserStore } from '../stores/user'
 import { renderMenuIcon } from '../utils/menuIcon'
 import { changePassword } from '../api'
@@ -211,6 +228,23 @@ const searchRef = ref<{ focus: () => void } | null>(null)
 // 快捷键提示按平台显示（Mac 显示 ⌘K）
 const searchKbd = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K'
 
+// ---- 搜索弹窗（点击顶栏图标 / ⌘K 唤起） ----
+const showSearch = ref(false)
+
+function openSearch() {
+  searchKw.value = ''
+  showSearch.value = true
+}
+
+// 弹窗打开后自动聚焦输入框
+watch(showSearch, async (v) => {
+  if (v) {
+    await nextTick()
+    searchKw.value = ''
+    searchRef.value?.focus()
+  }
+})
+
 // 命中项（value 用数组下标，渲染与跳转都从 searchMatches 取）
 const searchMatches = computed(() => {
   const kw = searchKw.value.trim().toLowerCase()
@@ -236,16 +270,17 @@ function onSearchSelect(value: string | number) {
   const it = searchMatches.value[Number(value)]
   // naive-ui 选中后会把 label 写回输入框，nextTick 后再清空才能生效
   nextTick(() => { searchKw.value = '' })
+  showSearch.value = false
   if (it && it.path !== route.path) {
     router.push(it.path)
   }
 }
 
-// Ctrl/Cmd + K 聚焦搜索框
+// Ctrl/Cmd + K 唤起搜索弹窗
 function onGlobalKeydown(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
-    searchRef.value?.focus()
+    openSearch()
   }
 }
 
@@ -382,17 +417,15 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   color: var(--sx-ink);
 }
 
-/* 顶栏右侧：全局搜索 + 用户区 */
+/* 顶栏右侧：搜索图标 + 用户区 */
 .header-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
-.menu-search {
-  width: 230px;
-}
-.menu-search :deep(.n-input) {
-  --n-height: 34px;
+.search-trigger {
+  flex-shrink: 0;
+  color: var(--sx-muted);
 }
 
 .user-chip {
@@ -430,5 +463,10 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
 /* 内容区 */
 .content {
   background: transparent !important;
+}
+
+/* 搜索弹窗：输入框撑满弹窗宽度 */
+.search-palette {
+  width: 100%;
 }
 </style>
