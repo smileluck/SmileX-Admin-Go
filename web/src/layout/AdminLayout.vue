@@ -9,7 +9,8 @@
         </div>
       </div>
       <n-menu class="sider-menu" :collapsed="collapsed" :collapsed-width="64" :root-indent="16" :indent="20"
-        :options="menuOptions" :value="activeKey" @update:value="onMenuSelect" />
+        :options="menuOptions" :value="activeKey" :expanded-keys="expandedKeys"
+        @update:expanded-keys="expandedKeys = $event" @update:value="onMenuSelect" />
       <div class="sider-foot mono" :class="{ 'foot-collapsed': collapsed }">v1.0<span class="foot-ext"> · internal</span></div>
     </n-layout-sider>
 
@@ -169,7 +170,8 @@ const renderIcon = (icon?: string) => () => h('span', { style: 'display:inline-f
 function toOptions(nodes: MenuNode[]): any[] {
   return (nodes ?? []).map((m) => ({
     label: m.name,
-    key: m.path,
+    // 目录无路由 path，用 code 作 key 保证唯一；菜单叶子仍以 path 为 key，点击即跳转
+    key: m.path || m.code,
     icon: renderIcon(m.icon),
     children: m.children?.length ? toOptions(m.children) : undefined,
   }))
@@ -177,6 +179,29 @@ function toOptions(nodes: MenuNode[]): any[] {
 
 const menuOptions = computed(() => toOptions(userStore.menus))
 const activeKey = computed(() => route.path)
+
+// 侧边栏展开的分组 key 列表（受控）：路由变化时并入当前菜单的祖先目录链，保留手动展开/收起状态
+const expandedKeys = ref<string[]>([])
+
+// 在菜单树中查找 key 的祖先链（不含自身），找不到返回 null
+function findAncestorKeys(nodes: any[], key: string, trail: string[] = []): string[] | null {
+  for (const n of nodes) {
+    if (n.key === key) return trail
+    if (n.children?.length) {
+      const hit = findAncestorKeys(n.children, key, [...trail, n.key])
+      if (hit) return hit
+    }
+  }
+  return null
+}
+
+// 顶栏搜索跳转/刷新深链接等场景下展开侧边栏对应目录；
+// 同时 watch menuOptions：刷新时菜单异步加载，activeKey 不变但菜单树就绪后仍需展开
+watch([activeKey, menuOptions], ([p]) => {
+  const ancestors = findAncestorKeys(menuOptions.value, p)
+  if (!ancestors?.length) return
+  expandedKeys.value = [...new Set([...expandedKeys.value, ...ancestors])]
+}, { immediate: true })
 
 // 侧边栏点击跳转：key 即菜单 path（叶子节点对应已注册的动态路由）
 function onMenuSelect(key: string) {
