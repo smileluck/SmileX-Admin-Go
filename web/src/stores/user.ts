@@ -25,6 +25,7 @@ export const useUserStore = defineStore('user', {
         password,
         captcha_id: captchaId,
         captcha_code: captchaCode,
+        device_type: 'web', // 设备端标识：同端互斥（新 web 登录顶掉旧 web 会话）
       })
       this.accessToken = resp.data.access_token
       this.refreshTokenValue = resp.data.refresh_token

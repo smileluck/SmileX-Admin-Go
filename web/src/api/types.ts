@@ -63,3 +63,17 @@ export interface PageResult<T> {
   list: T[]
   page: { page: number; page_size: number; total: number }
 }
+
+// 在线会话（一行 = 一个「用户 × 设备端」会话）
+export interface OnlineSession {
+  sid: string
+  user_id: number
+  username: string
+  nickname: string
+  device: 'web' | 'app' // web 网页端 | app 移动端
+  ip: string
+  user_agent: string
+  login_at: string
+  last_active_at: string
+  is_current: boolean // 是否当前登录者自己的会话
+}

@@ -13,6 +13,7 @@ const viewModules: Record<string, () => Promise<any>> = {
   'menu:user': () => import('../views/system/Users.vue'),
   'menu:role': () => import('../views/system/Roles.vue'),
   'menu:menu': () => import('../views/system/Menus.vue'),
+  'menu:online': () => import('../views/system/Online.vue'),
   'menu:about': () => import('../views/about/About.vue'),
 }
 

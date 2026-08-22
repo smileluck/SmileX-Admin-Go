@@ -1,9 +1,9 @@
 import request from './request'
-import type { CaptchaInfo, MenuNode, PageResult, Permission, R, Role, TokenPair, UserInfo } from './types'
+import type { CaptchaInfo, MenuNode, OnlineSession, PageResult, Permission, R, Role, TokenPair, UserInfo } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
-export const login = (data: { username: string; password: string; captcha_id: string; captcha_code: string }) =>
+export const login = (data: { username: string; password: string; captcha_id: string; captcha_code: string; device_type?: string }) =>
   request.post<R<TokenPair>>('/auth/login', data)
 export const refreshToken = (refresh_token: string) =>
   request.post<R<TokenPair>>('/auth/refresh', { refresh_token })
@@ -53,3 +53,11 @@ export const createPermission = (data: Partial<Permission>) =>
 export const updatePermission = (id: number, data: Partial<Permission>) =>
   request.put<R<null>>(`/permissions/${id}`, data)
 export const deletePermission = (id: number) => request.delete<R<null>>(`/permissions/${id}`)
+
+// ---- 在线用户 ----
+export const listOnlineUsers = (params: { page: number; page_size: number; username?: string; device?: string }) =>
+  request.get<R<PageResult<OnlineSession>>>('/online-users', { params })
+// 踢单个会话下线（某端）
+export const kickOnlineSession = (sid: string) => request.delete<R<null>>(`/online-users/${sid}`)
+// 踢某用户全部端下线
+export const kickUserSessions = (userId: number) => request.delete<R<null>>(`/users/${userId}/sessions`)

@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst } from 'naive-ui'
 import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
@@ -84,6 +84,7 @@ import PulseWave from './PulseWave.vue'
 const REMEMBER_KEY = 'remember_account'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const message = useMessage()
 const formRef = ref<FormInst | null>(null)
@@ -176,6 +177,10 @@ async function onLogin() {
 onMounted(() => {
   restoreRemembered()
   loadCaptcha()
+  // 会话失效被踢回登录页（同端新登录顶替 / 被管理员下线 / 长期未活跃过期）
+  if (route.query.reason === 'expired') {
+    message.warning('登录已失效，请重新登录')
+  }
 })
 </script>
 

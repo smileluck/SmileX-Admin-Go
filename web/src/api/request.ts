@@ -28,9 +28,14 @@ request.interceptors.response.use(
         config.headers.Authorization = `Bearer ${token}`
         return request(config)
       }
-      // 刷新失败：回登录页。避免与路由守卫的跳转竞争重复导航
+      // 刷新失败：会话已失效（被顶替/被下线/过期），清理本地令牌并回登录页携带原因
+      const store = useUserStore()
+      store.accessToken = ''
+      store.refreshTokenValue = ''
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
       if (router.currentRoute.value.path !== '/login') {
-        router.push('/login')
+        router.push({ path: '/login', query: { reason: 'expired' } })
       }
     }
     return Promise.reject(error)
