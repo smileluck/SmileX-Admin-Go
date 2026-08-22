@@ -460,6 +460,25 @@ onUnmounted(() => {
 /* 顶部栏：eyebrow + 标题的层级读法 */
 .main {
   background: var(--sx-bg) !important;
+  height: 100%;
+}
+/* 顶栏固定：main 层自身不滚（默认滚动发生在含 header 的这一层），
+   锁为 flex 列 —— header 固定高 + content 吃满剩余并内部滚动 */
+.main :deep(.n-layout-scroll-container) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main :deep(.n-layout-header) {
+  flex-shrink: 0;
+}
+.main :deep(.n-layout-content) {
+  flex: 1;
+  min-height: 0;
+}
+.main :deep(.n-layout-content > .n-scrollbar) {
+  height: 100%;
 }
 .header {
   height: 64px;
