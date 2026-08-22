@@ -16,12 +16,14 @@ import (
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
+	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/internal/server/middleware"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
+	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
 	usersvc "github.com/smilex/smilex-admin-gin/internal/service/user"
 	"github.com/smilex/smilex-admin-gin/pkg/logger"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
@@ -30,18 +32,19 @@ import (
 
 // HTTPServer 聚合全部应用服务
 type HTTPServer struct {
-	cfg    *conf.Bootstrap
-	auth   *authsvc.Service
-	user   *usersvc.Service
-	role   *rolesvc.Service
-	perm   *permsvc.Service
-	engine *gin.Engine
-	srv    *http.Server
+	cfg     *conf.Bootstrap
+	auth    *authsvc.Service
+	user    *usersvc.Service
+	role    *rolesvc.Service
+	perm    *permsvc.Service
+	session *sessionsvc.Service
+	engine  *gin.Engine
+	srv     *http.Server
 }
 
 // NewHTTPServer 构造并注册路由
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
-	role *rolesvc.Service, perm *permsvc.Service) *HTTPServer {
+	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	e.Use(gin.Recovery(),
@@ -51,7 +54,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 		middleware.SQLInjectionGuard(),
 	)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -84,6 +87,9 @@ func (s *HTTPServer) registerRoutes() {
 				response.BadRequest(c, err.Error())
 				return
 			}
+			// 登录环境注入（建立会话用；UA 截断防止超长存储）
+			req.IP = c.ClientIP()
+			req.UserAgent = truncate(c.GetHeader("User-Agent"), 255)
 			tp, err := s.auth.Login(c.Request.Context(), req)
 			if err != nil {
 				// 验证码错误属入参问题，返回 400 便于前端区分提示并自动刷新
@@ -116,7 +122,15 @@ func (s *HTTPServer) registerRoutes() {
 	// 若纳入默认拒绝的 RBAC，仅绑定了菜单/按钮权限的普通用户登录后即 403 白屏。
 	basic := v1.Group("", middleware.JWT(s.auth))
 	{
-		basic.POST("/auth/logout", func(c *gin.Context) { response.OK(c, nil) })
+		// 登出：吊销当前会话，token 立即失效
+		basic.POST("/auth/logout", func(c *gin.Context) {
+			if sub := middleware.Subject(c); sub != nil {
+				if err := s.auth.Logout(c.Request.Context(), sub.SessionID); err != nil {
+					logger.Warn("logout revoke session failed", zap.Error(err))
+				}
+			}
+			response.OK(c, nil)
+		})
 		basic.GET("/auth/profile", func(c *gin.Context) {
 			sub := middleware.Subject(c)
 			vo, err := s.auth.Profile(c.Request.Context(), sub.UserID)
@@ -141,7 +155,7 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			response.OK(c, vo)
 		})
-		// 本人修改密码（校验旧密码）
+		// 本人修改密码（校验旧密码；成功后吊销其他端会话，当前端保持登录）
 		basic.PUT("/auth/password", func(c *gin.Context) {
 			sub := middleware.Subject(c)
 			var req authsvc.ChangePasswordRequest
@@ -149,7 +163,11 @@ func (s *HTTPServer) registerRoutes() {
 				response.BadRequest(c, err.Error())
 				return
 			}
-			if err := s.auth.ChangePassword(c.Request.Context(), sub.UserID, req); err != nil {
+			sid := ""
+			if sub != nil {
+				sid = sub.SessionID
+			}
+			if err := s.auth.ChangePassword(c.Request.Context(), sub.UserID, req, sid); err != nil {
 				if errors.Is(err, bizauth.ErrInvalidCredentials) {
 					response.BadRequest(c, "原密码不正确")
 					return
@@ -183,6 +201,8 @@ func (s *HTTPServer) registerRoutes() {
 		users.DELETE("/:id", s.deleteUser)
 		users.PUT("/:id/roles", s.setUserRoles)
 		users.PUT("/:id/password", s.resetUserPassword)
+		// 踢某用户全部端下线（挂在 users 资源下，避免与 /online-users/:sid 路由冲突）
+		users.DELETE("/:id/sessions", s.kickUserSessions)
 	}
 
 	roles := protected.Group("/roles")
@@ -202,6 +222,12 @@ func (s *HTTPServer) registerRoutes() {
 		perms.GET("/:id", s.getPerm)
 		perms.PUT("/:id", s.updatePerm)
 		perms.DELETE("/:id", s.deletePerm)
+	}
+
+	onlines := protected.Group("/online-users")
+	{
+		onlines.GET("", s.listOnlineUsers)
+		onlines.DELETE("/:sid", s.kickOnlineSession)
 	}
 }
 
@@ -511,6 +537,69 @@ func (s *HTTPServer) deletePerm(c *gin.Context) {
 
 // ---- helpers ----
 
+// ---- 在线用户 ----
+
+func (s *HTTPServer) listOnlineUsers(c *gin.Context) {
+	page, size := pageParams(c)
+	q := bizsession.Query{Username: c.Query("username"), Device: c.Query("device")}
+	currentSid := ""
+	if sub := middleware.Subject(c); sub != nil {
+		currentSid = sub.SessionID
+	}
+	vos, pg, err := s.session.List(c.Request.Context(), q, page, size, currentSid)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.OK(c, listResult{List: vos, Page: pg})
+}
+
+func (s *HTTPServer) kickOnlineSession(c *gin.Context) {
+	sid := c.Param("sid")
+	if sid == "" {
+		response.BadRequest(c, "invalid sid")
+		return
+	}
+	operatorID := uint(0)
+	if sub := middleware.Subject(c); sub != nil {
+		operatorID = sub.UserID
+	}
+	if err := s.session.Kick(c.Request.Context(), sid, operatorID); err != nil {
+		s.sessionErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) kickUserSessions(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	operatorID := uint(0)
+	if sub := middleware.Subject(c); sub != nil {
+		operatorID = sub.UserID
+	}
+	if _, err := s.session.KickUser(c.Request.Context(), id, operatorID); err != nil {
+		s.sessionErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// sessionErr 会话操作错误映射：超管保护返回 403，会话不存在返回 404，其余返回 400
+func (s *HTTPServer) sessionErr(c *gin.Context, err error) {
+	if errors.Is(err, user.ErrSuperAdminProtected) {
+		response.Forbidden(c, err.Error())
+		return
+	}
+	if errors.Is(err, bizsession.ErrSessionNotFound) {
+		response.NotFound(c, "会话不存在或已下线")
+		return
+	}
+	response.BadRequest(c, err.Error())
+}
+
 // userErr 用户操作错误映射：超管保护类返回 403，其余返回 400
 func (s *HTTPServer) userErr(c *gin.Context, err error) {
 	if errors.Is(err, user.ErrSuperAdminProtected) || errors.Is(err, user.ErrDeleteSuperAdmin) {
@@ -548,4 +637,12 @@ func idParam(c *gin.Context) (uint, bool) {
 		return 0, false
 	}
 	return uint(id), true
+}
+
+// truncate 按字节长度截断（UA 摘要存储用）
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }

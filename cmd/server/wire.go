@@ -9,15 +9,18 @@ import (
 	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	bizrole "github.com/smilex/smilex-admin-gin/internal/biz/role"
+	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	dataperm "github.com/smilex/smilex-admin-gin/internal/data/permission"
 	datarole "github.com/smilex/smilex-admin-gin/internal/data/role"
+	datasession "github.com/smilex/smilex-admin-gin/internal/data/session"
 	datauser "github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
+	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
 	usersvc "github.com/smilex/smilex-admin-gin/internal/service/user"
 )
 
@@ -26,17 +29,22 @@ var bizSet = wire.NewSet(
 	bizrole.NewUsecase,
 	bizperm.NewUsecase,
 	bizcaptcha.NewUsecase,
+	bizsession.NewUsecase,
 	auth.NewUsecase,
 	// 跨上下文最小依赖接口绑定（provider 与 bind 需同 set）
 	wire.Bind(new(auth.CaptchaVerifier), new(*bizcaptcha.Usecase)),
+	wire.Bind(new(auth.SessionManager), new(*bizsession.Usecase)),
+	wire.Bind(new(bizuser.SessionRevoker), new(*bizsession.Usecase)),
 )
 
 var dataRepoSet = wire.NewSet(
 	data.NewData,
+	data.NewRedisClient,
 	data.NewJWTIssuer,
 	datauser.NewRepo,
 	datarole.NewRepo,
 	dataperm.NewRepo,
+	datasession.NewRepo,
 	// 跨上下文最小依赖接口绑定
 	wire.Bind(new(auth.UserStore), new(bizuser.Repo)),
 	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
@@ -48,6 +56,7 @@ var serviceSet = wire.NewSet(
 	usersvc.NewService,
 	rolesvc.NewService,
 	permsvc.NewService,
+	sessionsvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

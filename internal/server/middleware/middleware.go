@@ -29,7 +29,9 @@ func CORS() gin.HandlerFunc {
 
 const ctxSubjectKey = "auth.subject"
 
-// JWT 认证：Bearer token -> Subject 存入 context
+// JWT 认证：Bearer token -> Subject 存入 context。
+// 会话校验：token 携带 sid，仅当对应会话存活（未被吊销/顶替/过期）时放行；
+// Redis 故障时 fail-closed，会话一律视为无效。
 func JWT(authSvc *authsvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		h := c.GetHeader("Authorization")
@@ -42,6 +44,11 @@ func JWT(authSvc *authsvc.Service) gin.HandlerFunc {
 		s, err := authSvc.ParseSubject(token)
 		if err != nil {
 			response.Unauthorized(c, "invalid or expired token")
+			c.Abort()
+			return
+		}
+		if s.SessionID == "" || !authSvc.ValidateSession(c.Request.Context(), s.SessionID) {
+			response.Unauthorized(c, "session revoked")
 			c.Abort()
 			return
 		}

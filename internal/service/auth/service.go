@@ -23,8 +23,11 @@ func NewService(uc *bizauth.Usecase, captcha *bizcaptcha.Usecase) *Service {
 type LoginRequest struct {
 	Username    string `json:"username" binding:"required"`
 	Password    string `json:"password" binding:"required"`
-	CaptchaID   string `json:"captcha_id"`   // 验证码停用时可空
-	CaptchaCode string `json:"captcha_code"` // 验证码停用时可空
+	CaptchaID   string `json:"captcha_id"`                                    // 验证码停用时可空
+	CaptchaCode string `json:"captcha_code"`                                  // 验证码停用时可空
+	DeviceType  string `json:"device_type" binding:"omitempty,oneof=web app"` // 设备端：同端互斥、异端并存
+	IP          string `json:"-"`                                             // 由传输层注入（建立会话用）
+	UserAgent   string `json:"-"`                                             // 由传输层注入（建立会话用）
 }
 
 // RefreshRequest 刷新入参
@@ -33,7 +36,8 @@ type RefreshRequest struct {
 }
 
 func (s *Service) Login(ctx context.Context, req LoginRequest) (*bizauth.TokenPair, error) {
-	return s.uc.Login(ctx, req.Username, req.Password, req.CaptchaID, req.CaptchaCode)
+	meta := bizauth.LoginMeta{Device: req.DeviceType, IP: req.IP, UserAgent: req.UserAgent}
+	return s.uc.Login(ctx, req.Username, req.Password, req.CaptchaID, req.CaptchaCode, meta)
 }
 
 // CaptchaVO 图形验证码视图（image 为 PNG 的 base64，无 data: 前缀）
@@ -57,6 +61,11 @@ func (s *Service) GenerateCaptcha() (*CaptchaVO, error) {
 
 func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*bizauth.TokenPair, error) {
 	return s.uc.Refresh(ctx, req.RefreshToken)
+}
+
+// Logout 登出：吊销当前会话
+func (s *Service) Logout(ctx context.Context, sid string) error {
+	return s.uc.Logout(ctx, sid)
 }
 
 // ProfileUserVO 个人信息用户视图（专用 VO，字段显式声明，密码不可能泄露）
@@ -115,9 +124,9 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6,max=64"`
 }
 
-// ChangePassword 本人修改密码（校验旧密码）
-func (s *Service) ChangePassword(ctx context.Context, userID uint, req ChangePasswordRequest) error {
-	return s.uc.ChangePassword(ctx, userID, req.OldPassword, req.NewPassword)
+// ChangePassword 本人修改密码（校验旧密码；成功后吊销其他端会话，当前会话由调用方传入）
+func (s *Service) ChangePassword(ctx context.Context, userID uint, req ChangePasswordRequest, currentSessionID string) error {
+	return s.uc.ChangePassword(ctx, userID, req.OldPassword, req.NewPassword, currentSessionID)
 }
 
 // Authorize 供 RBAC 中间件调用
@@ -128,4 +137,9 @@ func (s *Service) Authorize(ctx context.Context, userID uint, method, path strin
 // ParseSubject 解析 access token
 func (s *Service) ParseSubject(token string) (*bizauth.Subject, error) {
 	return s.uc.ParseSubject(token)
+}
+
+// ValidateSession 会话是否存活（中间件用）
+func (s *Service) ValidateSession(ctx context.Context, sid string) bool {
+	return s.uc.ValidateSession(ctx, sid)
 }

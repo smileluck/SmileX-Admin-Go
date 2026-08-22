@@ -12,15 +12,18 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/biz/captcha"
 	permission2 "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	role2 "github.com/smilex/smilex-admin-gin/internal/biz/role"
+	session2 "github.com/smilex/smilex-admin-gin/internal/biz/session"
 	user2 "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	"github.com/smilex/smilex-admin-gin/internal/data/permission"
 	"github.com/smilex/smilex-admin-gin/internal/data/role"
+	"github.com/smilex/smilex-admin-gin/internal/data/session"
 	"github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	auth2 "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	permission3 "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	role3 "github.com/smilex/smilex-admin-gin/internal/service/role"
+	session3 "github.com/smilex/smilex-admin-gin/internal/service/session"
 	user3 "github.com/smilex/smilex-admin-gin/internal/service/user"
 )
 
@@ -41,26 +44,35 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	permissionRepo := permission.NewRepo(dataData)
 	tokenIssuer := data.NewJWTIssuer(bootstrap)
 	usecase := captcha.NewUsecase(bootstrap)
-	authUsecase := auth.NewUsecase(repo, roleRepo, permissionRepo, tokenIssuer, usecase)
+	client, cleanup2, err := data.NewRedisClient(bootstrap)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	sessionRepo := session.NewRepo(client)
+	sessionUsecase := session2.NewUsecase(sessionRepo, bootstrap)
+	authUsecase := auth.NewUsecase(repo, roleRepo, permissionRepo, tokenIssuer, usecase, sessionUsecase)
 	service := auth2.NewService(authUsecase, usecase)
-	userUsecase := user2.NewUsecase(repo)
+	userUsecase := user2.NewUsecase(repo, sessionUsecase)
 	userService := user3.NewService(userUsecase)
 	roleUsecase := role2.NewUsecase(roleRepo)
 	roleService := role3.NewService(roleUsecase)
 	permissionUsecase := permission2.NewUsecase(permissionRepo)
 	permissionService := permission3.NewService(permissionUsecase)
-	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService)
+	sessionService := session3.NewService(sessionUsecase)
+	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService)
 	return httpServer, func() {
+		cleanup2()
 		cleanup()
 	}, nil
 }
 
 // wire.go:
 
-var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha.NewUsecase, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha.Usecase)))
+var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha.NewUsecase, session2.NewUsecase, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)))
 
-var dataRepoSet = wire.NewSet(data.NewData, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)))
+var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)))
 
-var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService)
+var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService)
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

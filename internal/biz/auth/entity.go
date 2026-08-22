@@ -10,9 +10,10 @@ import (
 
 // Subject 认证主体（JWT 载荷）
 type Subject struct {
-	UserID   uint
-	Username string
-	Roles    []string
+	UserID    uint
+	Username  string
+	SessionID string // 会话 ID：中间件据此校验会话存活，吊销即失效
+	Roles     []string
 }
 
 // TokenPair 令牌对

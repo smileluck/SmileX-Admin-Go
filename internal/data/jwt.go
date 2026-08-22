@@ -21,6 +21,7 @@ const (
 type claims struct {
 	UserID    uint   `json:"uid"`
 	Username  string `json:"username"`
+	SessionID string `json:"sid"` // 会话 ID：token 仅在对应会话存活期间有效
 	TokenType string `json:"typ"`
 	jwt.RegisteredClaims
 }
@@ -52,6 +53,7 @@ func (j *jwtIssuer) newClaims(s auth.Subject, typ string, ttl time.Duration) *cl
 	return &claims{
 		UserID:    s.UserID,
 		Username:  s.Username,
+		SessionID: s.SessionID,
 		TokenType: typ,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    j.issuer,
@@ -91,7 +93,7 @@ func (j *jwtIssuer) parse(token, wantType string) (*auth.Subject, error) {
 	if c.TokenType != wantType {
 		return nil, errors.New("token type mismatch")
 	}
-	return &auth.Subject{UserID: c.UserID, Username: c.Username}, nil
+	return &auth.Subject{UserID: c.UserID, Username: c.Username, SessionID: c.SessionID}, nil
 }
 
 func (j *jwtIssuer) ParseAccessToken(token string) (*auth.Subject, error) {

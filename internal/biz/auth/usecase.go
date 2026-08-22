@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
+	"github.com/smilex/smilex-admin-gin/internal/biz/session"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 )
 
@@ -44,21 +45,40 @@ type CaptchaVerifier interface {
 	Verify(id, answer string) bool
 }
 
+// SessionManager 会话管理接口（由 session 上下文实现，跨上下文走接口）
+type SessionManager interface {
+	Create(ctx context.Context, userID uint, username, nickname, device, ip, userAgent string) (*session.Session, error)
+	Validate(ctx context.Context, sid string) bool
+	Extend(ctx context.Context, sid string) error
+	Revoke(ctx context.Context, sid string) error
+	RevokeByUser(ctx context.Context, userID uint) (int, error)
+	RevokeByUserExcept(ctx context.Context, userID uint, keepSid string) (int, error)
+}
+
+// LoginMeta 登录环境信息（由传输层注入，用于建立会话）
+type LoginMeta struct {
+	Device    string // 设备端：web / app（空默认 web）
+	IP        string
+	UserAgent string
+}
+
 // Usecase 认证领域用例
 type Usecase struct {
-	users   UserStore
-	roles   RoleNameReader
-	perms   PermissionReader
-	tokens  TokenIssuer
-	captcha CaptchaVerifier
+	users    UserStore
+	roles    RoleNameReader
+	perms    PermissionReader
+	tokens   TokenIssuer
+	captcha  CaptchaVerifier
+	sessions SessionManager
 }
 
-func NewUsecase(users UserStore, roles RoleNameReader, perms PermissionReader, tokens TokenIssuer, captcha CaptchaVerifier) *Usecase {
-	return &Usecase{users: users, roles: roles, perms: perms, tokens: tokens, captcha: captcha}
+func NewUsecase(users UserStore, roles RoleNameReader, perms PermissionReader, tokens TokenIssuer, captcha CaptchaVerifier, sessions SessionManager) *Usecase {
+	return &Usecase{users: users, roles: roles, perms: perms, tokens: tokens, captcha: captcha, sessions: sessions}
 }
 
-// Login 登录签发令牌（先校验一次性图形验证码）
-func (uc *Usecase) Login(ctx context.Context, username, password, captchaID, captchaCode string) (*TokenPair, error) {
+// Login 登录签发令牌（先校验一次性图形验证码）。
+// 每次登录建立一个会话并写入 token（sid）：同端旧会话被互斥吊销，不同端并存。
+func (uc *Usecase) Login(ctx context.Context, username, password, captchaID, captchaCode string, meta LoginMeta) (*TokenPair, error) {
 	if !uc.captcha.Verify(captchaID, captchaCode) {
 		return nil, ErrCaptcha
 	}
@@ -72,36 +92,56 @@ func (uc *Usecase) Login(ctx context.Context, username, password, captchaID, cap
 	if !u.Enabled() {
 		return nil, ErrDisabledAccount
 	}
-	access, expiresAt, err := uc.tokens.IssueAccessToken(Subject{UserID: u.ID, Username: u.Username})
+	sess, err := uc.sessions.Create(ctx, u.ID, u.Username, u.Nickname, meta.Device, meta.IP, meta.UserAgent)
 	if err != nil {
 		return nil, err
 	}
-	refresh, err := uc.tokens.IssueRefreshToken(Subject{UserID: u.ID, Username: u.Username})
+	subject := Subject{UserID: u.ID, Username: u.Username, SessionID: sess.ID}
+	access, expiresAt, err := uc.tokens.IssueAccessToken(subject)
+	if err != nil {
+		return nil, err
+	}
+	refresh, err := uc.tokens.IssueRefreshToken(subject)
 	if err != nil {
 		return nil, err
 	}
 	return &TokenPair{AccessToken: access, RefreshToken: refresh, ExpiresAt: expiresAt}, nil
 }
 
-// Refresh 刷新令牌
+// Refresh 刷新令牌：会话必须存活，轮转后同 sid 续期
 func (uc *Usecase) Refresh(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	s, err := uc.tokens.ParseRefreshToken(refreshToken)
 	if err != nil {
 		return nil, errors.New("invalid refresh token")
 	}
+	if s.SessionID == "" || !uc.sessions.Validate(ctx, s.SessionID) {
+		return nil, errors.New("session revoked")
+	}
 	u, err := uc.users.FindByID(ctx, s.UserID)
 	if err != nil || !u.Enabled() {
 		return nil, ErrInvalidCredentials
 	}
-	access, expiresAt, err := uc.tokens.IssueAccessToken(Subject{UserID: u.ID, Username: u.Username})
+	if err := uc.sessions.Extend(ctx, s.SessionID); err != nil {
+		return nil, err
+	}
+	subject := Subject{UserID: u.ID, Username: u.Username, SessionID: s.SessionID}
+	access, expiresAt, err := uc.tokens.IssueAccessToken(subject)
 	if err != nil {
 		return nil, err
 	}
-	refresh, err := uc.tokens.IssueRefreshToken(Subject{UserID: u.ID, Username: u.Username})
+	refresh, err := uc.tokens.IssueRefreshToken(subject)
 	if err != nil {
 		return nil, err
 	}
 	return &TokenPair{AccessToken: access, RefreshToken: refresh, ExpiresAt: expiresAt}, nil
+}
+
+// Logout 登出：吊销当前会话，token 立即失效
+func (uc *Usecase) Logout(ctx context.Context, sid string) error {
+	if sid == "" {
+		return nil
+	}
+	return uc.sessions.Revoke(ctx, sid)
 }
 
 // Profile 当前用户信息（含角色名与权限）
@@ -140,8 +180,9 @@ func (uc *Usecase) UpdateProfile(ctx context.Context, userID uint, nickname, ema
 	return u, nil
 }
 
-// ChangePassword 本人修改密码：先校验旧密码，再落库新哈希
-func (uc *Usecase) ChangePassword(ctx context.Context, userID uint, oldPlain, newPlain string) error {
+// ChangePassword 本人修改密码：先校验旧密码，再落库新哈希；
+// 成功后吊销除当前会话外的其他端会话（当前端不掉线）
+func (uc *Usecase) ChangePassword(ctx context.Context, userID uint, oldPlain, newPlain, currentSessionID string) error {
 	u, err := uc.users.FindByIDWithPassword(ctx, userID)
 	if err != nil {
 		return err
@@ -152,12 +193,21 @@ func (uc *Usecase) ChangePassword(ctx context.Context, userID uint, oldPlain, ne
 	if err := u.SetPassword(newPlain); err != nil {
 		return err
 	}
-	return uc.users.UpdatePassword(ctx, userID, string(u.Password))
+	if err := uc.users.UpdatePassword(ctx, userID, string(u.Password)); err != nil {
+		return err
+	}
+	_, _ = uc.sessions.RevokeByUserExcept(ctx, userID, currentSessionID)
+	return nil
 }
 
 // ParseSubject 解析 access token
 func (uc *Usecase) ParseSubject(token string) (*Subject, error) {
 	return uc.tokens.ParseAccessToken(token)
+}
+
+// ValidateSession 会话是否存活（中间件用；顺带节流刷新最近活跃）
+func (uc *Usecase) ValidateSession(ctx context.Context, sid string) bool {
+	return uc.sessions.Validate(ctx, sid)
 }
 
 // Authorize RBAC 接口鉴权
