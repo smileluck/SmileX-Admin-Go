@@ -98,15 +98,16 @@ const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label:
   display: flex;
   flex-direction: column;
 }
-/* 卡片内容纵向撑满，记录列表吃满剩余高度并内部滚动 */
-.log-card :deep(.n-card__content) {
+/* 卡片内容纵向撑满，记录列表吃满剩余高度并内部滚动
+   （naive 卡片内容类为 n-card-content，非 n-card__content） */
+.log-card :deep(.n-card-content) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 /* 左卡内容在极小高度下兜底滚动，避免溢出 */
-.info-card :deep(.n-card__content) {
+.info-card :deep(.n-card-content) {
   overflow: auto;
 }
 /* 窄窗口下隐藏次要信息，保证并排布局可用 */
