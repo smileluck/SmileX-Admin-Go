@@ -79,17 +79,15 @@ const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label:
 </script>
 
 <style scoped>
-/* 高度撑满内容区：卡片满高、记录列表卡内滚动 */
-.about-page {
-  height: 100%;
-}
-/* 左右 4:6 固定比例布局，任何窗口宽度都并排 */
+/* 撑满一屏：100vh - 顶栏 64px - 内容区上下 padding 8px×2（height:100% 链在
+   naive 嵌套滚动容器下不精确，会导致整页滚动；改用视口确定性高度） */
 .about-layout {
   display: flex;
   gap: 12px;
   align-items: stretch;
-  height: 100%;
+  height: calc(100vh - 64px - 16px);
 }
+/* 左右 4:6 固定比例布局，任何窗口宽度都并排 */
 .info-card {
   flex: 4 1 0;
   min-width: 0;
@@ -106,6 +104,10 @@ const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label:
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+/* 左卡内容在极小高度下兜底滚动，避免溢出 */
+.info-card :deep(.n-card__content) {
+  overflow: auto;
 }
 /* 窄窗口下隐藏次要信息，保证并排布局可用 */
 @media (max-width: 540px) {
