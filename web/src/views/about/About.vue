@@ -1,52 +1,49 @@
 <template>
   <div class="about-page">
-    <n-grid :cols="24" responsive="screen" :x-gap="12" :y-gap="12">
-      <!-- 左：产品信息卡（≥640px 即左右并排；naive 的 m=1024 过宽，窄窗口会被堆叠） -->
-      <n-gi span="24 s:7">
-        <n-card class="info-card">
-          <div class="brand">
-            <div class="seal">S</div>
-            <div class="brand-text">
-              <span class="brand-name">SmileX Admin</span>
-              <n-tag size="small" round type="primary">v{{ version }}</n-tag>
-            </div>
+    <!-- 固定左右布局：左信息卡固定宽、右更新记录自适应，任何窗口宽度都不堆叠 -->
+    <div class="about-layout">
+      <!-- 左：产品信息卡 -->
+      <n-card class="info-card">
+        <div class="brand">
+          <div class="seal">S</div>
+          <div class="brand-text">
+            <span class="brand-name">SmileX Admin</span>
+            <n-tag size="small" round type="primary">v{{ version }}</n-tag>
           </div>
+        </div>
 
-          <div class="info-rows">
-            <div v-for="row in infoRows" :key="row.label" class="info-row">
-              <span class="info-icon"><n-icon :component="row.icon" :size="15" /></span>
-              <span class="info-label">{{ row.label }}</span>
-              <span class="info-value">{{ row.value }}</span>
-            </div>
+        <div class="info-rows">
+          <div v-for="row in infoRows" :key="row.label" class="info-row">
+            <span class="info-icon"><n-icon :component="row.icon" :size="15" /></span>
+            <span class="info-label">{{ row.label }}</span>
+            <span class="info-value">{{ row.value }}</span>
           </div>
+        </div>
 
-          <div class="copyright mono">© 2026 SmileX · internal use only</div>
-        </n-card>
-      </n-gi>
+        <div class="copyright mono">© 2026 SmileX · internal use only</div>
+      </n-card>
 
       <!-- 右：更新记录（git 提交日志构建时生成） -->
-      <n-gi span="24 s:17">
-        <n-card title="更新记录">
-          <template #header-extra>
-            <span class="gen-meta mono">{{ commits.length }} 条提交 · 构建时自动生成</span>
-          </template>
-          <div class="log-list">
-            <div v-for="c in commits" :key="c.hash" class="log-item">
-              <n-tag :type="typeMeta(c.type).tag" size="small" round>{{ typeMeta(c.type).label }}</n-tag>
-              <span v-if="c.scope" class="log-scope mono">{{ c.scope }}</span>
-              <span class="log-message">{{ c.message }}</span>
-              <span class="log-date mono">{{ c.date }}</span>
-              <span class="log-hash mono">{{ c.hash }}</span>
-            </div>
+      <n-card class="log-card" title="更新记录">
+        <template #header-extra>
+          <span class="gen-meta mono">{{ commits.length }} 条提交 · 构建时自动生成</span>
+        </template>
+        <div class="log-list">
+          <div v-for="c in commits" :key="c.hash" class="log-item">
+            <n-tag :type="typeMeta(c.type).tag" size="small" round>{{ typeMeta(c.type).label }}</n-tag>
+            <span v-if="c.scope" class="log-scope mono">{{ c.scope }}</span>
+            <span class="log-message">{{ c.message }}</span>
+            <span class="log-date mono">{{ c.date }}</span>
+            <span class="log-hash mono">{{ c.hash }}</span>
           </div>
-        </n-card>
-      </n-gi>
-    </n-grid>
+        </div>
+      </n-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { NGrid, NGi, NCard, NTag, NIcon } from 'naive-ui'
+import { NCard, NTag, NIcon } from 'naive-ui'
 import {
   AppsOutline, GitCommitOutline, DesktopOutline, ServerOutline,
   DiscOutline, LayersOutline, PersonOutline,
@@ -86,8 +83,33 @@ const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label:
 .about-page {
   min-height: 100%;
 }
+/* 固定左右布局：左卡固定基准宽可收缩，右卡吃满剩余空间；任何窗口宽度都并排 */
+.about-layout {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
 .info-card {
-  height: 100%;
+  flex: 0 1 300px;
+  min-width: 220px;
+}
+.log-card {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* 窄窗口下渐进压缩记录行的次要信息，保证左右布局始终可用 */
+@media (max-width: 720px) {
+  .info-card {
+    flex-basis: 240px;
+  }
+  .log-hash {
+    display: none;
+  }
+}
+@media (max-width: 540px) {
+  .log-date {
+    display: none;
+  }
 }
 
 /* 品牌区：印章 + 名称 + 版本 */
