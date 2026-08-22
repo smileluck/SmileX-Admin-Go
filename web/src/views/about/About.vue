@@ -1,8 +1,8 @@
 <template>
   <div class="about-page">
     <n-grid :cols="24" responsive="screen" :x-gap="12" :y-gap="12">
-      <!-- 左：产品信息卡 -->
-      <n-gi span="24 m:7">
+      <!-- 左：产品信息卡（≥640px 即左右并排；naive 的 m=1024 过宽，窄窗口会被堆叠） -->
+      <n-gi span="24 s:7">
         <n-card class="info-card">
           <div class="brand">
             <div class="seal">S</div>
@@ -25,7 +25,7 @@
       </n-gi>
 
       <!-- 右：更新记录（git 提交日志构建时生成） -->
-      <n-gi span="24 m:17">
+      <n-gi span="24 s:17">
         <n-card title="更新记录">
           <template #header-extra>
             <span class="gen-meta mono">{{ commits.length }} 条提交 · 构建时自动生成</span>

@@ -2,7 +2,7 @@
   <div class="profile-page">
     <n-grid :cols="24" responsive="screen" :x-gap="12" :y-gap="12">
       <!-- 左：身份摘要 -->
-      <n-gi span="24 m:8">
+      <n-gi span="24 s:8">
         <n-card class="sum-card">
           <div class="sum">
             <div class="sum-avatar">{{ avatarChar }}</div>
@@ -33,7 +33,7 @@
       </n-gi>
 
       <!-- 右：资料编辑 + 修改密码 -->
-      <n-gi span="24 m:16">
+      <n-gi span="24 s:16">
         <n-space vertical :size="12">
           <n-card title="基本信息">
             <n-form ref="infoFormRef" :model="infoForm" :rules="infoRules" label-placement="left" label-width="80" class="form">
