@@ -298,9 +298,9 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "用户全部下线", Code: "online:kickUser", Menu: "menu:online", Method: "DELETE", Path: "/api/v1/users/*/sessions", Sort: 3},
 	// 日志管理
 	{Name: "查询登录日志", Code: "log:login:list", Menu: "menu:loginLog", Method: "GET", Path: "/api/v1/login-logs", Sort: 1},
-	{Name: "清空登录日志", Code: "log:login:clear", Menu: "menu:loginLog", Method: "DELETE", Path: "/api/v1/login-logs", Sort: 2},
+	{Name: "清理登录日志", Code: "log:login:clear", Menu: "menu:loginLog", Method: "DELETE", Path: "/api/v1/login-logs", Sort: 2},
 	{Name: "查询操作日志", Code: "log:op:list", Menu: "menu:opLog", Method: "GET", Path: "/api/v1/operation-logs", Sort: 1},
-	{Name: "清空操作日志", Code: "log:op:clear", Menu: "menu:opLog", Method: "DELETE", Path: "/api/v1/operation-logs", Sort: 2},
+	{Name: "清理操作日志", Code: "log:op:clear", Menu: "menu:opLog", Method: "DELETE", Path: "/api/v1/operation-logs", Sort: 2},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：

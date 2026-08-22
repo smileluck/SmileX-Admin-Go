@@ -52,14 +52,23 @@ func (uc *Usecase) ListOperationLogs(ctx context.Context, q OperationLogQuery, p
 	return logs, pagination.Page{Page: page, PageSize: pageSize, Total: total}, nil
 }
 
-// ClearLoginLogs 清空登录日志（与保留期清理共用按时间删除路径），返回删除行数
+// ClearLoginLogs 手动清理登录日志：与保留期自动清理同一截止时间（retentionDays 天前），
+// 近期日志保留；retentionDays=0（未启用保留期）时退化为清空全部。返回删除行数。
 func (uc *Usecase) ClearLoginLogs(ctx context.Context) (int64, error) {
-	return uc.repo.DeleteLoginBefore(ctx, time.Now())
+	return uc.repo.DeleteLoginBefore(ctx, uc.clearCutoff())
 }
 
-// ClearOperationLogs 清空操作日志，返回删除行数
+// ClearOperationLogs 手动清理操作日志（同一截止时间），返回删除行数
 func (uc *Usecase) ClearOperationLogs(ctx context.Context) (int64, error) {
-	return uc.repo.DeleteOperationBefore(ctx, time.Now())
+	return uc.repo.DeleteOperationBefore(ctx, uc.clearCutoff())
+}
+
+// clearCutoff 清理截止时间：与保留期自动清理共用 retentionDays 配置
+func (uc *Usecase) clearCutoff() time.Time {
+	if uc.retentionDays > 0 {
+		return time.Now().AddDate(0, 0, -uc.retentionDays)
+	}
+	return time.Now()
 }
 
 // RetentionDays 日志保留天数（0 = 永久保留）

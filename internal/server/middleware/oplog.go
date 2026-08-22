@@ -47,8 +47,8 @@ var actionNames = map[string]string{
 	"PUT /api/v1/permissions/:id":           "编辑权限",
 	"DELETE /api/v1/permissions/:id":        "删除权限",
 	"DELETE /api/v1/online-users/:sid":      "下线会话",
-	"DELETE /api/v1/login-logs":             "清空登录日志",
-	"DELETE /api/v1/operation-logs":         "清空操作日志",
+	"DELETE /api/v1/login-logs":             "清理登录日志",
+	"DELETE /api/v1/operation-logs":         "清理操作日志",
 }
 
 // OpLog 写请求自动审计

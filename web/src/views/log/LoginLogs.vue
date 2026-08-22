@@ -11,7 +11,7 @@
     <template #header>
       <div class="page-header">
         <span class="retention-hint">{{ retentionHint }}</span>
-        <n-button type="error" ghost v-permission="['log:login:clear']" @click="confirmClear">清空</n-button>
+        <n-button type="error" ghost v-permission="['log:login:clear']" @click="confirmClear">清理</n-button>
       </div>
     </template>
 
@@ -79,18 +79,23 @@ function resetQuery() {
 }
 
 function confirmClear() {
+  // 与后端保留期自动清理同一截止时间（retentionDays 天前）；未启用保留期时退化为清空全部
+  const content =
+    retentionDays.value > 0
+      ? `确定立即清理 ${retentionDays.value} 天前的登录日志吗？与自动保留策略一致，近期日志将保留。`
+      : '当前未启用保留期，确定清空全部登录日志吗？该操作不可恢复。'
   dialog.warning({
-    title: '清空确认',
-    content: '确定清空全部登录日志吗？该操作不可恢复。',
-    positiveText: '清空',
+    title: '清理确认',
+    content,
+    positiveText: '清理',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
         const { data } = await clearLoginLogs()
-        message.success(`已清空 ${data.data.deleted} 条登录日志`)
+        message.success(`已清理 ${data.data.deleted} 条过期日志`)
         load()
       } catch (e: any) {
-        message.error(e?.response?.data?.msg || '清空失败')
+        message.error(e?.response?.data?.msg || '清理失败')
       }
     },
   })
