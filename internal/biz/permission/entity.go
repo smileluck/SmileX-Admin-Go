@@ -8,10 +8,11 @@ import (
 	"time"
 )
 
-// Type 权限类型：menu 前端菜单 / button 按钮权限点（可选绑定接口参与 RBAC 校验）
+// Type 权限类型：dir 目录分组（无页面，仅组织菜单层级）/ menu 前端菜单页面 / button 按钮权限点（可选绑定接口参与 RBAC 校验）
 type Type string
 
 const (
+	TypeDir    Type = "dir"
 	TypeMenu   Type = "menu"
 	TypeButton Type = "button"
 	// TypeAPI 已废弃：接口绑定能力并入 button，存量 api 记录由启动迁移转为 button
@@ -50,25 +51,26 @@ func (p *Permission) Match(method, path string) bool {
 	return regexp.MustCompile(pattern).MatchString(path)
 }
 
-// MenuNode 菜单树节点
+// MenuNode 菜单树节点（Type 区分 dir 目录分组 / menu 菜单页面）
 type MenuNode struct {
 	ID       uint        `json:"id"`
 	Name     string      `json:"name"`
 	Code     string      `json:"code"`
+	Type     Type        `json:"type"`
 	Path     string      `json:"path"`
 	Icon     string      `json:"icon"`
 	Sort     int         `json:"sort"`
 	Children []*MenuNode `json:"children"`
 }
 
-// BuildMenuTree 将菜单权限列表组装为树（同级按 sort 升序、id 稳定排序）
+// BuildMenuTree 将菜单权限列表组装为树（含 dir 目录与 menu 菜单；同级按 sort 升序、id 稳定排序）
 func BuildMenuTree(items []*Permission, parentID uint) []*MenuNode {
 	var nodes []*MenuNode
 	for _, p := range items {
-		if p.Type != TypeMenu || p.ParentID != parentID {
+		if (p.Type != TypeDir && p.Type != TypeMenu) || p.ParentID != parentID {
 			continue
 		}
-		node := &MenuNode{ID: p.ID, Name: p.Name, Code: p.Code, Path: p.Path, Icon: p.Icon, Sort: p.Sort}
+		node := &MenuNode{ID: p.ID, Name: p.Name, Code: p.Code, Type: p.Type, Path: p.Path, Icon: p.Icon, Sort: p.Sort}
 		node.Children = BuildMenuTree(items, p.ID)
 		nodes = append(nodes, node)
 	}

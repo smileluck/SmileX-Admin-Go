@@ -16,7 +16,7 @@ func NewService(uc *bizperm.Usecase) *Service { return &Service{uc: uc} }
 type CreateRequest struct {
 	Name     string       `json:"name" binding:"required,max=20"`
 	Code     string       `json:"code" binding:"required,max=64"`
-	Type     bizperm.Type `json:"type" binding:"required,oneof=menu button"`
+	Type     bizperm.Type `json:"type" binding:"required,oneof=dir menu button"`
 	Method   string       `json:"method" binding:"omitempty,max=16"`
 	Path     string       `json:"path" binding:"omitempty,max=255"`
 	ParentID uint         `json:"parent_id"`

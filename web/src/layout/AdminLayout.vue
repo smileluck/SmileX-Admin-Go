@@ -95,17 +95,22 @@
           <div v-else-if="!menuCount" class="cmd-empty">未找到匹配的菜单</div>
           <template v-else>
             <template v-for="(it, i) in searchMatches" :key="it.path + it.name">
-              <!-- 目录：不可选中的分组标题，仅作视觉分层（无路由、不可跳转） -->
-              <div v-if="it.dir" class="cmd-group cmd-group-dir">
+              <!-- 目录：灰色不可选中的分组标题，按 depth 缩进形成树形层级（无路由、不可跳转） -->
+              <div
+                v-if="it.dir"
+                class="cmd-group cmd-group-dir"
+                :style="{ paddingLeft: 10 + (it.depth || 0) * 16 + 'px' }"
+              >
                 <span class="cmd-item-icon"><MenuIcon :icon="it.icon" /></span>
                 <span>{{ it.name }}</span>
                 <span class="dir-badge mono">目录</span>
               </div>
-              <!-- 菜单：可选中跳转 -->
+              <!-- 菜单：可选中跳转，按 depth 缩进展示树形结构 -->
               <div
                 v-else
                 class="cmd-item"
-                :class="{ active: i === activeIndex, 'cmd-item-child': !!it.parents }"
+                :class="{ active: i === activeIndex }"
+                :style="{ marginLeft: (it.depth || 0) * 16 + 'px' }"
                 :data-idx="i"
                 @mouseenter="activeIndex = i"
                 @click="gotoSearchItem(it)"
@@ -632,20 +637,16 @@ onUnmounted(() => {
   color: var(--sx-muted);
   padding: 7px 10px 3px;
 }
-/* 目录分组标题：仅视觉分层，无 hover/点击交互（不可选中） */
+/* 目录分组标题：灰色不可选中，仅视觉分层，无 hover/点击交互 */
 .cmd-group-dir {
   display: flex;
   align-items: center;
   gap: 8px;
   padding-top: 9px;
   font-size: 12px;
-  color: var(--sx-ink);
+  color: var(--sx-muted);
   user-select: none;
   cursor: default;
-}
-/* 目录下的子菜单项缩进，与分组标题形成层级 */
-.cmd-item-child {
-  margin-left: 14px;
 }
 .cmd-item {
   display: flex;

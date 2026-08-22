@@ -2,6 +2,7 @@
   <n-card>
     <template #header>
       <div class="page-actions">
+        <n-button type="primary" ghost @click="openCreate(0, 'dir')" v-permission="['menu:create']">新增顶级目录</n-button>
         <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
         <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
       </div>
@@ -16,21 +17,35 @@
       :expanded-row-keys="expandedKeys" @update:expanded-row-keys="onExpandUpdate" />
   </n-card>
 
-  <!-- 菜单 / 权限点编辑：type 区分表单 -->
+  <!-- 目录 / 菜单 / 权限点编辑：type 区分表单 -->
   <n-modal v-model:show="showModal" preset="dialog" :title="modalTitle" style="width: 480px">
     <n-form ref="formRef" :model="form" :rules="rules" label-placement="left" label-width="80">
       <n-form-item label="名称" path="name">
         <n-input v-model:value="form.name" :maxlength="20" show-word-limit placeholder="最多 20 个字符" />
       </n-form-item>
       <n-form-item label="编码" path="code" v-if="!editing">
-        <n-input v-model:value="form.code" :maxlength="64" show-word-limit :placeholder="form.type === 'menu' ? '如 menu:xxx' : '如 user:create'" />
+        <n-input v-model:value="form.code" :maxlength="64" show-word-limit :placeholder="`如 ${form.type}:xxx`" />
       </n-form-item>
-      <template v-if="form.type === 'menu'">
+      <!-- 目录：顶级分组，无路由无父级，仅图标/排序 -->
+      <template v-if="form.type === 'dir'">
+        <n-form-item label="图标">
+          <n-input-group>
+            <n-input v-model:value="form.icon" placeholder="图标名如 HomeOutline，或图片 URL">
+              <template #prefix>
+                <IconPreview v-if="form.icon" :icon="form.icon" :size="16" />
+              </template>
+            </n-input>
+            <n-button @click="openPicker">选择图标</n-button>
+          </n-input-group>
+        </n-form-item>
+      </template>
+      <!-- 菜单：页面，父级仅可挂目录（或留空为顶级） -->
+      <template v-else-if="form.type === 'menu'">
         <n-form-item label="路由"><n-input v-model:value="form.path" placeholder="如 /system/xxx" /></n-form-item>
         <n-form-item label="父级">
           <n-tree-select
             v-model:value="form.parent_id" :options="parentOptions"
-            clearable placeholder="顶级" key-field="key" label-field="label" children-field="children"
+            clearable placeholder="顶级（或选择目录）" key-field="key" label-field="label" children-field="children"
           />
         </n-form-item>
         <n-form-item label="图标">
@@ -44,6 +59,7 @@
           </n-input-group>
         </n-form-item>
       </template>
+      <!-- 权限点：父级仅可挂菜单 -->
       <template v-else>
         <n-form-item label="Method">
           <n-select v-model:value="form.method" :options="methodOptions" />
@@ -120,13 +136,14 @@ const formRef = ref<FormInst | null>(null)
 // 超管通配权限（id=1，code=all）禁止删除
 const WILDCARD_PERM_ID = 1
 
-// form.type 区分菜单 / 按钮权限点两种表单
+// form.type 区分目录 / 菜单 / 按钮权限点三种表单（dir → menu → button 三级模型）
 const form = reactive({
-  name: '', code: '', type: 'menu' as 'menu' | 'button',
+  name: '', code: '', type: 'menu' as 'dir' | 'menu' | 'button',
   method: 'GET', path: '', parent_id: null as number | null, icon: '', sort: 0,
 })
 const methodOptions = ['GET', 'POST', 'PUT', 'DELETE', '*'].map((m) => ({ label: m, value: m }))
-const modalTitle = computed(() => `${editing.value ? '编辑' : '新增'}${form.type === 'menu' ? '菜单' : '权限点'}`)
+const typeNames = { dir: '目录', menu: '菜单', button: '权限点' } as const
+const modalTitle = computed(() => `${editing.value ? '编辑' : '新增'}${typeNames[form.type]}`)
 
 const rules: FormRules = {
   name: [
@@ -203,38 +220,28 @@ function toggleExpand() {
   expandedKeys.value = expandAll.value ? collectParentIds(tree.value) : []
 }
 
-// 父级选项：仅菜单可作父级；编辑菜单时排除自身及其后代（防环）
+// 父级选项：dir → menu 层级组树，仅目标类型可选（菜单的父级仅目录、权限点的父级仅菜单；
+// 其余节点禁用仅作层级展示，无需再排除自身——可选类型与被编辑节点类型必然不同）
 const parentOptions = ref<any[]>([])
-function buildParentOptions(excludeID?: number) {
-  const excluded = new Set<number>(excludeID ? [excludeID] : [])
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const p of all.value) {
-      if (!excluded.has(p.id) && excluded.has(p.parent_id)) {
-        excluded.add(p.id)
-        changed = true
-      }
-    }
-  }
-  const menus = all.value.filter((p) => p.type === 'menu' && !excluded.has(p.id))
+function buildParentOptions(selectableType: 'dir' | 'menu') {
+  const nodes = all.value.filter((p) => p.type === 'dir' || p.type === 'menu')
   const build = (parentID: number): any[] =>
-    menus
+    nodes
       .filter((p) => p.parent_id === parentID)
       .sort((a, b) => a.sort - b.sort)
       .map((p) => {
         const children = build(p.id)
-        const n: any = { label: p.name, key: p.id }
+        const n: any = { label: p.name, key: p.id, disabled: p.type !== selectableType }
         if (children.length) n.children = children
         return n
       })
   parentOptions.value = build(0)
 }
 
-function openCreate(parentID: number, type: 'menu' | 'button') {
+function openCreate(parentID: number, type: 'dir' | 'menu' | 'button') {
   editing.value = false
   Object.assign(form, { name: '', code: '', type, method: 'GET', path: '', parent_id: parentID || null, icon: '', sort: 0 })
-  buildParentOptions()
+  if (type !== 'dir') buildParentOptions(type === 'menu' ? 'dir' : 'menu')
   showModal.value = true
 }
 
@@ -243,11 +250,10 @@ function openEdit(row: any) {
   editId.value = row.id
   const p = all.value.find((x) => x.id === row.id)!
   Object.assign(form, {
-    name: p.name, code: p.code, type: p.type as 'menu' | 'button',
+    name: p.name, code: p.code, type: p.type as 'dir' | 'menu' | 'button',
     method: p.method || 'GET', path: p.path, parent_id: p.parent_id || null, icon: p.icon, sort: p.sort,
   })
-  // 编辑菜单时排除自身及后代，避免把自己挂到子级下
-  buildParentOptions(p.type === 'menu' ? p.id : undefined)
+  if (p.type !== 'dir') buildParentOptions(p.type === 'menu' ? 'dir' : 'menu')
   showModal.value = true
 }
 
@@ -263,16 +269,17 @@ async function save() {
         name: form.name.trim(),
         method: form.type === 'button' ? form.method : '',
         path: form.path.trim(),
-        icon: form.type === 'menu' ? form.icon : '',
+        icon: form.type !== 'button' ? form.icon : '',
         sort: form.sort,
-        parent_id: form.parent_id ?? 0,
+        parent_id: form.type === 'dir' ? 0 : (form.parent_id ?? 0),
       })
     } else {
       await createPermission({
         name: form.name.trim(), code: form.code.trim(), type: form.type,
         method: form.type === 'button' ? form.method : '',
-        path: form.path.trim(), parent_id: form.parent_id ?? 0,
-        icon: form.type === 'menu' ? form.icon : '', sort: form.sort,
+        path: form.type === 'dir' ? '' : form.path.trim(),
+        parent_id: form.type === 'dir' ? 0 : (form.parent_id ?? 0),
+        icon: form.type !== 'button' ? form.icon : '', sort: form.sort,
       })
     }
     message.success('保存成功（菜单变更刷新页面后生效路由）')
@@ -319,7 +326,7 @@ const columns = computed<DataTableColumns<any>>(() => [
     title: '名称', key: 'name',
     render(row) {
       return h('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, [
-        row.type === 'menu' ? renderMenuIcon(row.icon, 16) : null,
+        row.type !== 'button' ? renderMenuIcon(row.icon, 16) : null,
         h('span', {}, row.name),
       ])
     },
@@ -327,13 +334,15 @@ const columns = computed<DataTableColumns<any>>(() => [
   {
     title: '类型', key: 'type', width: 80,
     render(row) {
-      return h(NTag, { size: 'small', type: row.type === 'menu' ? 'success' : 'info' }, { default: () => (row.type === 'menu' ? '菜单' : '按钮') })
+      const tagType = row.type === 'dir' ? 'warning' : row.type === 'menu' ? 'success' : 'info'
+      return h(NTag, { size: 'small', type: tagType }, { default: () => typeNames[row.type as keyof typeof typeNames] || row.type })
     },
   },
   { title: '编码', key: 'code' },
   {
     title: '路由/接口', key: 'path',
     render(row) {
+      if (row.type === 'dir') return '—'
       if (row.type === 'menu') return row.path || '—'
       return row.method && row.path ? `${row.method}  ${row.path}` : '—'
     },
@@ -346,11 +355,12 @@ const columns = computed<DataTableColumns<any>>(() => [
       if (userStore.has('menu:update')) {
         actions.push({ label: '编辑', accent: true, onClick: () => openEdit(row) })
       }
+      // 目录下加菜单、菜单下加权限点（dir → menu → button 三级模型）
+      if (row.type === 'dir' && userStore.has('menu:create')) {
+        actions.push({ label: '加子菜单', onClick: () => openCreate(row.id, 'menu') })
+      }
       if (row.type === 'menu' && userStore.has('menu:create')) {
-        actions.push(
-          { label: '加子菜单', onClick: () => openCreate(row.id, 'menu') },
-          { label: '加权限点', onClick: () => openCreate(row.id, 'button') },
-        )
+        actions.push({ label: '加权限点', onClick: () => openCreate(row.id, 'button') })
       }
       // 超管通配权限（all）禁止删除，不展示删除按钮
       if (row.id !== WILDCARD_PERM_ID && userStore.has('menu:delete')) {

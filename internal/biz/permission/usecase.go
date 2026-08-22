@@ -21,11 +21,40 @@ func (uc *Usecase) Create(ctx context.Context, name, code string, t Type, method
 			return nil, ErrDuplicateCode
 		}
 	}
+	if err := uc.validateParentType(ctx, t, parentID); err != nil {
+		return nil, err
+	}
 	p := &Permission{Name: name, Code: code, Type: t, Method: method, Path: path, ParentID: parentID, Icon: icon, Sort: sort}
 	if err := uc.repo.Create(ctx, p); err != nil {
 		return nil, err
 	}
 	return p, nil
+}
+
+// validateParentType 按节点类型校验父级层级（dir → menu → button 三级模型）：
+// dir 只能挂在顶级；menu 父级必须是 dir；button 父级必须是 menu。menu/button 允许顶级
+//（顶级页面菜单、超管通配权限点等场景）。
+func (uc *Usecase) validateParentType(ctx context.Context, t Type, parentID uint) error {
+	if t == TypeDir {
+		if parentID != 0 {
+			return errors.New("目录只能挂在顶级")
+		}
+		return nil
+	}
+	if parentID == 0 {
+		return nil
+	}
+	parent, err := uc.repo.FindByID(ctx, parentID)
+	if err != nil {
+		return err
+	}
+	if t == TypeMenu && parent.Type != TypeDir {
+		return errors.New("菜单的父级必须是目录")
+	}
+	if t == TypeButton && parent.Type != TypeMenu {
+		return errors.New("权限点的父级必须是菜单")
+	}
+	return nil
 }
 
 // Update 更新权限（空字符串字段不更新；icon 为指针，传空字符串可清空图标；parentID 为指针，传 0 可挪到顶级）
@@ -49,6 +78,9 @@ func (uc *Usecase) Update(ctx context.Context, id uint, name, method, path strin
 	p.Sort = sort
 	if parentID != nil {
 		if err := uc.validateParent(ctx, id, *parentID); err != nil {
+			return err
+		}
+		if err := uc.validateParentType(ctx, p.Type, *parentID); err != nil {
 			return err
 		}
 		p.ParentID = *parentID
@@ -105,7 +137,7 @@ func (uc *Usecase) List(ctx context.Context, q Query, page, pageSize int) ([]*Pe
 	return ps, pagination.Page{Page: page, PageSize: pageSize, Total: total}, err
 }
 
-// UserMenuTree 当前用户可见的菜单树
+// UserMenuTree 当前用户可见的菜单树（含 dir 目录分组与 menu 菜单页面）
 func (uc *Usecase) UserMenuTree(ctx context.Context, userID uint) ([]*MenuNode, error) {
 	ps, err := uc.repo.FindByUserID(ctx, userID)
 	if err != nil {
@@ -113,7 +145,7 @@ func (uc *Usecase) UserMenuTree(ctx context.Context, userID uint) ([]*MenuNode, 
 	}
 	menus := make([]*Permission, 0, len(ps))
 	for _, p := range ps {
-		if p.Type == TypeMenu {
+		if p.Type == TypeMenu || p.Type == TypeDir {
 			menus = append(menus, p)
 		}
 	}
@@ -121,13 +153,15 @@ func (uc *Usecase) UserMenuTree(ctx context.Context, userID uint) ([]*MenuNode, 
 }
 
 // MenuHit 菜单搜索命中项（顶栏命令面板用；Parents 为父级链提示，不含自身）
-// Dir 标记目录（含子菜单，无对应路由，前端选中时软提示选择具体菜单）
+// Dir 标记目录（含子菜单，无对应路由，前端渲染为灰色不可选中的分组标题）；
+// Depth 为节点在菜单树中的层级（根为 0），前端据此缩进展示树形结构
 type MenuHit struct {
 	Name    string `json:"name"`
 	Path    string `json:"path"`
 	Icon    string `json:"icon"`
 	Parents string `json:"parents"`
 	Dir     bool   `json:"dir"`
+	Depth   int    `json:"depth"`
 }
 
 // SearchUserMenus 当前用户可见菜单中按关键词模糊搜索（名称/路径，不区分大小写），上限 limit 条。
@@ -143,9 +177,9 @@ func (uc *Usecase) SearchUserMenus(ctx context.Context, userID uint, kw string, 
 	}
 	lkwl := strings.ToLower(kw)
 	var out []*MenuHit
-	// forceIn：祖先已命中，整棵子树纳入
-	var walk func(nodes []*MenuNode, parents string, forceIn bool)
-	walk = func(nodes []*MenuNode, parents string, forceIn bool) {
+	// forceIn：祖先已命中，整棵子树纳入；depth：当前节点层级（根为 0）
+	var walk func(nodes []*MenuNode, parents string, depth int, forceIn bool)
+	walk = func(nodes []*MenuNode, parents string, depth int, forceIn bool) {
 		for _, n := range nodes {
 			if limit > 0 && len(out) >= limit {
 				return
@@ -154,7 +188,8 @@ func (uc *Usecase) SearchUserMenus(ctx context.Context, userID uint, kw string, 
 			if forceIn || selfHit {
 				out = append(out, &MenuHit{
 					Name: n.Name, Path: n.Path, Icon: n.Icon,
-					Parents: parents, Dir: len(n.Children) > 0,
+					// dir 类型必为目录；len(Children)>0 兜底未迁移的旧数据（有子级的 menu）
+					Parents: parents, Dir: n.Type == TypeDir || len(n.Children) > 0, Depth: depth,
 				})
 			}
 			if len(n.Children) > 0 {
@@ -162,10 +197,10 @@ func (uc *Usecase) SearchUserMenus(ctx context.Context, userID uint, kw string, 
 				if parents != "" {
 					trail = parents + " / " + trail
 				}
-				walk(n.Children, trail, forceIn || selfHit)
+				walk(n.Children, trail, depth+1, forceIn || selfHit)
 			}
 		}
 	}
-	walk(tree, "", false)
+	walk(tree, "", 0, false)
 	return out, nil
 }

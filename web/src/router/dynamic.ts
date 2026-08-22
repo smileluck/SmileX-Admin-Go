@@ -3,7 +3,7 @@ import { RouterView, type RouteRecordRaw } from 'vue-router'
 import router from './index'
 import { useUserStore } from '../stores/user'
 
-// 父级菜单（如"系统管理"）没有页面组件，用透传组件渲染子路由。
+// 兼容存量"有子级的菜单"（未迁移为 dir 的旧数据）：菜单本身没有页面组件时，用透传组件渲染子路由。
 // 注意必须是组件对象：route.component 若是普通函数会被 vue-router 当作懒加载 loader（要求返回 Promise）。
 const Passthrough = { name: 'RouterViewPassthrough', render: () => h(RouterView) }
 
@@ -24,6 +24,12 @@ const viewModules: Record<string, () => Promise<any>> = {
 export function menuToRoutes(menus: any[]): RouteRecordRaw[] {
   const routes: RouteRecordRaw[] = []
   for (const m of menus ?? []) {
+    // 目录（dir）：无页面、无路由，仅作侧栏分组；子菜单提升到当前层级注册
+    //（子菜单 path 为绝对路径如 /system/users，提升后 URL 不变）
+    if (m.type === 'dir') {
+      routes.push(...menuToRoutes(m.children))
+      continue
+    }
     const comp = m.children?.length && !viewModules[m.code] ? Passthrough : viewModules[m.code]
     const route: RouteRecordRaw = {
       path: m.path,

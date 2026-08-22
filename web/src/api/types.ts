@@ -34,7 +34,7 @@ export interface Permission {
   id: number
   name: string
   code: string
-  type: 'menu' | 'button' // menu 菜单 | button 按钮权限点（method/path 非空时同时参与后端 RBAC 校验）
+  type: 'dir' | 'menu' | 'button' // dir 目录分组 | menu 菜单页面 | button 按钮权限点（method/path 非空时同时参与后端 RBAC 校验）
   method: string
   path: string
   parent_id: number
@@ -46,6 +46,7 @@ export interface MenuNode {
   id: number
   name: string
   code: string
+  type: 'dir' | 'menu' // dir 目录分组（无路由）| menu 菜单页面
   path: string
   icon: string
   sort: number
@@ -60,6 +61,7 @@ export interface MenuHit {
   icon: string
   parents: string
   dir?: boolean
+  depth?: number
 }
 
 export interface Role {

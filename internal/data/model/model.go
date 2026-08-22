@@ -45,7 +45,7 @@ type PermissionPO struct {
 	ID        uint   `gorm:"primaryKey"`
 	Name      string `gorm:"size:64"`
 	Code      string `gorm:"size:64;uniqueIndex"`
-	Type      string `gorm:"size:16"` // menu | button（api 已废弃，启动迁移自动转为 button）
+	Type      string `gorm:"size:16"` // dir | menu | button（api 已废弃，启动迁移自动转为 button；有菜单子级的 menu 迁移为 dir）
 	Method    string `gorm:"size:16"`
 	Path      string `gorm:"size:255"`
 	ParentID  uint

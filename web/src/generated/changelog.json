@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-08-22T08:51:22.435Z",
+  "generatedAt": "2026-08-22T09:32:03.340Z",
   "commits": [
+    {
+      "hash": "1b8a8cf",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "server,web",
+      "message": "add file management module"
+    },
     {
       "hash": "fc493f9",
       "date": "2026-08-22",

@@ -164,7 +164,7 @@ function confirmDelete(row: Role) {
   })
 }
 
-// 构造权限树：菜单 + 按钮权限点统一按 parent_id 组树（按钮自然挂在所属菜单下）
+// 构造权限树：目录 + 菜单 + 按钮权限点统一按 parent_id 组树（按钮自然挂在所属菜单下）
 async function openPerms(row: Role) {
   if (row.id === SUPER_ROLE_ID) { message.error(SUPER_ROLE_MSG); return }
   editId.value = row.id
@@ -190,7 +190,8 @@ function buildTree(items: Permission[], parentID = 0): any[] {
     .sort((a, b) => a.sort - b.sort)
     .map((p) => {
       const children = buildTree(items, p.id)
-      const n: any = { key: p.id, label: `${p.name}（${p.code}）${p.type === 'button' ? '［按钮］' : ''}` }
+      const typeTag = p.type === 'dir' ? '［目录］' : p.type === 'button' ? '［按钮］' : ''
+      const n: any = { key: p.id, label: `${p.name}（${p.code}）${typeTag}` }
       if (children.length) n.children = children
       return n
     })

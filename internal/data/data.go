@@ -145,7 +145,7 @@ func (d *Data) migrateAndSeed() error {
 		// 菜单种子数据（接口按钮权限点由 ensureSystemButtonPerms 统一补齐）
 		perms := []model.PermissionPO{
 			{ID: 100, Name: "首页", Code: "menu:dashboard", Type: "menu", Path: "/dashboard", Icon: "HomeOutline", Sort: 1},
-			{ID: 110, Name: "系统管理", Code: "menu:system", Type: "menu", Path: "/system", Icon: "SettingsOutline", Sort: 2},
+			{ID: 110, Name: "系统管理", Code: "menu:system", Type: "dir", Icon: "SettingsOutline", Sort: 2},
 			{ID: 111, Name: "用户管理", Code: "menu:user", Type: "menu", Path: "/system/users", ParentID: 110, Icon: "PersonOutline", Sort: 1},
 			{ID: 112, Name: "角色管理", Code: "menu:role", Type: "menu", Path: "/system/roles", ParentID: 110, Icon: "IdCardOutline", Sort: 2},
 			{ID: 114, Name: "菜单管理", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
@@ -196,10 +196,11 @@ func (d *Data) migrateAndSeed() error {
 	return d.ensureSystemButtonPerms()
 }
 
-// systemMenuDef 系统菜单幂等定义（ParentCode 为父菜单 code，缺失时落为顶级菜单）
+// systemMenuDef 系统菜单幂等定义（ParentCode 为父菜单 code，缺失时落为顶级菜单；Type 缺省为 menu）
 type systemMenuDef struct {
 	Name       string
 	Code       string
+	Type       string // dir | menu（缺省 menu）
 	Path       string
 	Icon       string
 	Sort       int
@@ -210,8 +211,8 @@ type systemMenuDef struct {
 var systemMenus = []systemMenuDef{
 	{Name: "在线用户", Code: "menu:online", Path: "/system/online", Icon: "PulseOutline", Sort: 5, ParentCode: "menu:system"},
 	{Name: "关于我们", Code: "menu:about", Path: "/about", Icon: "InformationCircleOutline", Sort: 9},
-	// 日志管理（顶级分组，父级先于子菜单声明以解析 ParentCode）
-	{Name: "日志管理", Code: "menu:log", Path: "/log", Icon: "DocumentTextOutline", Sort: 3},
+	// 日志管理（顶级目录分组，父级先于子菜单声明以解析 ParentCode）
+	{Name: "日志管理", Code: "menu:log", Type: "dir", Icon: "DocumentTextOutline", Sort: 3},
 	{Name: "登录日志", Code: "menu:loginLog", Path: "/log/login-logs", Icon: "LogInOutline", Sort: 1, ParentCode: "menu:log"},
 	{Name: "操作日志", Code: "menu:opLog", Path: "/log/operation-logs", Icon: "ClipboardOutline", Sort: 2, ParentCode: "menu:log"},
 	// 文件管理（顶级菜单）
@@ -219,20 +220,24 @@ var systemMenus = []systemMenuDef{
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
-// 按 code 查找，缺失则插入（父级按 code 解析，缺失时落为顶级菜单），并绑定超管角色 ID=1
+// 按 code 查找（type 兼容 menu/dir，存量迁移会翻转类型），缺失则插入（父级按 code 解析，缺失时落为顶级菜单），并绑定超管角色 ID=1
 func (d *Data) ensureSystemMenus() error {
 	for _, m := range systemMenus {
 		var po model.PermissionPO
-		err := d.DB.Unscoped().Where("code = ? AND type = ?", m.Code, string(permission.TypeMenu)).First(&po).Error
+		err := d.DB.Unscoped().Where("code = ? AND type IN ?", m.Code, []string{string(permission.TypeDir), string(permission.TypeMenu)}).First(&po).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			po = model.PermissionPO{Name: m.Name, Code: m.Code, Type: string(permission.TypeMenu), Path: m.Path, Icon: m.Icon, Sort: m.Sort}
-			// 父级菜单按 code 解析（存量库菜单 ID 与种子不保证一致）
+			t := m.Type
+			if t == "" {
+				t = string(permission.TypeMenu)
+			}
+			po = model.PermissionPO{Name: m.Name, Code: m.Code, Type: t, Path: m.Path, Icon: m.Icon, Sort: m.Sort}
+			// 父级菜单按 code 解析（存量库菜单 ID 与种子不保证一致；父级为 dir 或 menu 均可匹配）
 			if m.ParentCode != "" {
 				var parent model.PermissionPO
-				if err := d.DB.Where("code = ? AND type = ?", m.ParentCode, string(permission.TypeMenu)).First(&parent).Error; err == nil {
+				if err := d.DB.Where("code = ? AND type IN ?", m.ParentCode, []string{string(permission.TypeDir), string(permission.TypeMenu)}).First(&parent).Error; err == nil {
 					po.ParentID = parent.ID
 				}
 			}
@@ -392,10 +397,15 @@ func (d *Data) ensureSystemButtonPerms() error {
 //  1. api 权限类型并入 button（接口绑定能力由 button 承担）；
 //  2. 移除已并入「菜单管理」页的旧「权限管理」菜单入口（含角色关联）；
 //  3. 「菜单与权限」更名「菜单管理」；
-//  4. 删除已废弃的 roles.code 列（AutoMigrate 不会删列，删列时唯一索引随之删除）
+//  4. 目录类型显式化：含菜单/目录子级的 menu 转为 dir（仅按钮子级的不算，避免页面菜单被误判为分组）；
+//  5. 删除已废弃的 roles.code 列（AutoMigrate 不会删列，删列时唯一索引随之删除）
 func (d *Data) migrateLegacy() error {
 	if err := d.DB.Model(&model.PermissionPO{}).Where("type = ?", "api").
 		Update("type", "button").Error; err != nil {
+		return err
+	}
+	// MySQL 禁止在 UPDATE 子查询中直接引用目标表（Error 1093），包一层派生表绕过；PG/SQLite 同样兼容
+	if err := d.DB.Exec(`UPDATE permissions SET type = 'dir' WHERE type = 'menu' AND id IN (SELECT parent_id FROM (SELECT DISTINCT parent_id FROM permissions WHERE parent_id <> 0 AND type IN ('menu', 'dir')) AS sub)`).Error; err != nil {
 		return err
 	}
 	var legacyMenu model.PermissionPO
