@@ -113,6 +113,41 @@ service PermissionService {
   rpc ListPermissions(ListRequest) returns (ListPermissionsReply);
 }
 
+// ---- 在线用户（会话管理） ----
+
+message OnlineSession {
+  string sid = 1;          // 会话 ID（JWT sid）
+  uint32 user_id = 2;
+  string username = 3;
+  string nickname = 4;
+  string device = 5;       // web | app
+  string ip = 6;
+  string user_agent = 7;
+  int64 login_at = 8;      // unix 秒
+  int64 last_active_at = 9; // unix 秒
+  bool is_current = 10;    // 是否当前操作者自己的会话
+}
+
+message ListOnlineSessionsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string username = 3; // 模糊过滤
+  string device = 4;   // 精确过滤：web | app
+}
+
+message ListOnlineSessionsReply {
+  repeated OnlineSession list = 1;
+  int64 total = 2;
+}
+
+message SIDRequest { string sid = 1; }
+
+service OnlineSessionService {
+  rpc ListOnlineSessions(ListOnlineSessionsRequest) returns (ListOnlineSessionsReply);
+  rpc KickSession(SIDRequest) returns (Empty);              // 踢单个会话（某端下线）
+  rpc KickUserSessions(IDRequest) returns (Empty);          // 踢某用户全部端下线
+}
+
 // ---- 公共 ----
 
 message Empty {}

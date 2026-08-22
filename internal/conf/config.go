@@ -10,6 +10,7 @@ type Bootstrap struct {
 	Server Server `mapstructure:"server"`
 	DB     DB     `mapstructure:"db"`
 	JWT    JWT    `mapstructure:"jwt"`
+	Redis  Redis  `mapstructure:"redis"`
 	Auth   Auth   `mapstructure:"auth"`
 }
 
@@ -20,33 +21,33 @@ type Server struct {
 }
 
 type DB struct {
-	Driver       string   `mapstructure:"driver"`
-	AutoMigrate  bool     `mapstructure:"autoMigrate"`
-	MySQL        MySQL    `mapstructure:"mysql"`
-	Postgres     Postgres `mapstructure:"postgres"`
-	SQLite       SQLite   `mapstructure:"sqlite"`
+	Driver      string   `mapstructure:"driver"`
+	AutoMigrate bool     `mapstructure:"autoMigrate"`
+	MySQL       MySQL    `mapstructure:"mysql"`
+	Postgres    Postgres `mapstructure:"postgres"`
+	SQLite      SQLite   `mapstructure:"sqlite"`
 }
 
 type MySQL struct {
-	Host        string `mapstructure:"host"`
-	Port        int    `mapstructure:"port"`
-	User        string `mapstructure:"user"`
-	Password    string `mapstructure:"password"`
-	DBName      string `mapstructure:"dbname"`
-	Charset     string `mapstructure:"charset"`
-	MaxOpenConns int  `mapstructure:"maxOpenConns"`
-	MaxIdleConns int  `mapstructure:"maxIdleConns"`
+	Host         string `mapstructure:"host"`
+	Port         int    `mapstructure:"port"`
+	User         string `mapstructure:"user"`
+	Password     string `mapstructure:"password"`
+	DBName       string `mapstructure:"dbname"`
+	Charset      string `mapstructure:"charset"`
+	MaxOpenConns int    `mapstructure:"maxOpenConns"`
+	MaxIdleConns int    `mapstructure:"maxIdleConns"`
 }
 
 type Postgres struct {
-	Host        string `mapstructure:"host"`
-	Port        int    `mapstructure:"port"`
-	User        string `mapstructure:"user"`
-	Password    string `mapstructure:"password"`
-	DBName      string `mapstructure:"dbname"`
-	SSLMode     string `mapstructure:"sslmode"`
-	MaxOpenConns int  `mapstructure:"maxOpenConns"`
-	MaxIdleConns int  `mapstructure:"maxIdleConns"`
+	Host         string `mapstructure:"host"`
+	Port         int    `mapstructure:"port"`
+	User         string `mapstructure:"user"`
+	Password     string `mapstructure:"password"`
+	DBName       string `mapstructure:"dbname"`
+	SSLMode      string `mapstructure:"sslmode"`
+	MaxOpenConns int    `mapstructure:"maxOpenConns"`
+	MaxIdleConns int    `mapstructure:"maxIdleConns"`
 }
 
 type SQLite struct {
@@ -54,10 +55,16 @@ type SQLite struct {
 }
 
 type JWT struct {
-	Secret        string `mapstructure:"secret"`
-	Issuer        string `mapstructure:"issuer"`
-	ExpireHours   int    `mapstructure:"expireHours"`
-	RefreshHours  int    `mapstructure:"refreshHours"`
+	Secret       string `mapstructure:"secret"`
+	Issuer       string `mapstructure:"issuer"`
+	ExpireHours  int    `mapstructure:"expireHours"`
+	RefreshHours int    `mapstructure:"refreshHours"`
+}
+
+type Redis struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }
 
 type Auth struct {
