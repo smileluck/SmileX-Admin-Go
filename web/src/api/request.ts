@@ -28,7 +28,10 @@ request.interceptors.response.use(
         config.headers.Authorization = `Bearer ${token}`
         return request(config)
       }
-      router.push('/login')
+      // 刷新失败：回登录页。避免与路由守卫的跳转竞争重复导航
+      if (router.currentRoute.value.path !== '/login') {
+        router.push('/login')
+      }
     }
     return Promise.reject(error)
   },

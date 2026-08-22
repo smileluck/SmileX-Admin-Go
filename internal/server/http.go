@@ -30,13 +30,13 @@ import (
 
 // HTTPServer 聚合全部应用服务
 type HTTPServer struct {
-	cfg     *conf.Bootstrap
-	auth    *authsvc.Service
-	user    *usersvc.Service
-	role    *rolesvc.Service
-	perm    *permsvc.Service
-	engine  *gin.Engine
-	srv     *http.Server
+	cfg    *conf.Bootstrap
+	auth   *authsvc.Service
+	user   *usersvc.Service
+	role   *rolesvc.Service
+	perm   *permsvc.Service
+	engine *gin.Engine
+	srv    *http.Server
 }
 
 // NewHTTPServer 构造并注册路由
@@ -44,7 +44,12 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	role *rolesvc.Service, perm *permsvc.Service) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
-	e.Use(gin.Recovery(), middleware.CORS())
+	e.Use(gin.Recovery(),
+		middleware.SecurityHeaders(),
+		middleware.CORS(),
+		middleware.XSSFilter(),
+		middleware.SQLInjectionGuard(),
+	)
 
 	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, engine: e}
 	s.registerRoutes()
@@ -72,7 +77,8 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			response.OK(c, vo)
 		})
-		authg.POST("/login", func(c *gin.Context) {
+		// 登录接口按 IP 限流，防口令爆破
+		authg.POST("/login", middleware.LoginRateLimit(), func(c *gin.Context) {
 			var req authsvc.LoginRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
 				response.BadRequest(c, err.Error())
@@ -119,6 +125,39 @@ func (s *HTTPServer) registerRoutes() {
 				return
 			}
 			response.OK(c, vo)
+		})
+		// 本人更新昵称/邮箱
+		basic.PUT("/auth/profile", func(c *gin.Context) {
+			sub := middleware.Subject(c)
+			var req authsvc.UpdateProfileRequest
+			if err := c.ShouldBindJSON(&req); err != nil {
+				response.BadRequest(c, err.Error())
+				return
+			}
+			vo, err := s.auth.UpdateProfile(c.Request.Context(), sub.UserID, req)
+			if err != nil {
+				response.BadRequest(c, err.Error())
+				return
+			}
+			response.OK(c, vo)
+		})
+		// 本人修改密码（校验旧密码）
+		basic.PUT("/auth/password", func(c *gin.Context) {
+			sub := middleware.Subject(c)
+			var req authsvc.ChangePasswordRequest
+			if err := c.ShouldBindJSON(&req); err != nil {
+				response.BadRequest(c, err.Error())
+				return
+			}
+			if err := s.auth.ChangePassword(c.Request.Context(), sub.UserID, req); err != nil {
+				if errors.Is(err, bizauth.ErrInvalidCredentials) {
+					response.BadRequest(c, "原密码不正确")
+					return
+				}
+				response.ServerError(c, err.Error())
+				return
+			}
+			response.OK(c, nil)
 		})
 		// 当前用户可见菜单树
 		basic.GET("/menus", func(c *gin.Context) {
@@ -202,8 +241,8 @@ func (s *HTTPServer) Stop(ctx context.Context) error {
 // ---- 用户 ----
 
 type listResult struct {
-	List  interface{} `json:"list"`
-	Page  interface{} `json:"page"`
+	List interface{} `json:"list"`
+	Page interface{} `json:"page"`
 }
 
 func (s *HTTPServer) listUsers(c *gin.Context) {

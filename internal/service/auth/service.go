@@ -8,7 +8,6 @@ import (
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
 	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
-	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 )
 
 type Service struct {
@@ -60,21 +59,65 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*bizauth.Tok
 	return s.uc.Refresh(ctx, req.RefreshToken)
 }
 
+// ProfileUserVO 个人信息用户视图（专用 VO，字段显式声明，密码不可能泄露）
+type ProfileUserVO struct {
+	ID        uint     `json:"id"`
+	Username  string   `json:"username"`
+	Nickname  string   `json:"nickname"`
+	Email     string   `json:"email"`
+	Status    int      `json:"status"`
+	RoleNames []string `json:"role_names"`
+	CreatedAt string   `json:"created_at"`
+}
+
 // ProfileVO 个人信息视图
 type ProfileVO struct {
-	User        *user.User              `json:"user"`
+	User        *ProfileUserVO           `json:"user"`
 	Permissions []*permission.Permission `json:"permissions"`
 }
 
 func (s *Service) Profile(ctx context.Context, userID uint) (*ProfileVO, error) {
-	u, ps, err := s.uc.Profile(ctx, userID)
+	p, err := s.uc.Profile(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	if u == nil {
+	if p == nil || p.User == nil {
 		return nil, errors.New("user not found")
 	}
-	return &ProfileVO{User: u, Permissions: ps}, nil
+	u := p.User
+	vo := &ProfileUserVO{
+		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Email: u.Email,
+		Status: int(u.Status), RoleNames: p.RoleNames, CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+	if vo.RoleNames == nil {
+		vo.RoleNames = []string{}
+	}
+	return &ProfileVO{User: vo, Permissions: p.Permissions}, nil
+}
+
+// UpdateProfileRequest 本人更新资料入参
+type UpdateProfileRequest struct {
+	Nickname string `json:"nickname" binding:"max=20"`
+	Email    string `json:"email" binding:"omitempty,max=128,email"`
+}
+
+// UpdateProfile 本人更新昵称/邮箱，返回更新后的完整个人信息
+func (s *Service) UpdateProfile(ctx context.Context, userID uint, req UpdateProfileRequest) (*ProfileVO, error) {
+	if _, err := s.uc.UpdateProfile(ctx, userID, req.Nickname, req.Email); err != nil {
+		return nil, err
+	}
+	return s.Profile(ctx, userID)
+}
+
+// ChangePasswordRequest 本人修改密码入参
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required,min=6,max=64"`
+	NewPassword string `json:"new_password" binding:"required,min=6,max=64"`
+}
+
+// ChangePassword 本人修改密码（校验旧密码）
+func (s *Service) ChangePassword(ctx context.Context, userID uint, req ChangePasswordRequest) error {
+	return s.uc.ChangePassword(ctx, userID, req.OldPassword, req.NewPassword)
 }
 
 // Authorize 供 RBAC 中间件调用

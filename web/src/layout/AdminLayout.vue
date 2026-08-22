@@ -27,32 +27,70 @@
             <span class="crumb-title">{{ route.meta?.title || '首页' }}</span>
           </div>
         </div>
-        <n-dropdown :options="userOptions" @select="onUserAction">
-          <div class="user-chip">
-            <div class="avatar">{{ avatarChar }}</div>
-            <span class="user-name">{{ userStore.user?.nickname || userStore.user?.username }}</span>
-          </div>
-        </n-dropdown>
+        <div class="header-right">
+          <n-auto-complete
+            ref="searchRef"
+            v-model:value="searchKw"
+            class="menu-search"
+            :options="searchOptions"
+            :render-label="renderSearchLabel"
+            :input-props="{ autocomplete: 'off' }"
+            :placeholder="`搜索菜单页面 ${searchKbd}`"
+            clearable
+            @select="onSearchSelect"
+          />
+          <n-dropdown :options="userOptions" @select="onUserAction">
+            <div class="user-chip">
+              <div class="avatar">{{ avatarChar }}</div>
+              <span class="user-name">{{ userStore.user?.nickname || userStore.user?.username }}</span>
+            </div>
+          </n-dropdown>
+        </div>
       </n-layout-header>
       <n-layout-content class="content" content-style="padding: 8px;" :native-scrollbar="false">
         <router-view />
       </n-layout-content>
     </n-layout>
+
+    <!-- 修改密码（右上角用户下拉触发；成功后强制重新登录） -->
+    <n-modal v-model:show="showPwd" preset="dialog" title="修改密码" style="width: 420px">
+      <n-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-placement="left" label-width="90">
+        <n-form-item label="原密码" path="oldPassword">
+          <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" placeholder="请输入原密码" />
+        </n-form-item>
+        <n-form-item label="新密码" path="newPassword">
+          <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" placeholder="6-64 位" />
+        </n-form-item>
+        <n-form-item label="确认新密码" path="confirmPassword">
+          <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" placeholder="再次输入新密码" />
+        </n-form-item>
+      </n-form>
+      <template #action>
+        <n-button @click="showPwd = false">取消</n-button>
+        <n-button type="primary" :loading="pwdSaving" @click="savePwd">确定</n-button>
+      </template>
+    </n-modal>
   </n-layout>
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NButton, NIcon } from 'naive-ui'
+import {
+  NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NButton, NIcon,
+  NAutoComplete, NModal, NForm, NFormItem, NInput, useMessage,
+  type DropdownOption, type FormInst, type FormRules,
+} from 'naive-ui'
 import { MenuOutline } from '@vicons/ionicons5'
 import { useUserStore } from '../stores/user'
 import { renderMenuIcon } from '../utils/menuIcon'
+import { changePassword } from '../api'
 import type { MenuNode } from '../api/types'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const message = useMessage()
 
 // 折叠状态持久化到 localStorage，刷新后保持
 const COLLAPSED_KEY = 'sider_collapsed'
@@ -87,16 +125,132 @@ function onMenuSelect(key: string) {
 
 const avatarChar = computed(() => (userStore.user?.nickname || userStore.user?.username || 'U').charAt(0).toUpperCase())
 
-const userOptions = [
+const userOptions: DropdownOption[] = [
+  { label: '个人中心', key: 'profile' },
+  { label: '修改密码', key: 'password' },
+  { type: 'divider', key: 'divider' },
   { label: '退出登录', key: 'logout' },
 ]
 
-async function onUserAction(key: string) {
+async function onUserAction(key: string | number) {
   if (key === 'logout') {
     await userStore.logout()
     router.push('/login')
+  } else if (key === 'profile') {
+    router.push('/profile')
+  } else if (key === 'password') {
+    openPwdModal()
   }
 }
+
+// ---- 修改密码（本人，校验原密码；成功后强制重新登录） ----
+const showPwd = ref(false)
+const pwdSaving = ref(false)
+const pwdFormRef = ref<FormInst | null>(null)
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+// 与后端 binding 保持一致：6-64 位，两次输入须一致
+const pwdRules: FormRules = {
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: ['blur', 'input'] }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: ['blur', 'input'] },
+    { min: 6, max: 64, message: '密码长度 6-64 位', trigger: ['blur', 'input'] },
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: ['blur', 'input'] },
+    { validator: (_rule, v: string) => v === pwdForm.newPassword, message: '两次输入的密码不一致', trigger: ['blur', 'input'] },
+  ],
+}
+
+function openPwdModal() {
+  Object.assign(pwdForm, { oldPassword: '', newPassword: '', confirmPassword: '' })
+  showPwd.value = true
+}
+
+async function savePwd() {
+  try {
+    await pwdFormRef.value?.validate()
+  } catch {
+    return // 校验失败，错误已在表单项上展示
+  }
+  pwdSaving.value = true
+  try {
+    await changePassword({ old_password: pwdForm.oldPassword, new_password: pwdForm.newPassword })
+    showPwd.value = false
+    message.success('密码已修改，请重新登录')
+    await userStore.logout()
+    router.push('/login')
+  } catch (e: any) {
+    message.error(e?.response?.data?.msg || '修改失败')
+  } finally {
+    pwdSaving.value = false
+  }
+}
+
+// ---- 顶栏全局搜索：按菜单名称/路径模糊匹配并快速跳转 ----
+interface SearchItem { name: string; path: string; icon?: string; parents: string }
+
+// 父级菜单无组件，命中时跳到其第一个叶子节点对应的路由
+function firstLeafPath(n: MenuNode): string {
+  return n.children?.length ? firstLeafPath(n.children[0]) : n.path
+}
+
+function flattenMenus(nodes: MenuNode[] | null, parent: string): SearchItem[] {
+  const out: SearchItem[] = []
+  for (const n of nodes ?? []) {
+    out.push({ name: n.name, path: firstLeafPath(n), icon: n.icon, parents: parent })
+    if (n.children?.length) {
+      out.push(...flattenMenus(n.children, parent ? `${parent} / ${n.name}` : n.name))
+    }
+  }
+  return out
+}
+
+const searchItems = computed(() => flattenMenus(userStore.menus, ''))
+const searchKw = ref('')
+const searchRef = ref<{ focus: () => void } | null>(null)
+// 快捷键提示按平台显示（Mac 显示 ⌘K）
+const searchKbd = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K'
+
+// 命中项（value 用数组下标，渲染与跳转都从 searchMatches 取）
+const searchMatches = computed(() => {
+  const kw = searchKw.value.trim().toLowerCase()
+  if (!kw) return []
+  return searchItems.value
+    .filter((it) => it.name.toLowerCase().includes(kw) || it.path.toLowerCase().includes(kw))
+    .slice(0, 8)
+})
+const searchOptions = computed(() => searchMatches.value.map((it, i) => ({ label: it.name, value: String(i) })))
+
+// 自定义渲染下拉项：图标 + 名称 + 父级路径（下拉在 teleport 层，用内联样式避免 scoped CSS 失效）
+function renderSearchLabel(option: { value?: string | number; label?: string | number }) {
+  const it = searchMatches.value[Number(option.value)]
+  if (!it) return String(option.label ?? '')
+  return h('div', { style: 'display:flex;align-items:center;gap:8px;min-width:230px;padding:2px 0' }, [
+    h('span', { style: 'display:inline-flex;align-items:center;color:var(--sx-muted)' }, renderMenuIcon(it.icon, 15)),
+    h('span', { style: 'color:var(--sx-ink)' }, it.name),
+    it.parents ? h('span', { style: 'margin-left:auto;font-size:11px;color:var(--sx-muted);white-space:nowrap' }, it.parents) : null,
+  ])
+}
+
+function onSearchSelect(value: string | number) {
+  const it = searchMatches.value[Number(value)]
+  // naive-ui 选中后会把 label 写回输入框，nextTick 后再清空才能生效
+  nextTick(() => { searchKw.value = '' })
+  if (it && it.path !== route.path) {
+    router.push(it.path)
+  }
+}
+
+// Ctrl/Cmd + K 聚焦搜索框
+function onGlobalKeydown(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    searchRef.value?.focus()
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
 </script>
 
 <style scoped>
@@ -226,6 +380,19 @@ async function onUserAction(key: string) {
   font-size: 16px;
   font-weight: 600;
   color: var(--sx-ink);
+}
+
+/* 顶栏右侧：全局搜索 + 用户区 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.menu-search {
+  width: 230px;
+}
+.menu-search :deep(.n-input) {
+  --n-height: 34px;
 }
 
 .user-chip {

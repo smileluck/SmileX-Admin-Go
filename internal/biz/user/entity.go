@@ -18,9 +18,14 @@ const (
 // Password 密码值对象（bcrypt 封装）
 type Password string
 
+// passwordCost bcrypt 成本因子。bcrypt 每次哈希自动生成随机 salt 并编码进密文
+// （同一明文每次结果不同，天然抗彩虹表），无需额外 salt；cost 12 较默认值提升
+// 约一个数量级的暴力破解成本。旧哈希验证自适应兼容，无需数据迁移。
+const passwordCost = 12
+
 // NewPassword 从明文创建密码
 func NewPassword(plain string) (Password, error) {
-	b, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)
+	b, err := bcrypt.GenerateFromPassword([]byte(plain), passwordCost)
 	if err != nil {
 		return "", err
 	}

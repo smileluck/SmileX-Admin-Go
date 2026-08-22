@@ -1,11 +1,15 @@
 <template>
-  <n-card title="菜单管理">
-    <template #header-extra>
-      <n-space>
-        <n-button @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
-        <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
-        <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
-      </n-space>
+  <n-card>
+    <template #header>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <n-button @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
+        </div>
+        <div class="toolbar-right">
+          <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
+          <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
+        </div>
+      </div>
     </template>
     <n-data-table :columns="columns" :data="tree" :loading="loading" :row-key="rowKey"
       :expanded-row-keys="expandedKeys" @update:expanded-row-keys="onExpandUpdate" />
@@ -360,6 +364,20 @@ onMounted(refresh)
 </script>
 
 <style scoped>
+/* 工具行：页面标题已由顶栏展示，卡头只保留操作按钮 */
+.toolbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .icon-grid {
   max-height: 360px;
   overflow: auto;

@@ -37,14 +37,14 @@ func wireApp() (*server.HTTPServer, func(), error) {
 		return nil, nil, err
 	}
 	repo := user.NewRepo(dataData)
+	roleRepo := role.NewRepo(dataData)
 	permissionRepo := permission.NewRepo(dataData)
 	tokenIssuer := data.NewJWTIssuer(bootstrap)
 	usecase := captcha.NewUsecase(bootstrap)
-	authUsecase := auth.NewUsecase(repo, permissionRepo, tokenIssuer, usecase)
+	authUsecase := auth.NewUsecase(repo, roleRepo, permissionRepo, tokenIssuer, usecase)
 	service := auth2.NewService(authUsecase, usecase)
 	userUsecase := user2.NewUsecase(repo)
 	userService := user3.NewService(userUsecase)
-	roleRepo := role.NewRepo(dataData)
 	roleUsecase := role2.NewUsecase(roleRepo)
 	roleService := role3.NewService(roleUsecase)
 	permissionUsecase := permission2.NewUsecase(permissionRepo)
@@ -59,7 +59,7 @@ func wireApp() (*server.HTTPServer, func(), error) {
 
 var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha.NewUsecase, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha.Usecase)))
 
-var dataRepoSet = wire.NewSet(data.NewData, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, wire.Bind(new(auth.UserReader), new(user2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)))
+var dataRepoSet = wire.NewSet(data.NewData, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)))
 
 var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService)
 

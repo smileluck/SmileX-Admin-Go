@@ -8,6 +8,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	"github.com/smilex/smilex-admin-gin/internal/data/model"
+	"github.com/smilex/smilex-admin-gin/pkg/security"
 	"gorm.io/gorm"
 )
 
@@ -62,11 +63,16 @@ func (r *repo) replaceRoles(tx *gorm.DB, userID uint, roleIDs []uint) error {
 
 func (r *repo) Update(ctx context.Context, u *user.User) error {
 	po := model.UserToPO(u)
+	// 只更新基础资料字段；密码一律走 UpdatePassword，避免无哈希查询后被意外清空
 	return r.data.DB.WithContext(ctx).Model(&model.UserPO{}).Where("id = ?", u.ID).
 		Updates(map[string]interface{}{
 			"nickname": po.Nickname, "email": po.Email, "status": po.Status,
-			"password": po.Password,
 		}).Error
+}
+
+func (r *repo) UpdatePassword(ctx context.Context, id uint, passwordHash string) error {
+	return r.data.DB.WithContext(ctx).Model(&model.UserPO{}).Where("id = ?", id).
+		Updates(map[string]interface{}{"password": passwordHash}).Error
 }
 
 func (r *repo) Delete(ctx context.Context, id uint) error {
@@ -82,7 +88,21 @@ func (r *repo) Delete(ctx context.Context, id uint) error {
 	})
 }
 
+// FindByID 按 ID 查询（不含密码哈希；改密校验旧密码请用 FindByIDWithPassword）
 func (r *repo) FindByID(ctx context.Context, id uint) (*user.User, error) {
+	var po model.UserPO
+	if err := r.data.DB.WithContext(ctx).Model(&model.UserPO{}).Omit("password").First(&po, id).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	u := model.UserFromPO(&po)
+	if err := r.loadRoles(ctx, u); err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+// FindByIDWithPassword 按 ID 查询并携带密码哈希（校验旧密码场景专用）
+func (r *repo) FindByIDWithPassword(ctx context.Context, id uint) (*user.User, error) {
 	var po model.UserPO
 	if err := r.data.DB.WithContext(ctx).First(&po, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -105,7 +125,8 @@ func (r *repo) FindByUsername(ctx context.Context, username string) (*user.User,
 func (r *repo) List(ctx context.Context, q user.Query, page, pageSize int) ([]*user.User, int64, error) {
 	tx := r.data.DB.WithContext(ctx).Model(&model.UserPO{})
 	if q.Username != "" {
-		tx = tx.Where("username LIKE ?", q.Username+"%")
+		// 转义用户输入中的 LIKE 通配符，防止 %/_ 改变匹配语义（通配符注入）
+		tx = tx.Where("username LIKE ? ESCAPE '/'", security.EscapeLike(q.Username)+"%")
 	}
 	if q.Status != nil {
 		tx = tx.Where("status = ?", *q.Status)
@@ -115,7 +136,8 @@ func (r *repo) List(ctx context.Context, q user.Query, page, pageSize int) ([]*u
 		return nil, 0, err
 	}
 	var pos []model.UserPO
-	if err := tx.Offset((page - 1) * pageSize).Limit(pageSize).Order("id DESC").Find(&pos).Error; err != nil {
+	// 列表查询不带密码哈希
+	if err := tx.Omit("password").Offset((page - 1) * pageSize).Limit(pageSize).Order("id DESC").Find(&pos).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]*user.User, 0, len(pos))

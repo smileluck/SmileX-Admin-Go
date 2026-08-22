@@ -38,7 +38,8 @@ var dataRepoSet = wire.NewSet(
 	datarole.NewRepo,
 	dataperm.NewRepo,
 	// 跨上下文最小依赖接口绑定
-	wire.Bind(new(auth.UserReader), new(bizuser.Repo)),
+	wire.Bind(new(auth.UserStore), new(bizuser.Repo)),
+	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
 	wire.Bind(new(auth.PermissionReader), new(bizperm.Repo)),
 )
 

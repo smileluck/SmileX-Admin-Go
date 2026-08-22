@@ -69,9 +69,9 @@ type permEntry struct {
 // RBAC 接口鉴权（带 30s 内存缓存，减少查库）
 func RBAC(authSvc *authsvc.Service) gin.HandlerFunc {
 	var (
-		mu      sync.RWMutex
-		cache   = map[string]permEntry{}
-		ttl     = 30 * time.Second
+		mu    sync.RWMutex
+		cache = map[string]permEntry{}
+		ttl   = 30 * time.Second
 	)
 	return func(c *gin.Context) {
 		s := Subject(c)
@@ -93,6 +93,15 @@ func RBAC(authSvc *authsvc.Service) gin.HandlerFunc {
 		}
 		allow := authSvc.Authorize(c.Request.Context(), s.UserID, c.Request.Method, c.Request.URL.Path)
 		mu.Lock()
+		// 超阈值时清理过期条目，避免长期运行下缓存 map 无限增长
+		if len(cache) > 4096 {
+			now := time.Now()
+			for k, e := range cache {
+				if now.After(e.expireAt) {
+					delete(cache, k)
+				}
+			}
+		}
 		cache[key] = permEntry{allow: allow, expireAt: time.Now().Add(ttl)}
 		mu.Unlock()
 		if !allow {

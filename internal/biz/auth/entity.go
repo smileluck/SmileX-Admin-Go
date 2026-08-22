@@ -1,7 +1,12 @@
 // Package auth 认证限界上下文 —— 领域层
 package auth
 
-import "time"
+import (
+	"time"
+
+	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
+	"github.com/smilex/smilex-admin-gin/internal/biz/user"
+)
 
 // Subject 认证主体（JWT 载荷）
 type Subject struct {
@@ -23,4 +28,11 @@ type TokenIssuer interface {
 	IssueRefreshToken(s Subject) (token string, err error)
 	ParseAccessToken(token string) (*Subject, error)
 	ParseRefreshToken(token string) (*Subject, error)
+}
+
+// Profile 个人中心聚合视图：用户 + 角色名 + 权限点
+type Profile struct {
+	User        *user.User
+	RoleNames   []string
+	Permissions []*permission.Permission
 }

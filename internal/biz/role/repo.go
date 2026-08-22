@@ -25,6 +25,8 @@ type Repo interface {
 	Update(ctx context.Context, r *Role) error
 	Delete(ctx context.Context, id uint) error
 	FindByID(ctx context.Context, id uint) (*Role, error)
+	// FindNamesByIDs 按角色 ID 列表查角色名（个人中心展示用，按 id 排序返回）
+	FindNamesByIDs(ctx context.Context, ids []uint) ([]string, error)
 	// CountUsers 统计角色下的用户数量（删除保护用）
 	CountUsers(ctx context.Context, roleID uint) (int64, error)
 	List(ctx context.Context, q Query, page, pageSize int) ([]*Role, int64, error)

@@ -8,6 +8,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	"github.com/smilex/smilex-admin-gin/internal/data/model"
+	"github.com/smilex/smilex-admin-gin/pkg/security"
 	"gorm.io/gorm"
 )
 
@@ -79,6 +80,17 @@ func (r *repo) FindByID(ctx context.Context, id uint) (*role.Role, error) {
 	return ro, nil
 }
 
+// FindNamesByIDs 按角色 ID 列表查角色名（按 id 排序；个人中心展示用）
+func (r *repo) FindNamesByIDs(ctx context.Context, ids []uint) ([]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var names []string
+	err := r.data.DB.WithContext(ctx).Model(&model.RolePO{}).
+		Where("id IN ?", ids).Order("id").Pluck("name", &names).Error
+	return names, err
+}
+
 // CountUsers 统计角色下的用户数量（删除保护用）
 func (r *repo) CountUsers(ctx context.Context, roleID uint) (int64, error) {
 	var n int64
@@ -90,7 +102,8 @@ func (r *repo) CountUsers(ctx context.Context, roleID uint) (int64, error) {
 func (r *repo) List(ctx context.Context, q role.Query, page, pageSize int) ([]*role.Role, int64, error) {
 	tx := r.data.DB.WithContext(ctx).Model(&model.RolePO{})
 	if q.Name != "" {
-		tx = tx.Where("name LIKE ?", q.Name+"%")
+		// 转义用户输入中的 LIKE 通配符，防止 %/_ 改变匹配语义（通配符注入）
+		tx = tx.Where("name LIKE ? ESCAPE '/'", security.EscapeLike(q.Name)+"%")
 	}
 	var total int64
 	if err := tx.Count(&total).Error; err != nil {

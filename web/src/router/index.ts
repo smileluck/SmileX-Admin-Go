@@ -39,8 +39,14 @@ router.beforeEach(async (to, _from, next) => {
       const target = to.path === '/' ? firstPath : to.path
       next({ path: target, query: to.query, replace: true })
     } catch {
-      userStore.logout()
-      next('/login')
+      // token 失效（如 JWT 格式升级/改密后）：清态回登录页。
+      // 401 拦截器可能已发起 /login 导航，这里幂等处理避免重复导航竞态导致白屏
+      await userStore.logout()
+      if (router.currentRoute.value.path === '/login') {
+        next(false)
+      } else {
+        next('/login')
+      }
     }
     return
   }

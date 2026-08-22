@@ -43,6 +43,15 @@ export async function setupDynamicRoutes(): Promise<string> {
   for (const r of dynamic) {
     router.addRoute('layout-root', r)
   }
+  // 隐藏路由：个人中心（不在菜单树中，不在侧栏/全局搜索显示）
+  if (!router.hasRoute('profile')) {
+    router.addRoute('layout-root', {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/profile/Profile.vue'),
+      meta: { title: '个人中心' },
+    })
+  }
   // 菜单路由注册完成后再挂 404 兜底，避免刷新深链接时原始路径被吞（见 ./index.ts）
   if (!router.hasRoute('not-found')) {
     router.addRoute({ path: '/:pathMatch(.*)*', name: 'not-found', redirect: '/' })

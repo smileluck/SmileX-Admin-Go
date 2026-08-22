@@ -1,11 +1,13 @@
 <template>
-  <n-card title="用户管理">
-    <template #header-extra>
-      <n-space>
-        <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 160px" @keyup.enter="load" />
-        <n-button type="primary" @click="load">查询</n-button>
+  <n-card>
+    <template #header>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <n-input v-model:value="query.username" placeholder="用户名" clearable style="width: 180px" @keyup.enter="load" />
+          <n-button type="primary" @click="load">查询</n-button>
+        </div>
         <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">新增用户</n-button>
-      </n-space>
+      </div>
     </template>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
@@ -229,3 +231,20 @@ const columns = computed<DataTableColumns<UserInfo>>(() => [
 
 onMounted(() => { load(); loadRoles() })
 </script>
+
+<style scoped>
+/* 工具行：页面标题已由顶栏展示，卡头只保留搜索与操作 */
+.toolbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>

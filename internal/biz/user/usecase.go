@@ -121,5 +121,5 @@ func (uc *Usecase) ResetPassword(ctx context.Context, userID uint, newPlain stri
 	if err := u.SetPassword(newPlain); err != nil {
 		return err
 	}
-	return uc.repo.Update(ctx, u)
+	return uc.repo.UpdatePassword(ctx, userID, string(u.Password))
 }

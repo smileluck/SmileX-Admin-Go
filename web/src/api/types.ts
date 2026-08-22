@@ -26,6 +26,8 @@ export interface UserInfo {
   status: number
   role_ids: number[] | null
   created_at: string
+  // 个人中心 profile 接口额外返回的角色名列表
+  role_names?: string[]
 }
 
 export interface Permission {

@@ -14,8 +14,8 @@ type Body struct {
 }
 
 const (
-	CodeOK      = 0
-	CodeErr     = 1
+	CodeOK           = 0
+	CodeErr          = 1
 	CodeUnauthorized = 401
 	CodeForbidden    = 403
 )
@@ -29,7 +29,10 @@ func Fail(c *gin.Context, httpStatus, code int, msg string) {
 }
 
 func BadRequest(c *gin.Context, msg string) { Fail(c, http.StatusBadRequest, CodeErr, msg) }
-func Unauthorized(c *gin.Context, msg string) { Fail(c, http.StatusUnauthorized, CodeUnauthorized, msg) }
-func Forbidden(c *gin.Context, msg string)    { Fail(c, http.StatusForbidden, CodeForbidden, msg) }
-func NotFound(c *gin.Context, msg string)     { Fail(c, http.StatusNotFound, CodeErr, msg) }
-func ServerError(c *gin.Context, msg string)  { Fail(c, http.StatusInternalServerError, CodeErr, msg) }
+func Unauthorized(c *gin.Context, msg string) {
+	Fail(c, http.StatusUnauthorized, CodeUnauthorized, msg)
+}
+func Forbidden(c *gin.Context, msg string)       { Fail(c, http.StatusForbidden, CodeForbidden, msg) }
+func NotFound(c *gin.Context, msg string)        { Fail(c, http.StatusNotFound, CodeErr, msg) }
+func ServerError(c *gin.Context, msg string)     { Fail(c, http.StatusInternalServerError, CodeErr, msg) }
+func TooManyRequests(c *gin.Context, msg string) { Fail(c, http.StatusTooManyRequests, CodeErr, msg) }

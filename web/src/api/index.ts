@@ -11,6 +11,12 @@ export const logout = () => request.post<R<null>>('/auth/logout')
 export const getProfile = () =>
   request.get<R<{ user: UserInfo; permissions: Permission[] }>>('/auth/profile')
 export const getMenus = () => request.get<R<MenuNode[]>>('/menus')
+// 本人更新昵称/邮箱，返回更新后的完整个人信息
+export const updateProfile = (data: { nickname?: string; email?: string }) =>
+  request.put<R<{ user: UserInfo; permissions: Permission[] }>>('/auth/profile', data)
+// 本人修改密码（校验旧密码）；成功后需重新登录
+export const changePassword = (data: { old_password: string; new_password: string }) =>
+  request.put<R<null>>('/auth/password', data)
 
 // ---- 用户 ----
 export const listUsers = (params: { page: number; page_size: number; username?: string; status?: number }) =>
