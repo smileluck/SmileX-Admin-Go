@@ -27,7 +27,7 @@ db:
     path: ./data/smilex.db
 
 jwt:
-  secret: smilex-admin-secret-change-me
+  secret: CVU7ynyz7C9PR6txNu1NF+oFGWPJ/WyyXXOkmR0hNPU= # 32 字节强随机（openssl rand -base64 32）；更换后所有已签发 token 失效，需重新登录
   issuer: smilex-admin
   expireHours: 2 # access token 有效期
   refreshHours: 168 # refresh token 有效期，同时为会话生命周期（TTL 到期即下线）
