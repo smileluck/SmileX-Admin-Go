@@ -1,6 +1,20 @@
 {
-  "generatedAt": "2026-08-22T04:18:18.424Z",
+  "generatedAt": "2026-08-22T06:48:35.167Z",
   "commits": [
+    {
+      "hash": "536f8c8",
+      "date": "2026-08-22",
+      "type": "fix",
+      "scope": "web",
+      "message": "登录防重复提交——同端互斥下双击登录会自踢首次会话致跳转失败"
+    },
+    {
+      "hash": "2b21f0a",
+      "date": "2026-08-22",
+      "type": "chore",
+      "scope": "web",
+      "message": "刷新 changelog 与构建缓存"
+    },
     {
       "hash": "e4ff5a2",
       "date": "2026-08-22",
