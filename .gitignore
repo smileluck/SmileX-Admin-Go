@@ -31,7 +31,7 @@ pnpm-debug.log*
 .DS_Store
 
 # ---- 运行时产物 ----
-data/
+/data/
 *.db
 *.sqlite
 *.log
