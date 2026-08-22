@@ -1,5 +1,5 @@
 import request from './request'
-import type { CaptchaInfo, MenuHit, MenuNode, OnlineSession, PageResult, Permission, R, Role, TokenPair, UserInfo } from './types'
+import type { CaptchaInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -64,3 +64,12 @@ export const listOnlineUsers = (params: { page: number; page_size: number; usern
 export const kickOnlineSession = (sid: string) => request.delete<R<null>>(`/online-users/${sid}`)
 // 踢某用户全部端下线
 export const kickUserSessions = (userId: number) => request.delete<R<null>>(`/users/${userId}/sessions`)
+
+// ---- 日志 ----
+// start/end 为 unix 秒级时间戳
+export const listLoginLogs = (params: { page: number; page_size: number; username?: string; ip?: string; status?: number; start?: number; end?: number }) =>
+  request.get<R<LogPageResult<LoginLogInfo>>>('/login-logs', { params })
+export const clearLoginLogs = () => request.delete<R<{ deleted: number }>>('/login-logs')
+export const listOperationLogs = (params: { page: number; page_size: number; username?: string; method?: string; kw?: string; start?: number; end?: number }) =>
+  request.get<R<LogPageResult<OperationLogInfo>>>('/operation-logs', { params })
+export const clearOperationLogs = () => request.delete<R<{ deleted: number }>>('/operation-logs')

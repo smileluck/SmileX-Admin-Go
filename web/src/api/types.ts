@@ -85,3 +85,39 @@ export interface OnlineSession {
   last_active_at: string
   is_current: boolean // 是否当前登录者自己的会话
 }
+
+// 登录日志（一次登录尝试 = 一条）
+export interface LoginLogInfo {
+  id: number
+  username: string // 尝试登录的用户名（可能不存在）
+  ip: string
+  user_agent: string
+  device: string // web | app
+  status: number // 1 成功 0 失败
+  msg: string // 失败原因（成功为空）
+  created_at: string
+}
+
+// 操作日志（一条写请求审计）
+export interface OperationLogInfo {
+  id: number
+  user_id: number
+  username: string
+  method: string // POST / PUT / DELETE / PATCH
+  path: string // 实际请求路径
+  route: string // 路由模板
+  action: string // 中文动作名
+  params: string // 参数摘要（敏感字段已脱敏）
+  ip: string
+  user_agent: string
+  status_code: number
+  latency_ms: number
+  created_at: string
+}
+
+// 日志列表响应：列表 + 分页 + 保留天数（页面展示保留说明用）
+export interface LogPageResult<T> {
+  list: T[]
+  page: { page: number; page_size: number; total: number }
+  retention_days: number
+}
