@@ -1,6 +1,55 @@
 {
-  "generatedAt": "2026-08-22T03:52:12.286Z",
+  "generatedAt": "2026-08-22T04:07:41.848Z",
   "commits": [
+    {
+      "hash": "47bd308",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "web",
+      "message": "在线用户页面与会话失效体验"
+    },
+    {
+      "hash": "3b78f3f",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "system",
+      "message": "幂等菜单补齐机制与「在线用户/关于我们」种子"
+    },
+    {
+      "hash": "b3450d3",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "auth",
+      "message": "认证接入会话：JWT 携带 sid，中间件校验存活"
+    },
+    {
+      "hash": "31dc13d",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "session",
+      "message": "会话领域与 Redis 基础设施"
+    },
+    {
+      "hash": "e996e6d",
+      "date": "2026-08-22",
+      "type": "fix",
+      "scope": "",
+      "message": ".gitignore 的 data/ 规则锚定到根目录"
+    },
+    {
+      "hash": "e7e2c63",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "web",
+      "message": "全局搜索升级为命令面板样式"
+    },
+    {
+      "hash": "60908eb",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "web",
+      "message": "关于我们页面：左产品信息卡 + 右更新记录（git 日志构建时生成）"
+    },
     {
       "hash": "88e63cb",
       "date": "2026-08-22",
