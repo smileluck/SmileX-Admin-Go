@@ -1,3 +1,7 @@
+# ---- AI ----
+.gui-test-screenshots/
+.zcode/plans/
+
 # ---- Go ----
 bin/
 tmp/
@@ -45,3 +49,6 @@ configs/config.local.yaml
 
 # ---- 依赖注入生成（可选：提交 wire_gen.go 则删除此行）----
 # cmd/server/wire_gen.go
+
+
+
