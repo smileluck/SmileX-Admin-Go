@@ -52,6 +52,14 @@ export interface MenuNode {
   children: MenuNode[] | null
 }
 
+// 菜单搜索命中项（顶栏命令面板；parents 为父级链提示，不含自身）
+export interface MenuHit {
+  name: string
+  path: string
+  icon: string
+  parents: string
+}
+
 export interface Role {
   id: number
   name: string

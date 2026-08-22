@@ -1,5 +1,5 @@
 import request from './request'
-import type { CaptchaInfo, MenuNode, OnlineSession, PageResult, Permission, R, Role, TokenPair, UserInfo } from './types'
+import type { CaptchaInfo, MenuHit, MenuNode, OnlineSession, PageResult, Permission, R, Role, TokenPair, UserInfo } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -11,6 +11,9 @@ export const logout = () => request.post<R<null>>('/auth/logout')
 export const getProfile = () =>
   request.get<R<{ user: UserInfo; permissions: Permission[] }>>('/auth/profile')
 export const getMenus = () => request.get<R<MenuNode[]>>('/menus')
+// 菜单搜索（顶栏命令面板）：后端在当前用户可见菜单内模糊匹配，空关键词返回空
+export const searchMenus = (kw: string) =>
+  request.get<R<MenuHit[]>>('/menus/search', { params: { kw } })
 // 本人更新昵称/邮箱，返回更新后的完整个人信息
 export const updateProfile = (data: { nickname?: string; email?: string }) =>
   request.put<R<{ user: UserInfo; permissions: Permission[] }>>('/auth/profile', data)

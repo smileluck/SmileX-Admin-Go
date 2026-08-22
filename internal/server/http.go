@@ -187,6 +187,20 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			response.OK(c, tree)
 		})
+		// 菜单搜索（顶栏命令面板）：当前用户可见菜单内按关键词模糊匹配
+		basic.GET("/menus/search", func(c *gin.Context) {
+			sub := middleware.Subject(c)
+			kw := strings.TrimSpace(c.Query("kw"))
+			hits, err := s.perm.SearchUserMenus(c.Request.Context(), sub.UserID, kw)
+			if err != nil {
+				response.ServerError(c, err.Error())
+				return
+			}
+			if hits == nil {
+				hits = []*bizperm.MenuHit{}
+			}
+			response.OK(c, hits)
+		})
 	}
 
 	// ---- 受保护接口：JWT -> RBAC ----

@@ -90,7 +90,10 @@
         </div>
 
         <div ref="cmdListRef" class="cmd-list">
-          <template v-if="searchMatches.length">
+          <div v-if="searchLoading" class="cmd-empty">搜索中…</div>
+          <div v-else-if="!searchKw.trim()" class="cmd-empty">输入关键词搜索菜单</div>
+          <div v-else-if="!searchMatches.length" class="cmd-empty">未找到匹配的菜单</div>
+          <template v-else>
             <div class="cmd-group">菜单</div>
             <div
               v-for="(it, i) in searchMatches"
@@ -107,16 +110,13 @@
               <span v-show="i === activeIndex" class="kbd">↵</span>
             </div>
           </template>
-          <div v-else class="cmd-empty">
-            {{ searchKw.trim() ? '未找到匹配的菜单' : '暂无可用菜单' }}
-          </div>
         </div>
 
         <div class="cmd-foot">
           <span><span class="kbd">↑</span><span class="kbd">↓</span> 切换</span>
           <span><span class="kbd">↵</span> 跳转</span>
           <span><span class="kbd">esc</span> 关闭</span>
-          <span v-if="searchMatches.length" class="cmd-foot-count mono">{{ searchMatches.length }} 项</span>
+          <span v-if="!searchLoading && searchMatches.length" class="cmd-foot-count mono">{{ searchMatches.length }} 项</span>
         </div>
       </div>
     </n-modal>
@@ -134,8 +134,8 @@ import {
 import { MenuOutline, SearchOutline } from '@vicons/ionicons5'
 import { useUserStore } from '../stores/user'
 import { renderMenuIcon } from '../utils/menuIcon'
-import { changePassword } from '../api'
-import type { MenuNode } from '../api/types'
+import { changePassword, searchMenus } from '../api'
+import type { MenuHit, MenuNode } from '../api/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -236,29 +236,11 @@ async function savePwd() {
   }
 }
 
-// ---- 顶栏全局搜索：命令面板（自管键盘导航与高亮） ----
-interface SearchItem { name: string; path: string; icon?: string; parents: string }
+// ---- 顶栏全局搜索：命令面板（后端接口搜索 + 自管键盘导航与高亮） ----
 
 // 函数式组件：菜单图标（模板中渲染 renderMenuIcon 的 VNode）
 const MenuIcon = (props: { icon?: string }) => renderMenuIcon(props.icon, 16)
 
-// 父级菜单无组件，命中时跳到其第一个叶子节点对应的路由
-function firstLeafPath(n: MenuNode): string {
-  return n.children?.length ? firstLeafPath(n.children[0]) : n.path
-}
-
-function flattenMenus(nodes: MenuNode[] | null, parent: string): SearchItem[] {
-  const out: SearchItem[] = []
-  for (const n of nodes ?? []) {
-    out.push({ name: n.name, path: firstLeafPath(n), icon: n.icon, parents: parent })
-    if (n.children?.length) {
-      out.push(...flattenMenus(n.children, parent ? `${parent} / ${n.name}` : n.name))
-    }
-  }
-  return out
-}
-
-const searchItems = computed(() => flattenMenus(userStore.menus, ''))
 const searchKw = ref('')
 const searchRef = ref<HTMLInputElement | null>(null)
 // 快捷键提示按平台显示（Mac 显示 ⌘K）
@@ -267,6 +249,9 @@ const searchKbd = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAge
 const showSearch = ref(false)
 const activeIndex = ref(0)
 const cmdListRef = ref<HTMLElement | null>(null)
+// 命中项：空态保持空列表，输入后由防抖接口搜索填充
+const searchMatches = ref<MenuHit[]>([])
+const searchLoading = ref(false)
 
 function openSearch() {
   searchKw.value = ''
@@ -281,17 +266,31 @@ watch(showSearch, async (v) => {
   }
 })
 
-// 命中项：空关键词展示全部（命令面板惯例），有词则按名称/路径模糊过滤
-const searchMatches = computed(() => {
-  const kw = searchKw.value.trim().toLowerCase()
-  const list = kw
-    ? searchItems.value.filter((it) => it.name.toLowerCase().includes(kw) || it.path.toLowerCase().includes(kw))
-    : searchItems.value
-  return list.slice(0, 10)
+// 关键词变化：防抖 300ms 调接口搜索；序号防过期响应竞态
+let searchTimer: number | undefined
+let searchSeq = 0
+watch(searchKw, (kw) => {
+  activeIndex.value = 0
+  window.clearTimeout(searchTimer)
+  if (!kw.trim()) {
+    searchSeq++
+    searchLoading.value = false
+    searchMatches.value = []
+    return
+  }
+  searchLoading.value = true
+  const seq = ++searchSeq
+  searchTimer = window.setTimeout(async () => {
+    try {
+      const { data } = await searchMenus(kw.trim())
+      if (seq === searchSeq) searchMatches.value = data.data
+    } catch {
+      if (seq === searchSeq) searchMatches.value = []
+    } finally {
+      if (seq === searchSeq) searchLoading.value = false
+    }
+  }, 300)
 })
-
-// 关键词变化重置高亮
-watch(searchKw, () => { activeIndex.value = 0 })
 
 // 键盘导航：↑↓ 切换高亮、Enter 跳转（Esc 由 n-modal 的 close-on-esc 处理）
 function onCmdKeydown(e: KeyboardEvent) {
@@ -317,7 +316,7 @@ function scrollActiveIntoView() {
   })
 }
 
-function gotoSearchItem(it: SearchItem) {
+function gotoSearchItem(it: MenuHit) {
   showSearch.value = false
   if (it.path !== route.path) {
     router.push(it.path)
@@ -333,7 +332,10 @@ function onGlobalKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKeydown)
+  window.clearTimeout(searchTimer)
+})
 </script>
 
 <style scoped>

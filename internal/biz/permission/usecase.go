@@ -3,6 +3,7 @@ package permission
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/smilex/smilex-admin-gin/pkg/pagination"
 )
@@ -117,4 +118,54 @@ func (uc *Usecase) UserMenuTree(ctx context.Context, userID uint) ([]*MenuNode, 
 		}
 	}
 	return BuildMenuTree(menus, 0), nil
+}
+
+// MenuHit 菜单搜索命中项（顶栏命令面板用；Parents 为父级链提示，不含自身）
+type MenuHit struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	Icon    string `json:"icon"`
+	Parents string `json:"parents"`
+}
+
+// SearchUserMenus 当前用户可见菜单中按关键词模糊搜索（名称/路径，不区分大小写），上限 limit 条。
+// 空关键词返回空；父级菜单无页面组件，命中时落到其第一个叶子路由。
+func (uc *Usecase) SearchUserMenus(ctx context.Context, userID uint, kw string, limit int) ([]*MenuHit, error) {
+	if kw == "" {
+		return nil, nil
+	}
+	tree, err := uc.UserMenuTree(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	lkwl := strings.ToLower(kw)
+	var out []*MenuHit
+	var walk func(nodes []*MenuNode, parents string)
+	walk = func(nodes []*MenuNode, parents string) {
+		for _, n := range nodes {
+			if limit > 0 && len(out) >= limit {
+				return
+			}
+			if strings.Contains(strings.ToLower(n.Name), lkwl) || strings.Contains(strings.ToLower(n.Path), lkwl) {
+				out = append(out, &MenuHit{Name: n.Name, Path: menuFirstLeafPath(n), Icon: n.Icon, Parents: parents})
+			}
+			if len(n.Children) > 0 {
+				trail := n.Name
+				if parents != "" {
+					trail = parents + " / " + trail
+				}
+				walk(n.Children, trail)
+			}
+		}
+	}
+	walk(tree, "")
+	return out, nil
+}
+
+// menuFirstLeafPath 取菜单（子树）第一个叶子节点的路由
+func menuFirstLeafPath(n *MenuNode) string {
+	if len(n.Children) > 0 {
+		return menuFirstLeafPath(n.Children[0])
+	}
+	return n.Path
 }

@@ -57,3 +57,8 @@ func (s *Service) List(ctx context.Context, q bizperm.Query, page, pageSize int)
 func (s *Service) UserMenuTree(ctx context.Context, userID uint) ([]*bizperm.MenuNode, error) {
 	return s.uc.UserMenuTree(ctx, userID)
 }
+
+// SearchUserMenus 当前用户可见菜单关键词搜索（顶栏命令面板用，上限 10 条）
+func (s *Service) SearchUserMenus(ctx context.Context, userID uint, kw string) ([]*bizperm.MenuHit, error) {
+	return s.uc.SearchUserMenus(ctx, userID, kw, 10)
+}
