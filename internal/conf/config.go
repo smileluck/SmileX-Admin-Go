@@ -12,6 +12,7 @@ type Bootstrap struct {
 	JWT    JWT    `mapstructure:"jwt"`
 	Redis  Redis  `mapstructure:"redis"`
 	Auth   Auth   `mapstructure:"auth"`
+	Log    Log    `mapstructure:"log"`
 }
 
 type Server struct {
@@ -72,12 +73,19 @@ type Auth struct {
 	CaptchaEnabled bool `mapstructure:"captchaEnabled"`
 }
 
+type Log struct {
+	// RetentionDays 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
+	RetentionDays int `mapstructure:"retentionDays"`
+}
+
 // Load 从指定路径加载配置
 func Load(path string) (*Bootstrap, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
 	// 默认值：验证码默认开启，未配置时行为不变
 	v.SetDefault("auth.captchaEnabled", true)
+	// 默认值：日志默认保留 90 天
+	v.SetDefault("log.retentionDays", 90)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}

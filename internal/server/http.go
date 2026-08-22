@@ -11,9 +11,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -21,6 +23,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/internal/server/middleware"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
@@ -32,19 +35,20 @@ import (
 
 // HTTPServer 聚合全部应用服务
 type HTTPServer struct {
-	cfg     *conf.Bootstrap
-	auth    *authsvc.Service
-	user    *usersvc.Service
-	role    *rolesvc.Service
-	perm    *permsvc.Service
-	session *sessionsvc.Service
-	engine  *gin.Engine
-	srv     *http.Server
+	cfg      *conf.Bootstrap
+	auth     *authsvc.Service
+	user     *usersvc.Service
+	role     *rolesvc.Service
+	perm     *permsvc.Service
+	session  *sessionsvc.Service
+	log      *logsvc.Service
+	engine   *gin.Engine
+	srv      *http.Server
 }
 
 // NewHTTPServer 构造并注册路由
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
-	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service) *HTTPServer {
+	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	e.Use(gin.Recovery(),
@@ -54,7 +58,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 		middleware.SQLInjectionGuard(),
 	)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -80,8 +84,8 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			response.OK(c, vo)
 		})
-		// 登录接口按 IP 限流，防口令爆破
-		authg.POST("/login", middleware.LoginRateLimit(), func(c *gin.Context) {
+		// 登录接口：IP 黑名单（连续失败拉黑）→ 频率限制 → 登录，防口令爆破
+		authg.POST("/login", middleware.LoginIPGuard(s.log), middleware.LoginRateLimit(), func(c *gin.Context) {
 			var req authsvc.LoginRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
 				response.BadRequest(c, err.Error())
@@ -91,6 +95,18 @@ func (s *HTTPServer) registerRoutes() {
 			req.IP = c.ClientIP()
 			req.UserAgent = truncate(c.GetHeader("User-Agent"), 255)
 			tp, err := s.auth.Login(c.Request.Context(), req)
+			// 登录尝试（成功/失败）均落登录日志（异步，不影响登录响应）
+			loginStatus := bizlog.LoginStatusSuccess
+			loginMsg := ""
+			if err != nil {
+				loginStatus = bizlog.LoginStatusFail
+				loginMsg = err.Error()
+			}
+			s.log.RecordLogin(c.Request.Context(), &bizlog.LoginLog{
+				Username: req.Username, IP: req.IP, UserAgent: req.UserAgent,
+				Device: bizsession.NormalizeDevice(req.DeviceType),
+				Status: loginStatus, Msg: loginMsg,
+			})
 			if err != nil {
 				// 验证码错误属入参问题，返回 400 便于前端区分提示并自动刷新
 				if errors.Is(err, bizauth.ErrCaptcha) {
@@ -120,7 +136,8 @@ func (s *HTTPServer) registerRoutes() {
 	// ---- 自身数据接口：仅 JWT 认证，不做 RBAC ----
 	// profile 是本人信息、menus 是已按角色过滤的本人菜单树、logout 无服务端状态，均无越权面；
 	// 若纳入默认拒绝的 RBAC，仅绑定了菜单/按钮权限的普通用户登录后即 403 白屏。
-	basic := v1.Group("", middleware.JWT(s.auth))
+	// OpLog 自动审计写请求（登出/改资料/改密码）。
+	basic := v1.Group("", middleware.JWT(s.auth), middleware.OpLog(s.log))
 	{
 		// 登出：吊销当前会话，token 立即失效
 		basic.POST("/auth/logout", func(c *gin.Context) {
@@ -203,8 +220,8 @@ func (s *HTTPServer) registerRoutes() {
 		})
 	}
 
-	// ---- 受保护接口：JWT -> RBAC ----
-	protected := v1.Group("", middleware.JWT(s.auth), middleware.RBAC(s.auth))
+	// ---- 受保护接口：JWT -> 操作日志（RBAC 拒绝的尝试也记录）-> RBAC ----
+	protected := v1.Group("", middleware.JWT(s.auth), middleware.OpLog(s.log), middleware.RBAC(s.auth))
 
 	users := protected.Group("/users")
 	{
@@ -242,6 +259,18 @@ func (s *HTTPServer) registerRoutes() {
 	{
 		onlines.GET("", s.listOnlineUsers)
 		onlines.DELETE("/:sid", s.kickOnlineSession)
+	}
+
+	loginLogs := protected.Group("/login-logs")
+	{
+		loginLogs.GET("", s.listLoginLogs)
+		loginLogs.DELETE("", s.clearLoginLogs)
+	}
+
+	opLogs := protected.Group("/operation-logs")
+	{
+		opLogs.GET("", s.listOperationLogs)
+		opLogs.DELETE("", s.clearOperationLogs)
 	}
 }
 
@@ -630,6 +659,84 @@ func (s *HTTPServer) roleErr(c *gin.Context, err error) {
 		return
 	}
 	response.BadRequest(c, err.Error())
+}
+
+// ---- 日志 ----
+
+// logListResult 日志列表响应（附保留天数，前端展示保留说明用）
+type logListResult struct {
+	List          interface{} `json:"list"`
+	Page          interface{} `json:"page"`
+	RetentionDays int         `json:"retention_days"`
+}
+
+func (s *HTTPServer) listLoginLogs(c *gin.Context) {
+	page, size := pageParams(c)
+	q := bizlog.LoginLogQuery{Username: c.Query("username"), IP: c.Query("ip")}
+	if v := c.Query("status"); v != "" {
+		if st, err := strconv.Atoi(v); err == nil {
+			q.Status = &st
+		}
+	}
+	if t, ok := parseUnixParam(c.Query("start")); ok {
+		q.Start = t
+	}
+	if t, ok := parseUnixParam(c.Query("end")); ok {
+		q.End = t
+	}
+	logs, pg, err := s.log.ListLoginLogs(c.Request.Context(), q, page, size)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.OK(c, logListResult{List: logs, Page: pg, RetentionDays: s.log.RetentionDays()})
+}
+
+func (s *HTTPServer) clearLoginLogs(c *gin.Context) {
+	n, err := s.log.ClearLoginLogs(c.Request.Context())
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.OK(c, gin.H{"deleted": n})
+}
+
+func (s *HTTPServer) listOperationLogs(c *gin.Context) {
+	page, size := pageParams(c)
+	q := bizlog.OperationLogQuery{Username: c.Query("username"), Method: c.Query("method"), Keyword: c.Query("kw")}
+	if t, ok := parseUnixParam(c.Query("start")); ok {
+		q.Start = t
+	}
+	if t, ok := parseUnixParam(c.Query("end")); ok {
+		q.End = t
+	}
+	logs, pg, err := s.log.ListOperationLogs(c.Request.Context(), q, page, size)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.OK(c, logListResult{List: logs, Page: pg, RetentionDays: s.log.RetentionDays()})
+}
+
+func (s *HTTPServer) clearOperationLogs(c *gin.Context) {
+	n, err := s.log.ClearOperationLogs(c.Request.Context())
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.OK(c, gin.H{"deleted": n})
+}
+
+// parseUnixParam 解析 unix 秒级时间戳查询参数（空/非法返回 false 表示不限）
+func parseUnixParam(s string) (time.Time, bool) {
+	if s == "" {
+		return time.Time{}, false
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return time.Unix(n, 0), true
 }
 
 func pageParams(c *gin.Context) (int, int) {

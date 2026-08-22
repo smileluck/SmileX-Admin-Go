@@ -7,17 +7,20 @@ import (
 	"github.com/google/wire"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
+	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	bizrole "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
+	datalog "github.com/smilex/smilex-admin-gin/internal/data/log"
 	dataperm "github.com/smilex/smilex-admin-gin/internal/data/permission"
 	datarole "github.com/smilex/smilex-admin-gin/internal/data/role"
 	datasession "github.com/smilex/smilex-admin-gin/internal/data/session"
 	datauser "github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
@@ -30,6 +33,7 @@ var bizSet = wire.NewSet(
 	bizperm.NewUsecase,
 	bizcaptcha.NewUsecase,
 	bizsession.NewUsecase,
+	bizlog.NewUsecase,
 	auth.NewUsecase,
 	// 跨上下文最小依赖接口绑定（provider 与 bind 需同 set）
 	wire.Bind(new(auth.CaptchaVerifier), new(*bizcaptcha.Usecase)),
@@ -45,10 +49,12 @@ var dataRepoSet = wire.NewSet(
 	datarole.NewRepo,
 	dataperm.NewRepo,
 	datasession.NewRepo,
+	datalog.NewRepo,
 	// 跨上下文最小依赖接口绑定
 	wire.Bind(new(auth.UserStore), new(bizuser.Repo)),
 	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
 	wire.Bind(new(auth.PermissionReader), new(bizperm.Repo)),
+	wire.Bind(new(bizlog.Repo), new(*datalog.Repo)),
 )
 
 var serviceSet = wire.NewSet(
@@ -57,6 +63,7 @@ var serviceSet = wire.NewSet(
 	rolesvc.NewService,
 	permsvc.NewService,
 	sessionsvc.NewService,
+	logsvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

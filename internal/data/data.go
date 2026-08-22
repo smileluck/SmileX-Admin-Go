@@ -123,6 +123,7 @@ func (d *Data) migrateAndSeed() error {
 	if err := d.DB.AutoMigrate(
 		&model.UserPO{}, &model.RolePO{}, &model.PermissionPO{},
 		&model.UserRolePO{}, &model.RolePermissionPO{},
+		&model.LoginLogPO{}, &model.OperationLogPO{},
 	); err != nil {
 		return err
 	}
@@ -208,6 +209,10 @@ type systemMenuDef struct {
 var systemMenus = []systemMenuDef{
 	{Name: "在线用户", Code: "menu:online", Path: "/system/online", Icon: "PulseOutline", Sort: 5, ParentCode: "menu:system"},
 	{Name: "关于我们", Code: "menu:about", Path: "/about", Icon: "InformationCircleOutline", Sort: 9},
+	// 日志管理（顶级分组，父级先于子菜单声明以解析 ParentCode）
+	{Name: "日志管理", Code: "menu:log", Path: "/log", Icon: "DocumentTextOutline", Sort: 3},
+	{Name: "登录日志", Code: "menu:loginLog", Path: "/log/login-logs", Icon: "LogInOutline", Sort: 1, ParentCode: "menu:log"},
+	{Name: "操作日志", Code: "menu:opLog", Path: "/log/operation-logs", Icon: "ClipboardOutline", Sort: 2, ParentCode: "menu:log"},
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
@@ -291,6 +296,11 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "查询在线用户", Code: "online:list", Menu: "menu:online", Method: "GET", Path: "/api/v1/online-users", Sort: 1},
 	{Name: "下线会话", Code: "online:kick", Menu: "menu:online", Method: "DELETE", Path: "/api/v1/online-users/*", Sort: 2},
 	{Name: "用户全部下线", Code: "online:kickUser", Menu: "menu:online", Method: "DELETE", Path: "/api/v1/users/*/sessions", Sort: 3},
+	// 日志管理
+	{Name: "查询登录日志", Code: "log:login:list", Menu: "menu:loginLog", Method: "GET", Path: "/api/v1/login-logs", Sort: 1},
+	{Name: "清空登录日志", Code: "log:login:clear", Menu: "menu:loginLog", Method: "DELETE", Path: "/api/v1/login-logs", Sort: 2},
+	{Name: "查询操作日志", Code: "log:op:list", Menu: "menu:opLog", Method: "GET", Path: "/api/v1/operation-logs", Sort: 1},
+	{Name: "清空操作日志", Code: "log:op:clear", Menu: "menu:opLog", Method: "DELETE", Path: "/api/v1/operation-logs", Sort: 2},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -300,7 +310,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID
