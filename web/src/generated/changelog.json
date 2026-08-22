@@ -1,6 +1,104 @@
 {
-  "generatedAt": "2026-08-22T06:48:35.167Z",
+  "generatedAt": "2026-08-22T07:51:16.139Z",
   "commits": [
+    {
+      "hash": "044148e",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "web",
+      "message": "新增登录日志/操作日志页面"
+    },
+    {
+      "hash": "2c112f6",
+      "date": "2026-08-22",
+      "type": "refactor",
+      "scope": "web",
+      "message": "搜索栏抽为独立可折叠 SearchCard 卡片"
+    },
+    {
+      "hash": "eadfe79",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "server",
+      "message": "新增日志管理与登录 IP 黑名单"
+    },
+    {
+      "hash": "6f08316",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "system",
+      "message": "密码长度统一为 6-20 位，改密弹窗 label 加宽 20px"
+    },
+    {
+      "hash": "357d6b1",
+      "date": "2026-08-22",
+      "type": "fix",
+      "scope": "web",
+      "message": "顶栏固定，滚动仅发生在内容区域"
+    },
+    {
+      "hash": "82a2e7f",
+      "date": "2026-08-22",
+      "type": "fix",
+      "scope": "web",
+      "message": "关于我们内容溢出——naive 卡片内容类名修正"
+    },
+    {
+      "hash": "46909bf",
+      "date": "2026-08-22",
+      "type": "fix",
+      "scope": "web",
+      "message": "关于我们改为视口确定性高度，修复整页滚动"
+    },
+    {
+      "hash": "6614e45",
+      "date": "2026-08-22",
+      "type": "style",
+      "scope": "web",
+      "message": "关于我们左右卡片 4:6、去提交索引、撑满内容区高度"
+    },
+    {
+      "hash": "1af1d78",
+      "date": "2026-08-22",
+      "type": "style",
+      "scope": "web",
+      "message": "关于我们改为固定左右布局，任何窗口宽度不堆叠"
+    },
+    {
+      "hash": "6293467",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "web",
+      "message": "vite dev server 监听 0.0.0.0，局域网设备可访问"
+    },
+    {
+      "hash": "f2f815e",
+      "date": "2026-08-22",
+      "type": "chore",
+      "scope": "config",
+      "message": "更换强随机 JWT secret，消除弱密钥告警"
+    },
+    {
+      "hash": "e84004d",
+      "date": "2026-08-22",
+      "type": "fix",
+      "scope": "web",
+      "message": "关于我们/个人中心左右布局断点从 m(1024) 降到 s(640)"
+    },
+    {
+      "hash": "fee032b",
+      "date": "2026-08-22",
+      "type": "chore",
+      "scope": "",
+      "message": "更新gitignore和生成changelog日志"
+    },
+    {
+      "hash": "eda5c95",
+      "date": "2026-08-22",
+      "type": "chore",
+      "scope": "",
+      "message": "更新 .gitignore 新增AI相关忽略规则"
+    },
     {
       "hash": "536f8c8",
       "date": "2026-08-22",
