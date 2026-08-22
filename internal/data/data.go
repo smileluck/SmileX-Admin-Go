@@ -15,12 +15,12 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/internal/data/model"
 	"github.com/smilex/smilex-admin-gin/pkg/logger"
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
-	"go.uber.org/zap"
 )
 
 // Data 持久化入口（对应 Kratos 的 Data struct）
@@ -147,6 +147,7 @@ func (d *Data) migrateAndSeed() error {
 			{ID: 111, Name: "用户管理", Code: "menu:user", Type: "menu", Path: "/system/users", ParentID: 110, Icon: "PersonOutline", Sort: 1},
 			{ID: 112, Name: "角色管理", Code: "menu:role", Type: "menu", Path: "/system/roles", ParentID: 110, Icon: "IdCardOutline", Sort: 2},
 			{ID: 114, Name: "菜单管理", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
+			{ID: 115, Name: "在线用户", Code: "menu:online", Type: "menu", Path: "/system/online", ParentID: 110, Icon: "PulseOutline", Sort: 5},
 		}
 		adminPwd, err := user.NewPassword("123456")
 		if err != nil {
@@ -185,8 +186,71 @@ func (d *Data) migrateAndSeed() error {
 		}
 	}
 
+	// 系统菜单幂等补齐（存量库升级路径），需先于按钮补齐执行以解析按钮归属
+	if err := d.ensureSystemMenus(); err != nil {
+		return err
+	}
 	// 系统管理接口权限点补齐并绑定超管角色（存量库/全新库统一走此路径，幂等）
 	return d.ensureSystemButtonPerms()
+}
+
+// systemMenuDef 系统菜单幂等定义（ParentCode 为父菜单 code，缺失时落为顶级菜单）
+type systemMenuDef struct {
+	Name       string
+	Code       string
+	Path       string
+	Icon       string
+	Sort       int
+	ParentCode string
+}
+
+// systemMenus 需幂等保障的系统菜单清单（按 code 判断存在性；不指定固定 ID，避免与存量库自增记录冲突）
+var systemMenus = []systemMenuDef{
+	{Name: "在线用户", Code: "menu:online", Path: "/system/online", Icon: "PulseOutline", Sort: 5, ParentCode: "menu:system"},
+	{Name: "关于我们", Code: "menu:about", Path: "/about", Icon: "InformationCircleOutline", Sort: 9},
+}
+
+// ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
+// 按 code 查找，缺失则插入（父级按 code 解析，缺失时落为顶级菜单），并绑定超管角色 ID=1
+func (d *Data) ensureSystemMenus() error {
+	for _, m := range systemMenus {
+		var po model.PermissionPO
+		err := d.DB.Unscoped().Where("code = ? AND type = ?", m.Code, string(permission.TypeMenu)).First(&po).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			po = model.PermissionPO{Name: m.Name, Code: m.Code, Type: string(permission.TypeMenu), Path: m.Path, Icon: m.Icon, Sort: m.Sort}
+			// 父级菜单按 code 解析（存量库菜单 ID 与种子不保证一致）
+			if m.ParentCode != "" {
+				var parent model.PermissionPO
+				if err := d.DB.Where("code = ? AND type = ?", m.ParentCode, string(permission.TypeMenu)).First(&parent).Error; err == nil {
+					po.ParentID = parent.ID
+				}
+			}
+			if err := d.DB.Create(&po).Error; err != nil {
+				return err
+			}
+			logger.Info("ensured system menu", zap.String("code", m.Code))
+		}
+		if err := d.bindSuperRole(po.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// bindSuperRole 将权限绑定到超管角色（ID=1，幂等；超管已有 * 通配，绑定仅为角色权限树回显一致）
+func (d *Data) bindSuperRole(permID uint) error {
+	var cnt int64
+	if err := d.DB.Model(&model.RolePermissionPO{}).
+		Where("role_id = ? AND permission_id = ?", 1, permID).Count(&cnt).Error; err != nil {
+		return err
+	}
+	if cnt > 0 {
+		return nil
+	}
+	return d.DB.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: permID}).Error
 }
 
 // systemButtonPermDef 系统管理接口权限点定义（code 为幂等键，menu 为所属菜单 code）
@@ -223,6 +287,10 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "新增权限", Code: "menu:create", Menu: "menu:menu", Method: "POST", Path: "/api/v1/permissions", Sort: 3},
 	{Name: "编辑权限", Code: "menu:update", Menu: "menu:menu", Method: "PUT", Path: "/api/v1/permissions/*", Sort: 4},
 	{Name: "删除权限", Code: "menu:delete", Menu: "menu:menu", Method: "DELETE", Path: "/api/v1/permissions/*", Sort: 5},
+	// 在线用户
+	{Name: "查询在线用户", Code: "online:list", Menu: "menu:online", Method: "GET", Path: "/api/v1/online-users", Sort: 1},
+	{Name: "下线会话", Code: "online:kick", Menu: "menu:online", Method: "DELETE", Path: "/api/v1/online-users/*", Sort: 2},
+	{Name: "用户全部下线", Code: "online:kickUser", Menu: "menu:online", Method: "DELETE", Path: "/api/v1/users/*/sessions", Sort: 3},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -232,7 +300,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID
