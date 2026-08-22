@@ -1,6 +1,20 @@
 {
-  "generatedAt": "2026-08-22T04:07:41.848Z",
+  "generatedAt": "2026-08-22T04:18:18.424Z",
   "commits": [
+    {
+      "hash": "e4ff5a2",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "web",
+      "message": "命令面板改为接口搜索：空态打开，输入后防抖调接口"
+    },
+    {
+      "hash": "e1c224a",
+      "date": "2026-08-22",
+      "type": "chore",
+      "scope": "web",
+      "message": "刷新 changelog 与构建缓存"
+    },
     {
       "hash": "47bd308",
       "date": "2026-08-22",
