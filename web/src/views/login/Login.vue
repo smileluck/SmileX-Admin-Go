@@ -152,10 +152,12 @@ function persistRemembered() {
 }
 
 async function onLogin() {
+  // 防重复提交：会话同端互斥下，连续两次登录会让首次的导航因会话被顶替而 401 踢回登录页
+  if (loading.value) return
   try {
     await formRef.value?.validate()
   } catch {
-    return // 校验失败：表单项已提示，静默返回
+    return // 校验失败，表单项已提示，静默返回
   }
   loading.value = true
   try {
