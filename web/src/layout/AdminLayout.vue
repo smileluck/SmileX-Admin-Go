@@ -72,20 +72,53 @@
       </template>
     </n-modal>
 
-    <!-- 顶栏搜索：点击搜索图标弹出，选中后跳转对应页面 -->
-    <n-modal v-model:show="showSearch" preset="card" :bordered="false" style="width: 520px">
-      <n-auto-complete
-        ref="searchRef"
-        v-model:value="searchKw"
-        class="search-palette"
-        size="large"
-        :options="searchOptions"
-        :render-label="renderSearchLabel"
-        :input-props="{ autocomplete: 'off' }"
-        :placeholder="`搜索菜单页面 ${searchKbd}`"
-        clearable
-        @select="onSearchSelect"
-      />
+    <!-- 顶栏搜索：命令面板（输入行 / 结果列表 / 快捷键提示栏） -->
+    <n-modal v-model:show="showSearch" :bordered="false" style="width: auto">
+      <div class="cmd-palette">
+        <div class="cmd-input-row">
+          <n-icon :component="SearchOutline" :size="18" class="cmd-search-icon" />
+          <input
+            ref="searchRef"
+            v-model="searchKw"
+            class="cmd-input"
+            type="text"
+            autocomplete="off"
+            placeholder="搜索菜单页面…"
+            @keydown="onCmdKeydown"
+          />
+          <span class="kbd">esc</span>
+        </div>
+
+        <div ref="cmdListRef" class="cmd-list">
+          <template v-if="searchMatches.length">
+            <div class="cmd-group">菜单</div>
+            <div
+              v-for="(it, i) in searchMatches"
+              :key="it.path + it.name"
+              class="cmd-item"
+              :class="{ active: i === activeIndex }"
+              :data-idx="i"
+              @mouseenter="activeIndex = i"
+              @click="gotoSearchItem(it)"
+            >
+              <span class="cmd-item-icon"><MenuIcon :icon="it.icon" /></span>
+              <span class="cmd-item-name">{{ it.name }}</span>
+              <span v-if="it.parents" class="cmd-item-trail mono">{{ it.parents }}</span>
+              <span v-show="i === activeIndex" class="kbd">↵</span>
+            </div>
+          </template>
+          <div v-else class="cmd-empty">
+            {{ searchKw.trim() ? '未找到匹配的菜单' : '暂无可用菜单' }}
+          </div>
+        </div>
+
+        <div class="cmd-foot">
+          <span><span class="kbd">↑</span><span class="kbd">↓</span> 切换</span>
+          <span><span class="kbd">↵</span> 跳转</span>
+          <span><span class="kbd">esc</span> 关闭</span>
+          <span v-if="searchMatches.length" class="cmd-foot-count mono">{{ searchMatches.length }} 项</span>
+        </div>
+      </div>
     </n-modal>
   </n-layout>
 </template>
@@ -95,7 +128,7 @@ import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref, watch } f
 import { useRoute, useRouter } from 'vue-router'
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NButton, NIcon,
-  NAutoComplete, NModal, NForm, NFormItem, NInput, useMessage,
+  NModal, NForm, NFormItem, NInput, useMessage,
   type DropdownOption, type FormInst, type FormRules,
 } from 'naive-ui'
 import { MenuOutline, SearchOutline } from '@vicons/ionicons5'
@@ -203,8 +236,11 @@ async function savePwd() {
   }
 }
 
-// ---- 顶栏全局搜索：按菜单名称/路径模糊匹配并快速跳转 ----
+// ---- 顶栏全局搜索：命令面板（自管键盘导航与高亮） ----
 interface SearchItem { name: string; path: string; icon?: string; parents: string }
+
+// 函数式组件：菜单图标（模板中渲染 renderMenuIcon 的 VNode）
+const MenuIcon = (props: { icon?: string }) => renderMenuIcon(props.icon, 16)
 
 // 父级菜单无组件，命中时跳到其第一个叶子节点对应的路由
 function firstLeafPath(n: MenuNode): string {
@@ -224,12 +260,13 @@ function flattenMenus(nodes: MenuNode[] | null, parent: string): SearchItem[] {
 
 const searchItems = computed(() => flattenMenus(userStore.menus, ''))
 const searchKw = ref('')
-const searchRef = ref<{ focus: () => void } | null>(null)
+const searchRef = ref<HTMLInputElement | null>(null)
 // 快捷键提示按平台显示（Mac 显示 ⌘K）
 const searchKbd = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K'
 
-// ---- 搜索弹窗（点击顶栏图标 / ⌘K 唤起） ----
 const showSearch = ref(false)
+const activeIndex = ref(0)
+const cmdListRef = ref<HTMLElement | null>(null)
 
 function openSearch() {
   searchKw.value = ''
@@ -240,38 +277,49 @@ function openSearch() {
 watch(showSearch, async (v) => {
   if (v) {
     await nextTick()
-    searchKw.value = ''
     searchRef.value?.focus()
   }
 })
 
-// 命中项（value 用数组下标，渲染与跳转都从 searchMatches 取）
+// 命中项：空关键词展示全部（命令面板惯例），有词则按名称/路径模糊过滤
 const searchMatches = computed(() => {
   const kw = searchKw.value.trim().toLowerCase()
-  if (!kw) return []
-  return searchItems.value
-    .filter((it) => it.name.toLowerCase().includes(kw) || it.path.toLowerCase().includes(kw))
-    .slice(0, 8)
+  const list = kw
+    ? searchItems.value.filter((it) => it.name.toLowerCase().includes(kw) || it.path.toLowerCase().includes(kw))
+    : searchItems.value
+  return list.slice(0, 10)
 })
-const searchOptions = computed(() => searchMatches.value.map((it, i) => ({ label: it.name, value: String(i) })))
 
-// 自定义渲染下拉项：图标 + 名称 + 父级路径（下拉在 teleport 层，用内联样式避免 scoped CSS 失效）
-function renderSearchLabel(option: { value?: string | number; label?: string | number }) {
-  const it = searchMatches.value[Number(option.value)]
-  if (!it) return String(option.label ?? '')
-  return h('div', { style: 'display:flex;align-items:center;gap:8px;min-width:230px;padding:2px 0' }, [
-    h('span', { style: 'display:inline-flex;align-items:center;color:var(--sx-muted)' }, renderMenuIcon(it.icon, 15)),
-    h('span', { style: 'color:var(--sx-ink)' }, it.name),
-    it.parents ? h('span', { style: 'margin-left:auto;font-size:11px;color:var(--sx-muted);white-space:nowrap' }, it.parents) : null,
-  ])
+// 关键词变化重置高亮
+watch(searchKw, () => { activeIndex.value = 0 })
+
+// 键盘导航：↑↓ 切换高亮、Enter 跳转（Esc 由 n-modal 的 close-on-esc 处理）
+function onCmdKeydown(e: KeyboardEvent) {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    activeIndex.value = Math.min(activeIndex.value + 1, searchMatches.value.length - 1)
+    scrollActiveIntoView()
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    activeIndex.value = Math.max(activeIndex.value - 1, 0)
+    scrollActiveIntoView()
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    const it = searchMatches.value[activeIndex.value]
+    if (it) gotoSearchItem(it)
+  }
 }
 
-function onSearchSelect(value: string | number) {
-  const it = searchMatches.value[Number(value)]
-  // naive-ui 选中后会把 label 写回输入框，nextTick 后再清空才能生效
-  nextTick(() => { searchKw.value = '' })
+// 高亮项滚动跟随（列表超出高度时保持可见）
+function scrollActiveIntoView() {
+  nextTick(() => {
+    cmdListRef.value?.querySelector(`[data-idx="${activeIndex.value}"]`)?.scrollIntoView({ block: 'nearest' })
+  })
+}
+
+function gotoSearchItem(it: SearchItem) {
   showSearch.value = false
-  if (it && it.path !== route.path) {
+  if (it.path !== route.path) {
     router.push(it.path)
   }
 }
@@ -492,8 +540,119 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   background: transparent !important;
 }
 
-/* 搜索弹窗：输入框撑满弹窗宽度 */
-.search-palette {
-  width: 100%;
+/* 搜索命令面板：输入行 / 结果列表 / 快捷键提示栏 */
+.cmd-palette {
+  width: 520px;
+  background: var(--sx-surface);
+  border-radius: 12px;
+  box-shadow: var(--sx-shadow);
+  overflow: hidden;
+}
+.cmd-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--sx-line);
+}
+.cmd-search-icon {
+  color: var(--sx-muted);
+  flex-shrink: 0;
+}
+.cmd-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--sx-ink);
+}
+.cmd-input::placeholder {
+  color: var(--sx-muted);
+}
+.cmd-list {
+  max-height: 330px;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 6px;
+}
+.cmd-group {
+  font-size: 11px;
+  color: var(--sx-muted);
+  padding: 7px 10px 3px;
+}
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.cmd-item.active {
+  background: var(--sx-accent-soft);
+}
+.cmd-item-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--sx-muted);
+  flex-shrink: 0;
+}
+.cmd-item-name {
+  font-size: 13px;
+  color: var(--sx-ink);
+  white-space: nowrap;
+}
+.cmd-item-trail {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--sx-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmd-item .kbd {
+  flex-shrink: 0;
+  opacity: 0;
+}
+.cmd-item.active .kbd {
+  opacity: 1;
+}
+.cmd-empty {
+  padding: 26px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--sx-muted);
+}
+.cmd-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--sx-line);
+  font-size: 11px;
+  color: var(--sx-muted);
+}
+.cmd-foot-count {
+  margin-left: auto;
+}
+
+/* 键帽：快捷键提示 */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  margin-right: 3px;
+  border: 1px solid var(--sx-line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: var(--sx-font-mono);
+  font-size: 10px;
+  color: var(--sx-muted);
+  background: var(--sx-bg);
 }
 </style>
