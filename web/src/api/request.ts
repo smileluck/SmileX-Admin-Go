@@ -20,7 +20,11 @@ request.interceptors.response.use(
   (resp) => resp,
   async (error) => {
     const { response, config } = error
-    if (response?.status === 401 && !config._retried) {
+    // 认证端点自身的 401 不进刷新流程：refresh 请求若也走这里会形成
+    // refreshing 单飞 promise 的自等待死锁（await 等待包含自身的调用链），
+    // 路由守卫因此永久挂起 —— 这就是 token 过期白屏的根因
+    const isAuthEndpoint = typeof config?.url === 'string' && /\/auth\/(refresh|login|logout)$/.test(config.url)
+    if (response?.status === 401 && !config._retried && !isAuthEndpoint) {
       config._retried = true
       refreshing ||= useUserStore().refresh().finally(() => (refreshing = null))
       const token = await refreshing
@@ -28,14 +32,12 @@ request.interceptors.response.use(
         config.headers.Authorization = `Bearer ${token}`
         return request(config)
       }
-      // 刷新失败：会话已失效（被顶替/被下线/过期），清理本地令牌并回登录页携带原因
-      const store = useUserStore()
-      store.accessToken = ''
-      store.refreshTokenValue = ''
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
+      // 刷新失败：会话已失效（被顶替/被下线/过期），轻量清态并回登录页携带原因。
+      // clearAuth 不发 logout 请求，避免过期场景下二次 401 竞态；
+      // 若正处于路由初始化（守卫 await 中），守卫会兜底返回登录页，这里幂等跳过
+      useUserStore().clearAuth()
       if (router.currentRoute.value.path !== '/login') {
-        router.push({ path: '/login', query: { reason: 'expired' } })
+        router.replace({ path: '/login', query: { reason: 'expired' } })
       }
     }
     return Promise.reject(error)

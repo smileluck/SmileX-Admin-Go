@@ -56,9 +56,15 @@ export async function setupDynamicRoutes(): Promise<string> {
       meta: { title: '个人中心' },
     })
   }
-  // 菜单路由注册完成后再挂 404 兜底，避免刷新深链接时原始路径被吞（见 ./index.ts）
+  // 菜单路由注册完成后再挂 404 兜底，避免刷新深链接时原始路径被吞（见 ./index.ts）；
+  // 真正的未知路径渲染 404 错误页
   if (!router.hasRoute('not-found')) {
-    router.addRoute({ path: '/:pathMatch(.*)*', name: 'not-found', redirect: '/' })
+    router.addRoute({
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/error/NotFound.vue'),
+      meta: { title: '页面不存在' },
+    })
   }
   userStore.routesLoaded = true
   return dynamic.length ? dynamic[0].path : '/'

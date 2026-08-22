@@ -2,12 +2,13 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { setupDynamicRoutes } from './dynamic'
 
-// 静态路由：登录页、主布局壳
-// 注意：404 兜底不能静态注册——刷新深链接时动态菜单路由尚未注册，静态 catch-all 的
-// redirect:'/' 会先把原始路径吞掉（to.path 变成 '/'），导致刷新回到首页。兜底在
-// 动态路由注册完成后于 ./dynamic.ts 中补充。
+// 静态路由：登录页、错误页、主布局壳
+// 注意：404 兜底不能静态注册——刷新深链接时动态菜单路由尚未注册，静态 catch-all 会把
+// 原始路径吞掉显示 404。兜底在动态路由注册完成后于 ./dynamic.ts 中补充（渲染 404 页）。
 const staticRoutes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: () => import('../views/login/Login.vue'), meta: { title: '登录' } },
+  { path: '/404', name: 'not-found-page', component: () => import('../views/error/NotFound.vue'), meta: { title: '页面不存在' } },
+  { path: '/500', name: 'server-error-page', component: () => import('../views/error/ServerError.vue'), meta: { title: '服务异常' } },
   {
     path: '/',
     name: 'layout-root',
@@ -21,36 +22,37 @@ const router = createRouter({
   routes: staticRoutes,
 })
 
-// 路由守卫：未登录跳登录页；登录后按菜单动态注册路由（静态/动态分离见 ./dynamic.ts）
-router.beforeEach(async (to, _from, next) => {
+// 无需登录即可访问的路径（错误页允许直接访问排查问题）
+const PUBLIC_PATHS = new Set(['/login', '/404', '/500'])
+
+const loginRedirect = () => ({ path: '/login', query: { reason: 'expired' }, replace: true })
+
+// 路由守卫（return 风格）：未登录跳登录页；登录后按菜单动态注册路由。
+// 用返回值而非 next()——导航被 401 拦截器的新导航取消时，返回值会被安全忽略，
+// 不会像"对已取消导航调 next()"那样抛异常导致白屏。
+router.beforeEach(async (to) => {
   const userStore = useUserStore()
-  if (to.path === '/login') {
-    next()
-    return
+  if (PUBLIC_PATHS.has(to.path)) {
+    return true
   }
   if (!userStore.accessToken) {
-    next('/login')
-    return
+    return loginRedirect()
   }
   if (!userStore.routesLoaded) {
     try {
       const firstPath = await setupDynamicRoutes()
-      // 重导航以匹配刚注册的动态路由；'/' 落到第一个菜单
+      // 路由注册完成，重导航重新匹配（to 在导航开始时解析，深链接此前无匹配）；
+      // '/' 落到第一个菜单
       const target = to.path === '/' ? firstPath : to.path
-      next({ path: target, query: to.query, replace: true })
+      return { path: target, query: to.query, replace: true }
     } catch {
-      // token 失效（如 JWT 格式升级/改密后）：清态回登录页。
-      // 401 拦截器可能已发起 /login 导航，这里幂等处理避免重复导航竞态导致白屏
-      await userStore.logout()
-      if (router.currentRoute.value.path === '/login') {
-        next(false)
-      } else {
-        next('/login')
-      }
+      // token/会话失效（过期、被顶替、被下线、JWT 密钥更换）：
+      // 轻量清态（不发网络请求），携带原因回登录页
+      userStore.clearAuth()
+      return loginRedirect()
     }
-    return
   }
-  next()
+  return true
 })
 
 router.afterEach((to) => {

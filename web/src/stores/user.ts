@@ -54,13 +54,18 @@ export const useUserStore = defineStore('user', {
       this.menus = menusRes.data.data
       this.routesLoaded = true
     },
+    // 轻量清态：只清内存与 localStorage，不发网络请求。
+    // 供 401 拦截器与路由守卫使用——过期场景下再发 logout 请求只会引发二次 401 竞态
+    clearAuth() {
+      this.$reset()
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+    },
     async logout() {
       try {
         await apiLogout()
       } catch { /* 忽略登出接口异常 */ }
-      this.$reset()
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
+      this.clearAuth()
     },
   },
 })
