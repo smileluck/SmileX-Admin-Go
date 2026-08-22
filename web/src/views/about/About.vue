@@ -34,7 +34,6 @@
             <span v-if="c.scope" class="log-scope mono">{{ c.scope }}</span>
             <span class="log-message">{{ c.message }}</span>
             <span class="log-date mono">{{ c.date }}</span>
-            <span class="log-hash mono">{{ c.hash }}</span>
           </div>
         </div>
       </n-card>
@@ -80,32 +79,35 @@ const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label:
 </script>
 
 <style scoped>
+/* 高度撑满内容区：卡片满高、记录列表卡内滚动 */
 .about-page {
-  min-height: 100%;
+  height: 100%;
 }
-/* 固定左右布局：左卡固定基准宽可收缩，右卡吃满剩余空间；任何窗口宽度都并排 */
+/* 左右 4:6 固定比例布局，任何窗口宽度都并排 */
 .about-layout {
   display: flex;
   gap: 12px;
   align-items: stretch;
+  height: 100%;
 }
 .info-card {
-  flex: 0 1 300px;
-  min-width: 220px;
-}
-.log-card {
-  flex: 1 1 auto;
+  flex: 4 1 0;
   min-width: 0;
 }
-/* 窄窗口下渐进压缩记录行的次要信息，保证左右布局始终可用 */
-@media (max-width: 720px) {
-  .info-card {
-    flex-basis: 240px;
-  }
-  .log-hash {
-    display: none;
-  }
+.log-card {
+  flex: 6 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
+/* 卡片内容纵向撑满，记录列表吃满剩余高度并内部滚动 */
+.log-card :deep(.n-card__content) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* 窄窗口下隐藏次要信息，保证并排布局可用 */
 @media (max-width: 540px) {
   .log-date {
     display: none;
@@ -187,7 +189,8 @@ const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label:
   color: var(--sx-muted);
 }
 .log-list {
-  max-height: calc(100vh - 220px);
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   scrollbar-width: thin;
 }
@@ -219,11 +222,5 @@ const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label:
   flex-shrink: 0;
   font-size: 11px;
   color: var(--sx-muted);
-}
-.log-hash {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--sx-muted);
-  opacity: 0.7;
 }
 </style>
