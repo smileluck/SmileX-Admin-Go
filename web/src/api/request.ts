@@ -1,15 +1,17 @@
 import axios from 'axios'
 import { useUserStore } from '../stores/user'
 import router from '../router'
+import { getLocale } from '../locales'
 
 const request = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 
-// 请求拦截：附带 token
+// 请求拦截：附带 token 与当前语言（后端按 Accept-Language 返回本地化 msg/菜单名）
 request.interceptors.request.use((config) => {
   const userStore = useUserStore()
   if (userStore.accessToken) {
     config.headers.Authorization = `Bearer ${userStore.accessToken}`
   }
+  config.headers['Accept-Language'] = getLocale()
   return config
 })
 

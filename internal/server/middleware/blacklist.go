@@ -5,7 +5,6 @@ package middleware
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -13,12 +12,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
 )
 
 // 单机内存实现（与 loginLimiter 同风格；多实例部署时应换共享存储实现）
 const (
-	loginFailThreshold = 5               // 计数窗口内失败次数阈值
+	loginFailThreshold = 5                // 计数窗口内失败次数阈值
 	loginFailWindow    = 10 * time.Minute // 失败计数滑动窗口
 	loginBlockDuration = 10 * time.Minute // 拉黑时长
 )
@@ -54,7 +54,7 @@ func LoginIPGuard(rec LoginLogRecorder) gin.HandlerFunc {
 		if until, ok := b.isBlocked(ip, now); ok {
 			mins := int(time.Until(until).Minutes()) + 1
 			c.Header("Retry-After", strconv.Itoa(mins*60))
-			response.Forbidden(c, fmt.Sprintf("该 IP 因连续登录失败已被临时封禁，请约 %d 分钟后再试", mins))
+			response.Forbidden(c, i18n.T(c.Request.Context(), "blacklist.ip_banned", mins))
 			recordBlockedLogin(c, rec, ip)
 			c.Abort()
 			return

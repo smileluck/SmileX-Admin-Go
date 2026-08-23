@@ -10,21 +10,21 @@
             <div class="sum-username mono">@{{ user?.username }}</div>
             <div class="sum-roles">
               <n-tag v-for="r in user?.role_names || []" :key="r" size="small" round>{{ r }}</n-tag>
-              <span v-if="!user?.role_names?.length" class="sum-empty">未分配角色</span>
+              <span v-if="!user?.role_names?.length" class="sum-empty">{{ t('profile.noRole') }}</span>
             </div>
             <div class="sum-meta">
               <div class="sum-meta-row">
-                <span class="muted">邮箱</span>
+                <span class="muted">{{ t('profile.email') }}</span>
                 <span class="mono">{{ user?.email || '—' }}</span>
               </div>
               <div class="sum-meta-row">
-                <span class="muted">状态</span>
+                <span class="muted">{{ t('common.status') }}</span>
                 <n-tag :type="user?.status === 1 ? 'success' : 'error'" size="small" round>
-                  {{ user?.status === 1 ? '启用' : '禁用' }}
+                  {{ user?.status === 1 ? t('common.enabled') : t('common.disabled') }}
                 </n-tag>
               </div>
               <div class="sum-meta-row">
-                <span class="muted">加入时间</span>
+                <span class="muted">{{ t('profile.joinTime') }}</span>
                 <span class="mono">{{ user?.created_at || '—' }}</span>
               </div>
             </div>
@@ -35,33 +35,33 @@
       <!-- 右：资料编辑 + 修改密码 -->
       <n-gi span="24 s:16">
         <n-space vertical :size="12">
-          <n-card title="基本信息">
+          <n-card :title="t('profile.basicInfo')">
             <n-form ref="infoFormRef" :model="infoForm" :rules="infoRules" label-placement="left" label-width="80" class="form">
-              <n-form-item label="昵称" path="nickname">
-                <n-input v-model:value="infoForm.nickname" :maxlength="20" show-word-limit placeholder="最多 20 个字符" />
+              <n-form-item :label="t('profile.nickname')" path="nickname">
+                <n-input v-model:value="infoForm.nickname" :maxlength="20" show-word-limit :placeholder="t('profile.nicknamePlaceholder')" />
               </n-form-item>
-              <n-form-item label="邮箱" path="email">
-                <n-input v-model:value="infoForm.email" placeholder="选填" />
+              <n-form-item :label="t('profile.email')" path="email">
+                <n-input v-model:value="infoForm.email" :placeholder="t('profile.emailPlaceholder')" />
               </n-form-item>
               <div class="form-actions">
-                <n-button type="primary" :loading="infoSaving" @click="saveInfo">保存</n-button>
+                <n-button type="primary" :loading="infoSaving" @click="saveInfo">{{ t('common.save') }}</n-button>
               </div>
             </n-form>
           </n-card>
 
-          <n-card title="修改密码">
+          <n-card :title="t('profile.changePassword')">
             <n-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-placement="left" label-width="80" class="form">
-              <n-form-item label="原密码" path="oldPassword">
-                <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" placeholder="请输入原密码" />
+              <n-form-item :label="t('profile.oldPassword')" path="oldPassword">
+                <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" :placeholder="t('profile.oldPasswordPlaceholder')" />
               </n-form-item>
-              <n-form-item label="新密码" path="newPassword">
-                <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" :maxlength="20" placeholder="6-20 位" />
+              <n-form-item :label="t('profile.newPassword')" path="newPassword">
+                <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" :maxlength="20" :placeholder="t('profile.newPasswordPlaceholder')" />
               </n-form-item>
-              <n-form-item label="确认新密码" path="confirmPassword">
-                <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" :maxlength="20" placeholder="再次输入新密码" />
+              <n-form-item :label="t('profile.confirmPassword')" path="confirmPassword">
+                <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" :maxlength="20" :placeholder="t('profile.confirmPasswordPlaceholder')" />
               </n-form-item>
               <div class="form-actions">
-                <n-button type="primary" :loading="pwdSaving" @click="savePwd">修改密码</n-button>
+                <n-button type="primary" :loading="pwdSaving" @click="savePwd">{{ t('profile.changePassword') }}</n-button>
               </div>
             </n-form>
           </n-card>
@@ -74,6 +74,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   NGrid, NGi, NCard, NSpace, NForm, NFormItem, NInput, NButton, NTag, useMessage,
   type FormInst, type FormRules,
@@ -84,6 +85,7 @@ import { useUserStore } from '../../stores/user'
 const router = useRouter()
 const message = useMessage()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const user = computed(() => userStore.user)
 const avatarChar = computed(() => (user.value?.nickname || user.value?.username || 'U').charAt(0).toUpperCase())
@@ -106,16 +108,16 @@ const infoFormRef = ref<FormInst | null>(null)
 const infoForm = reactive({ nickname: '', email: '' })
 const infoSaving = ref(false)
 // 与后端 binding 保持一致：昵称≤20、邮箱格式（选填）
-const infoRules: FormRules = {
-  nickname: [{ max: 20, message: '昵称不能超过 20 个字符', trigger: ['blur', 'input'] }],
+const infoRules = computed<FormRules>(() => ({
+  nickname: [{ max: 20, message: t('profile.rules.nicknameTooLong'), trigger: ['blur', 'input'] }],
   email: [
     {
       trigger: ['blur', 'input'],
       validator: (_rule, value: string) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-      message: '邮箱格式不正确',
+      message: t('profile.rules.emailInvalid'),
     },
   ],
-}
+}))
 
 async function saveInfo() {
   try {
@@ -127,9 +129,9 @@ async function saveInfo() {
   try {
     const { data } = await updateProfile({ nickname: infoForm.nickname.trim(), email: infoForm.email.trim() })
     userStore.user = data.data.user
-    message.success('保存成功')
+    message.success(t('common.saveSuccess'))
   } catch (e: any) {
-    message.error(e?.response?.data?.msg || '保存失败')
+    message.error(e?.response?.data?.msg || t('profile.saveFailed'))
   } finally {
     infoSaving.value = false
   }
@@ -139,17 +141,17 @@ async function saveInfo() {
 const pwdFormRef = ref<FormInst | null>(null)
 const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const pwdSaving = ref(false)
-const pwdRules: FormRules = {
-  oldPassword: [{ required: true, message: '请输入原密码', trigger: ['blur', 'input'] }],
+const pwdRules = computed<FormRules>(() => ({
+  oldPassword: [{ required: true, message: t('profile.rules.oldPasswordRequired'), trigger: ['blur', 'input'] }],
   newPassword: [
-    { required: true, message: '请输入新密码', trigger: ['blur', 'input'] },
-    { min: 6, max: 20, message: '密码长度 6-20 位', trigger: ['blur', 'input'] },
+    { required: true, message: t('profile.rules.newPasswordRequired'), trigger: ['blur', 'input'] },
+    { min: 6, max: 20, message: t('profile.rules.passwordLength'), trigger: ['blur', 'input'] },
   ],
   confirmPassword: [
-    { required: true, message: '请再次输入新密码', trigger: ['blur', 'input'] },
-    { validator: (_rule, v: string) => v === pwdForm.newPassword, message: '两次输入的密码不一致', trigger: ['blur', 'input'] },
+    { required: true, message: t('profile.rules.confirmPasswordRequired'), trigger: ['blur', 'input'] },
+    { validator: (_rule, v: string) => v === pwdForm.newPassword, message: t('profile.rules.passwordMismatch'), trigger: ['blur', 'input'] },
   ],
-}
+}))
 
 async function savePwd() {
   try {
@@ -160,11 +162,11 @@ async function savePwd() {
   pwdSaving.value = true
   try {
     await changePassword({ old_password: pwdForm.oldPassword, new_password: pwdForm.newPassword })
-    message.success('密码已修改，请重新登录')
+    message.success(t('profile.passwordChanged'))
     await userStore.logout()
     router.push('/login')
   } catch (e: any) {
-    message.error(e?.response?.data?.msg || '修改失败')
+    message.error(e?.response?.data?.msg || t('profile.changeFailed'))
   } finally {
     pwdSaving.value = false
   }

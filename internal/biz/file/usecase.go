@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"path"
@@ -64,7 +63,8 @@ func (uc *Usecase) denyExts() map[string]bool {
 // Upload 校验大小/类型后写入当前存储后端并落库（落库失败尽力删除已上传对象）
 func (uc *Usecase) Upload(ctx context.Context, name string, r io.Reader, size int64, uploaderID uint, uploaderName string) (*File, error) {
 	if max := uc.cfg.Storage.MaxSizeMB << 20; max > 0 && size > max {
-		return nil, fmt.Errorf("%w（上限 %dMB）", ErrFileTooLarge, uc.cfg.Storage.MaxSizeMB)
+		// 上限参数由传输层按配置渲染（见 HTTPServer.fileErr），这里只返回哨兵错误
+		return nil, ErrFileTooLarge
 	}
 	name = path.Base(strings.ReplaceAll(name, "\\", "/")) // 防 Windows 路径文件名
 	ext := strings.ToLower(strings.TrimPrefix(path.Ext(name), "."))

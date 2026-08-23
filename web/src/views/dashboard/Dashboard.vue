@@ -6,26 +6,29 @@
       </n-card>
     </n-gi>
   </n-grid>
-  <n-card title="欢迎" style="margin-top: 16px">
-    <p>{{ userStore.user?.nickname || userStore.user?.username }}，欢迎使用 SmileX Admin 管理系统。</p>
+  <n-card :title="t('dashboard.welcome')" style="margin-top: 16px">
+    <p>{{ t('dashboard.greeting', { name: userStore.user?.nickname || userStore.user?.username }) }}</p>
     <p style="color: #999; font-size: 13px">
-      DDD + Gin + GORM 后端 · Vue3 + Naive UI 前端 · 多数据库（MySQL/PostgreSQL/SQLite）
+      {{ t('dashboard.techLine') }}
     </p>
   </n-card>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NGrid, NGi, NCard, NStatistic } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '../../stores/user'
 import { listUsers, listRoles, listPermissions } from '../../api'
 
+const { t } = useI18n()
 const userStore = useUserStore()
-const cards = ref([
-  { label: '用户数', value: 0 },
-  { label: '角色数', value: 0 },
-  { label: '权限数', value: 0 },
-  { label: '我的权限码', value: userStore.permissions.length },
+const totals = ref({ users: 0, roles: 0, perms: 0 })
+const cards = computed(() => [
+  { label: t('dashboard.userCount'), value: totals.value.users },
+  { label: t('dashboard.roleCount'), value: totals.value.roles },
+  { label: t('dashboard.permCount'), value: totals.value.perms },
+  { label: t('dashboard.myPermCodes'), value: userStore.permissions.length },
 ])
 
 onMounted(async () => {
@@ -34,8 +37,8 @@ onMounted(async () => {
     listRoles({ page: 1, page_size: 1 }),
     listPermissions({ page: 1, page_size: 1 }),
   ])
-  cards.value[0].value = u.data.data.page.total
-  cards.value[1].value = r.data.data.page.total
-  cards.value[2].value = p.data.data.page.total
+  totals.value.users = u.data.data.page.total
+  totals.value.roles = r.data.data.page.total
+  totals.value.perms = p.data.data.page.total
 })
 </script>

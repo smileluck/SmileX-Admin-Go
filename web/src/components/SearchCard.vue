@@ -4,7 +4,7 @@
   <n-card size="small" class="search-card">
     <template #header>
       <div class="search-toggle" role="button" :aria-expanded="!collapsed" @click="toggle">
-        <span class="search-toggle-title">搜索</span>
+        <span class="search-toggle-title">{{ t('common.search') }}</span>
         <n-icon :class="['chevron', { collapsed }]">
           <ChevronDownOutline />
         </n-icon>
@@ -15,8 +15,8 @@
         <slot />
       </div>
       <div class="search-actions">
-        <n-button quaternary @click="emit('reset')">重置</n-button>
-        <n-button type="primary" @click="emit('search')">搜索</n-button>
+        <n-button quaternary @click="emit('reset')">{{ t('common.reset') }}</n-button>
+        <n-button type="primary" @click="emit('search')">{{ t('common.search') }}</n-button>
       </div>
     </n-collapse-transition>
   </n-card>
@@ -26,6 +26,9 @@
 import { ref } from 'vue'
 import { NButton, NCard, NCollapseTransition, NIcon } from 'naive-ui'
 import { ChevronDownOutline } from '@vicons/ionicons5'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{ storageKey?: string }>()
 const emit = defineEmits<{ (e: 'search'): void; (e: 'reset'): void }>()

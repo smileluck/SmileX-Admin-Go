@@ -15,8 +15,8 @@
 
       <div class="brand-copy">
         <p class="mono-label">system console</p>
-        <h1 class="headline">让系统治理<br />安静地运转</h1>
-        <p class="sub">用户、角色、权限、菜单——一处掌控。</p>
+        <h1 class="headline">{{ t('login.brandHeadline1') }}<br />{{ t('login.brandHeadline2') }}</h1>
+        <p class="sub">{{ t('login.brandSub') }}</p>
       </div>
 
       <!-- 系统脉搏波形 -->
@@ -39,33 +39,33 @@
         <div class="form-head">
           <div class="seal seal--sm">S</div>
           <div>
-            <h2 class="form-title">欢迎回来</h2>
-            <p class="form-sub">使用你的管理员账号继续</p>
+            <h2 class="form-title">{{ t('login.formTitle') }}</h2>
+            <p class="form-sub">{{ t('login.formSub') }}</p>
           </div>
         </div>
 
         <n-form ref="formRef" :model="form" :rules="rules" :show-label="false">
           <n-form-item path="username">
-            <n-input v-model:value="form.username" size="large" placeholder="用户名" @keyup.enter="onLogin" />
+            <n-input v-model:value="form.username" size="large" :placeholder="t('login.username')" @keyup.enter="onLogin" />
           </n-form-item>
           <n-form-item path="password">
-            <n-input v-model:value="form.password" size="large" type="password" show-password-on="click" placeholder="密码"
+            <n-input v-model:value="form.password" size="large" type="password" show-password-on="click" :placeholder="t('login.password')"
               @keyup.enter="onLogin" />
           </n-form-item>
           <n-form-item v-if="captchaEnabled" path="captchaCode">
             <div class="captcha-row">
-              <n-input v-model:value="form.captchaCode" size="large" placeholder="验证码" @keyup.enter="onLogin" />
-              <img v-if="captchaImage" class="captcha-img" :src="captchaImage" alt="验证码" title="点击刷新"
+              <n-input v-model:value="form.captchaCode" size="large" :placeholder="t('login.captcha')" @keyup.enter="onLogin" />
+              <img v-if="captchaImage" class="captcha-img" :src="captchaImage" :alt="t('login.captcha')" :title="t('login.captchaClickRefresh')"
                 draggable="false" @click="loadCaptcha" />
-              <div v-else class="captcha-img captcha-img--empty" @click="loadCaptcha">刷新</div>
+              <div v-else class="captcha-img captcha-img--empty" @click="loadCaptcha">{{ t('common.refresh') }}</div>
             </div>
           </n-form-item>
         </n-form>
         <div class="form-extra">
-          <n-checkbox v-model:checked="remember">记住密码</n-checkbox>
+          <n-checkbox v-model:checked="remember">{{ t('login.remember') }}</n-checkbox>
         </div>
         <n-button class="login-btn" type="primary" size="large" block :loading="loading" @click="onLogin">
-          登 录
+          {{ t('login.loginButton') }}
         </n-button>
       </div>
     </main>
@@ -75,6 +75,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst } from 'naive-ui'
 import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
@@ -87,16 +88,17 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const message = useMessage()
+const { t } = useI18n()
 const formRef = ref<FormInst | null>(null)
 const loading = ref(false)
 const form = reactive({ username: 'admin', password: '', captchaCode: '' })
 // 服务端 auth.captchaEnabled=false 时隐藏验证码表单并跳过其校验
 const captchaEnabled = ref(true)
 const rules = computed(() => ({
-  username: { required: true, message: '请输入用户名', trigger: 'blur' },
-  password: { required: true, message: '请输入密码', trigger: 'blur' },
+  username: { required: true, message: t('login.usernameRequired'), trigger: 'blur' },
+  password: { required: true, message: t('login.passwordRequired'), trigger: 'blur' },
   ...(captchaEnabled.value
-    ? { captchaCode: { required: true, message: '请输入验证码', trigger: 'blur' } }
+    ? { captchaCode: { required: true, message: t('login.captchaRequired'), trigger: 'blur' } }
     : {}),
 }))
 
@@ -122,7 +124,7 @@ async function loadCaptcha() {
   } catch {
     captchaId.value = ''
     captchaImage.value = ''
-    message.error('验证码加载失败，请点击刷新')
+    message.error(t('login.captchaLoadFailed'))
   }
 }
 
@@ -163,12 +165,12 @@ async function onLogin() {
   try {
     await userStore.login(form.username, form.password, captchaId.value, form.captchaCode)
     persistRemembered()
-    message.success('登录成功')
+    message.success(t('login.loginSuccess'))
     // 不在这里 loadUserContext——交由路由守卫统一加载并注册动态路由
     router.push('/')
   } catch (e: any) {
-    const msg: string = e?.response?.data?.msg || '登录失败'
-    message.error(/captcha/i.test(msg) ? '验证码错误，请重新输入' : msg)
+    const msg: string = e?.response?.data?.msg || t('login.loginFailed')
+    message.error(/captcha/i.test(msg) ? t('login.captchaError') : msg)
     // 验证码一次性，登录失败（无论原因）后必须换新
     loadCaptcha()
   } finally {
@@ -181,7 +183,7 @@ onMounted(() => {
   loadCaptcha()
   // 会话失效被踢回登录页（同端新登录顶替 / 被管理员下线 / 长期未活跃过期）
   if (route.query.reason === 'expired') {
-    message.warning('登录已失效，请重新登录')
+    message.warning(t('login.sessionExpired'))
   }
 })
 </script>

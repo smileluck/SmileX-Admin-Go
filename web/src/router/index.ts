@@ -1,14 +1,16 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { setupDynamicRoutes } from './dynamic'
+import { i18n } from '../locales'
 
 // 静态路由：登录页、错误页、主布局壳
 // 注意：404 兜底不能静态注册——刷新深链接时动态菜单路由尚未注册，静态 catch-all 会把
 // 原始路径吞掉显示 404。兜底在动态路由注册完成后于 ./dynamic.ts 中补充（渲染 404 页）。
+// 前端自有路由用 meta.titleKey（i18n key，随语言切换重译）；菜单路由用 meta.title（后端按语言返回的名称）
 const staticRoutes: RouteRecordRaw[] = [
-  { path: '/login', name: 'login', component: () => import('../views/login/Login.vue'), meta: { title: '登录' } },
-  { path: '/404', name: 'not-found-page', component: () => import('../views/error/NotFound.vue'), meta: { title: '页面不存在' } },
-  { path: '/500', name: 'server-error-page', component: () => import('../views/error/ServerError.vue'), meta: { title: '服务异常' } },
+  { path: '/login', name: 'login', component: () => import('../views/login/Login.vue'), meta: { titleKey: 'menu.login' } },
+  { path: '/404', name: 'not-found-page', component: () => import('../views/error/NotFound.vue'), meta: { titleKey: 'menu.notFound' } },
+  { path: '/500', name: 'server-error-page', component: () => import('../views/error/ServerError.vue'), meta: { titleKey: 'menu.serverError' } },
   {
     path: '/',
     name: 'layout-root',
@@ -56,7 +58,9 @@ router.beforeEach(async (to) => {
 })
 
 router.afterEach((to) => {
-  const title = (to.meta?.title as string) || ''
+  const { t } = i18n.global
+  const titleKey = to.meta?.titleKey as string | undefined
+  const title = (titleKey ? t(titleKey) : (to.meta?.title as string)) || ''
   document.title = title ? `${title} - SmileX Admin` : 'SmileX Admin'
 })
 

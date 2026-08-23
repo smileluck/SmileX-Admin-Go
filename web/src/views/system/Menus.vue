@@ -2,10 +2,10 @@
   <n-card>
     <template #header>
       <div class="page-actions">
-        <n-button class="expand-toggle" @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
-        <n-button type="primary" ghost @click="openCreate(0, 'dir')" v-permission="['menu:create']">新增顶级目录</n-button>
-        <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
-        <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
+        <n-button class="expand-toggle" @click="toggleExpand">{{ expandAll ? t('permMenu.collapseAll') : t('permMenu.expandAll') }}</n-button>
+        <n-button type="primary" ghost @click="openCreate(0, 'dir')" v-permission="['menu:create']">{{ t('permMenu.newTopDir') }}</n-button>
+        <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">{{ t('permMenu.newTopMenu') }}</n-button>
+        <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">{{ t('permMenu.newButton') }}</n-button>
       </div>
     </template>
 
@@ -16,42 +16,42 @@
   <!-- 目录 / 菜单 / 权限点编辑：type 区分表单 -->
   <n-modal v-model:show="showModal" preset="dialog" :title="modalTitle" style="width: 480px">
     <n-form ref="formRef" :model="form" :rules="rules" label-placement="left" label-width="80">
-      <n-form-item label="名称" path="name">
-        <n-input v-model:value="form.name" :maxlength="20" show-word-limit placeholder="最多 20 个字符" />
+      <n-form-item :label="t('permMenu.name')" path="name">
+        <n-input v-model:value="form.name" :maxlength="20" show-word-limit :placeholder="t('permMenu.namePlaceholder')" />
       </n-form-item>
-      <n-form-item label="编码" path="code" v-if="!editing">
-        <n-input v-model:value="form.code" :maxlength="64" show-word-limit :placeholder="`如 ${form.type}:xxx`" />
+      <n-form-item :label="t('permMenu.code')" path="code" v-if="!editing">
+        <n-input v-model:value="form.code" :maxlength="64" show-word-limit :placeholder="t('permMenu.codePlaceholder', { type: form.type })" />
       </n-form-item>
       <!-- 目录：顶级分组，无路由无父级，仅图标/排序 -->
       <template v-if="form.type === 'dir'">
-        <n-form-item label="图标">
+        <n-form-item :label="t('permMenu.icon')">
           <n-input-group>
-            <n-input v-model:value="form.icon" placeholder="图标名如 HomeOutline，或图片 URL">
+            <n-input v-model:value="form.icon" :placeholder="t('permMenu.iconPlaceholder')">
               <template #prefix>
                 <IconPreview v-if="form.icon" :icon="form.icon" :size="16" />
               </template>
             </n-input>
-            <n-button @click="openPicker">选择图标</n-button>
+            <n-button @click="openPicker">{{ t('permMenu.pickIcon') }}</n-button>
           </n-input-group>
         </n-form-item>
       </template>
       <!-- 菜单：页面，父级仅可挂目录（或留空为顶级） -->
       <template v-else-if="form.type === 'menu'">
-        <n-form-item label="路由"><n-input v-model:value="form.path" placeholder="如 /system/xxx" /></n-form-item>
-        <n-form-item label="父级">
+        <n-form-item :label="t('permMenu.route')"><n-input v-model:value="form.path" :placeholder="t('permMenu.routePlaceholder')" /></n-form-item>
+        <n-form-item :label="t('permMenu.parent')">
           <n-tree-select
             v-model:value="form.parent_id" :options="parentOptions"
-            clearable placeholder="顶级（或选择目录）" key-field="key" label-field="label" children-field="children"
+            clearable :placeholder="t('permMenu.parentPlaceholderMenu')" key-field="key" label-field="label" children-field="children"
           />
         </n-form-item>
-        <n-form-item label="图标">
+        <n-form-item :label="t('permMenu.icon')">
           <n-input-group>
-            <n-input v-model:value="form.icon" placeholder="图标名如 HomeOutline，或图片 URL">
+            <n-input v-model:value="form.icon" :placeholder="t('permMenu.iconPlaceholder')">
               <template #prefix>
                 <IconPreview v-if="form.icon" :icon="form.icon" :size="16" />
               </template>
             </n-input>
-            <n-button @click="openPicker">选择图标</n-button>
+            <n-button @click="openPicker">{{ t('permMenu.pickIcon') }}</n-button>
           </n-input-group>
         </n-form-item>
       </template>
@@ -60,29 +60,29 @@
         <n-form-item label="Method">
           <n-select v-model:value="form.method" :options="methodOptions" />
         </n-form-item>
-        <n-form-item label="接口路径">
-          <n-input v-model:value="form.path" placeholder="选填，如 /api/v1/users/*；留空则仅控制前端显隐" />
+        <n-form-item :label="t('permMenu.apiPath')">
+          <n-input v-model:value="form.path" :placeholder="t('permMenu.apiPathPlaceholder')" />
         </n-form-item>
-        <n-form-item label="所属菜单">
+        <n-form-item :label="t('permMenu.parentMenu')">
           <n-tree-select
             v-model:value="form.parent_id" :options="parentOptions"
-            clearable placeholder="挂载到菜单" key-field="key" label-field="label" children-field="children"
+            clearable :placeholder="t('permMenu.parentPlaceholderButton')" key-field="key" label-field="label" children-field="children"
           />
         </n-form-item>
       </template>
-      <n-form-item label="排序"><n-input-number v-model:value="form.sort" /></n-form-item>
+      <n-form-item :label="t('permMenu.sort')"><n-input-number v-model:value="form.sort" /></n-form-item>
     </n-form>
     <template #action>
-      <n-button @click="showModal = false">取消</n-button>
-      <n-button type="primary" @click="save">确定</n-button>
+      <n-button @click="showModal = false">{{ t('common.cancel') }}</n-button>
+      <n-button type="primary" @click="save">{{ t('common.confirm') }}</n-button>
     </template>
   </n-modal>
 
   <!-- 图标选择器：本地图标搜索 + 自定义图片 URL -->
-  <n-modal v-model:show="showPicker" preset="card" title="选择图标" style="width: 640px">
+  <n-modal v-model:show="showPicker" preset="card" :title="t('permMenu.pickIcon')" style="width: 640px">
     <n-tabs type="line" size="small">
-      <n-tab-pane name="local" tab="本地图标">
-        <n-input v-model:value="iconSearch" placeholder="搜索图标名，如 Home / Setting / User" clearable style="margin-bottom: 12px" />
+      <n-tab-pane name="local" :tab="t('permMenu.localIcons')">
+        <n-input v-model:value="iconSearch" :placeholder="t('permMenu.iconSearchPlaceholder')" clearable style="margin-bottom: 12px" />
         <div class="icon-grid">
           <div v-for="name in filteredIconNames" :key="name" class="icon-cell" :title="name"
             :class="{ active: form.icon === name }" @click="pickIcon(name)">
@@ -91,15 +91,15 @@
           </div>
         </div>
       </n-tab-pane>
-      <n-tab-pane name="url" tab="网络图片">
+      <n-tab-pane name="url" :tab="t('permMenu.webImage')">
         <n-space vertical>
           <n-input v-model:value="iconUrl" placeholder="https://example.com/icon.png" clearable />
           <div class="url-preview">
-            <span>预览：</span>
+            <span>{{ t('permMenu.preview') }}</span>
             <IconPreview v-if="iconUrl" :icon="iconUrl" :size="20" />
             <span v-else>—</span>
           </div>
-          <n-button type="primary" :disabled="!iconUrl" @click="pickIcon(iconUrl)">使用该图片</n-button>
+          <n-button type="primary" :disabled="!iconUrl" @click="pickIcon(iconUrl)">{{ t('permMenu.useThisImage') }}</n-button>
         </n-space>
       </n-tab-pane>
     </n-tabs>
@@ -108,6 +108,7 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NCard, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NInputGroup, NTabs, NTabPane, NTreeSelect, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import * as icons from '@vicons/ionicons5'
@@ -119,6 +120,7 @@ import type { Permission } from '../../api/types'
 // 模板中预览用的函数式组件
 const IconPreview = (props: { icon?: string; size?: number }) => renderMenuIcon(props.icon, props.size ?? 16)
 
+const { t } = useI18n()
 const message = useMessage()
 const dialog = useDialog()
 const userStore = useUserStore()
@@ -138,19 +140,21 @@ const form = reactive({
   method: 'GET', path: '', parent_id: null as number | null, icon: '', sort: 0,
 })
 const methodOptions = ['GET', 'POST', 'PUT', 'DELETE', '*'].map((m) => ({ label: m, value: m }))
-const typeNames = { dir: '目录', menu: '菜单', button: '权限点' } as const
-const modalTitle = computed(() => `${editing.value ? '编辑' : '新增'}${typeNames[form.type]}`)
+const typeNames = computed(() => ({
+  dir: t('permMenu.typeDir'), menu: t('permMenu.typeMenu'), button: t('permMenu.typeButton'),
+}))
+const modalTitle = computed(() => `${editing.value ? t('common.edit') : t('common.add')} ${typeNames.value[form.type]}`)
 
-const rules: FormRules = {
+const rules = computed<FormRules>(() => ({
   name: [
-    { required: true, message: '请输入名称', trigger: ['blur', 'input'] },
-    { max: 20, message: '名称不能超过 20 个字符', trigger: ['blur', 'input'] },
+    { required: true, message: t('permMenu.form.nameRequired'), trigger: ['blur', 'input'] },
+    { max: 20, message: t('permMenu.form.nameMax'), trigger: ['blur', 'input'] },
   ],
   code: [
-    { required: true, message: '请输入编码', trigger: ['blur', 'input'] },
-    { max: 64, message: '编码不能超过 64 个字符', trigger: ['blur', 'input'] },
+    { required: true, message: t('permMenu.form.codeRequired'), trigger: ['blur', 'input'] },
+    { max: 64, message: t('permMenu.form.codeMax'), trigger: ['blur', 'input'] },
   ],
-}
+}))
 
 // 图标选择器
 const showPicker = ref(false)
@@ -278,32 +282,32 @@ async function save() {
         icon: form.type !== 'button' ? form.icon : '', sort: form.sort,
       })
     }
-    message.success('保存成功（菜单变更刷新页面后生效路由）')
+    message.success(t('permMenu.saveSuccessNote'))
     showModal.value = false
     await refresh()
   } catch (e: any) {
-    message.error(e?.response?.data?.msg || '保存失败')
+    message.error(e?.response?.data?.msg || t('permMenu.saveFailed'))
   }
 }
 
 async function remove(row: any) {
-  if (row.id === WILDCARD_PERM_ID) { message.error('超管通配权限禁止删除'); return }
+  if (row.id === WILDCARD_PERM_ID) { message.error(t('permMenu.wildcardForbidden')); return }
   if (all.value.some((p) => p.parent_id === row.id)) {
-    message.warning('该节点下存在子级，请先删除子级节点')
+    message.warning(t('permMenu.hasChildren'))
     return
   }
   dialog.warning({
-    title: '删除确认',
-    content: `确定删除「${row.name}（${row.code}）」吗？该操作不可恢复。`,
-    positiveText: '删除',
-    negativeText: '取消',
+    title: t('permMenu.deleteConfirmTitle'),
+    content: t('permMenu.deleteConfirmContent', { name: row.name, code: row.code }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
     onPositiveClick: async () => {
       try {
         await deletePermission(row.id)
-        message.success('已删除')
+        message.success(t('common.deleteSuccess'))
         await refresh()
       } catch (e: any) {
-        message.error(e?.response?.data?.msg || '删除失败')
+        message.error(e?.response?.data?.msg || t('permMenu.deleteFailed'))
       }
     },
   })
@@ -319,7 +323,7 @@ async function refresh() {
 // 操作列依赖按钮权限，computed 使权限变化后重新渲染
 const columns = computed<DataTableColumns<any>>(() => [
   {
-    title: '名称', key: 'name',
+    title: t('permMenu.name'), key: 'name',
     render(row) {
       return h('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, [
         row.type !== 'button' ? renderMenuIcon(row.icon, 16) : null,
@@ -328,39 +332,39 @@ const columns = computed<DataTableColumns<any>>(() => [
     },
   },
   {
-    title: '类型', key: 'type', width: 80,
+    title: t('permMenu.type'), key: 'type', width: 80,
     render(row) {
       const tagType = row.type === 'dir' ? 'warning' : row.type === 'menu' ? 'success' : 'info'
-      return h(NTag, { size: 'small', type: tagType }, { default: () => typeNames[row.type as keyof typeof typeNames] || row.type })
+      return h(NTag, { size: 'small', type: tagType }, { default: () => typeNames.value[row.type as keyof typeof typeNames.value] || row.type })
     },
   },
-  { title: '编码', key: 'code' },
+  { title: t('permMenu.code'), key: 'code' },
   {
-    title: '路由/接口', key: 'path',
+    title: t('permMenu.routeApi'), key: 'path',
     render(row) {
       if (row.type === 'dir') return '—'
       if (row.type === 'menu') return row.path || '—'
       return row.method && row.path ? `${row.method}  ${row.path}` : '—'
     },
   },
-  { title: '排序', key: 'sort', width: 70 },
+  { title: t('permMenu.sort'), key: 'sort', width: 70 },
   {
-    title: '操作', key: 'actions', width: 210,
+    title: t('common.operation'), key: 'actions', width: 210,
     render(row) {
       const actions: Array<TableAction | VNode> = []
       if (userStore.has('menu:update')) {
-        actions.push({ label: '编辑', accent: true, onClick: () => openEdit(row) })
+        actions.push({ label: t('common.edit'), accent: true, onClick: () => openEdit(row) })
       }
       // 目录下加菜单、菜单下加权限点（dir → menu → button 三级模型）
       if (row.type === 'dir' && userStore.has('menu:create')) {
-        actions.push({ label: '加子菜单', onClick: () => openCreate(row.id, 'menu') })
+        actions.push({ label: t('permMenu.addSubMenu'), onClick: () => openCreate(row.id, 'menu') })
       }
       if (row.type === 'menu' && userStore.has('menu:create')) {
-        actions.push({ label: '加权限点', onClick: () => openCreate(row.id, 'button') })
+        actions.push({ label: t('permMenu.addPermPoint'), onClick: () => openCreate(row.id, 'button') })
       }
       // 超管通配权限（all）禁止删除，不展示删除按钮
       if (row.id !== WILDCARD_PERM_ID && userStore.has('menu:delete')) {
-        actions.push({ label: '删除', danger: true, onClick: () => remove(row) })
+        actions.push({ label: t('common.delete'), danger: true, onClick: () => remove(row) })
       }
       return renderActions(actions)
     },

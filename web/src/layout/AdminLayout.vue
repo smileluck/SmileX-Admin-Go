@@ -17,7 +17,7 @@
     <n-layout class="main">
       <n-layout-header bordered class="header">
         <div class="header-left">
-          <n-button class="sider-trigger" quaternary circle :focusable="false" aria-label="折叠/展开侧边栏"
+          <n-button class="sider-trigger" quaternary circle :focusable="false" :aria-label="t('layout.toggleSider')"
             @click="toggleCollapsed">
             <template #icon>
               <n-icon :component="MenuOutline" />
@@ -25,16 +25,29 @@
           </n-button>
           <div class="crumb">
             <span class="crumb-eyebrow mono">section</span>
-            <span class="crumb-title">{{ route.meta?.title || '首页' }}</span>
+            <span class="crumb-title">{{ crumbTitle }}</span>
           </div>
         </div>
         <div class="header-right">
+          <n-dropdown :options="localeOptions" @select="onLocaleChange">
+            <n-button
+              class="locale-trigger"
+              quaternary
+              circle
+              :focusable="false"
+              :aria-label="t('layout.language')"
+            >
+              <template #icon>
+                <n-icon :component="LanguageOutline" />
+              </template>
+            </n-button>
+          </n-dropdown>
           <n-button
             class="search-trigger"
             quaternary
             circle
             :focusable="false"
-            :aria-label="`搜索菜单页面 ${searchKbd}`"
+            :aria-label="`${t('layout.searchMenu')} ${searchKbd}`"
             @click="openSearch"
           >
             <template #icon>
@@ -43,7 +56,7 @@
           </n-button>
           <n-popover v-model:show="showExports" trigger="click" :width="360" @update:show="onExportsToggle">
             <template #trigger>
-              <n-button class="export-trigger" quaternary circle :focusable="false" aria-label="导出记录">
+              <n-button class="export-trigger" quaternary circle :focusable="false" :aria-label="t('menu.exportRecords')">
                 <template #icon>
                   <n-icon :component="DownloadOutline" />
                 </template>
@@ -51,7 +64,7 @@
             </template>
             <div class="export-panel">
               <div class="export-list">
-                <div v-if="!exportRows.length" class="export-empty">暂无导出记录</div>
+                <div v-if="!exportRows.length" class="export-empty">{{ t('layout.exportPanel.empty') }}</div>
                 <div v-for="rec in exportRows" :key="rec.id" class="export-item">
                   <span class="export-item-name" :title="rec.name">{{ rec.name }}</span>
                   <n-tag :type="exportStatusType(rec.status)" size="small" :bordered="false"
@@ -60,11 +73,11 @@
                   </n-tag>
                   <span class="export-item-time mono">{{ rec.created_at }}</span>
                   <n-button v-if="rec.status === 'done'" text type="primary" size="tiny" class="export-item-dl"
-                    :loading="downloadingId === rec.id" @click="downloadExport(rec)">下载</n-button>
+                    :loading="downloadingId === rec.id" @click="downloadExport(rec)">{{ t('common.download') }}</n-button>
                 </div>
               </div>
               <div class="export-foot">
-                <n-button text size="small" class="export-more" @click="gotoExports">查看全部</n-button>
+                <n-button text size="small" class="export-more" @click="gotoExports">{{ t('layout.exportPanel.viewAll') }}</n-button>
               </div>
             </div>
           </n-popover>
@@ -82,21 +95,21 @@
     </n-layout>
 
     <!-- 修改密码（右上角用户下拉触发；成功后强制重新登录） -->
-    <n-modal v-model:show="showPwd" preset="dialog" title="修改密码" style="width: 420px">
+    <n-modal v-model:show="showPwd" preset="dialog" :title="t('layout.pwd.title')" style="width: 420px">
       <n-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-placement="left" label-width="110">
-        <n-form-item label="原密码" path="oldPassword">
-          <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" placeholder="请输入原密码" />
+        <n-form-item :label="t('layout.pwd.old')" path="oldPassword">
+          <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" :placeholder="t('layout.pwd.oldPlaceholder')" />
         </n-form-item>
-        <n-form-item label="新密码" path="newPassword">
-          <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" :maxlength="20" placeholder="6-20 位" />
+        <n-form-item :label="t('layout.pwd.new')" path="newPassword">
+          <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" :maxlength="20" :placeholder="t('layout.pwd.newPlaceholder')" />
         </n-form-item>
-        <n-form-item label="确认新密码" path="confirmPassword">
-          <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" :maxlength="20" placeholder="再次输入新密码" />
+        <n-form-item :label="t('layout.pwd.confirm')" path="confirmPassword">
+          <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" :maxlength="20" :placeholder="t('layout.pwd.confirmPlaceholder')" />
         </n-form-item>
       </n-form>
       <template #action>
-        <n-button @click="showPwd = false">取消</n-button>
-        <n-button type="primary" :loading="pwdSaving" @click="savePwd">确定</n-button>
+        <n-button @click="showPwd = false">{{ t('common.cancel') }}</n-button>
+        <n-button type="primary" :loading="pwdSaving" @click="savePwd">{{ t('common.confirm') }}</n-button>
       </template>
     </n-modal>
 
@@ -111,16 +124,16 @@
             class="cmd-input"
             type="text"
             autocomplete="off"
-            placeholder="搜索菜单页面…"
+            :placeholder="t('layout.search.placeholder')"
             @keydown="onCmdKeydown"
           />
           <span class="kbd">esc</span>
         </div>
 
         <div ref="cmdListRef" class="cmd-list">
-          <div v-if="searchLoading" class="cmd-empty">搜索中…</div>
-          <div v-else-if="!searchKw.trim()" class="cmd-empty">输入关键词搜索菜单</div>
-          <div v-else-if="!menuCount" class="cmd-empty">未找到匹配的菜单</div>
+          <div v-if="searchLoading" class="cmd-empty">{{ t('layout.search.searching') }}</div>
+          <div v-else-if="!searchKw.trim()" class="cmd-empty">{{ t('layout.search.empty') }}</div>
+          <div v-else-if="!menuCount" class="cmd-empty">{{ t('layout.search.noMatch') }}</div>
           <template v-else>
             <template v-for="(it, i) in searchMatches" :key="it.path + it.name">
               <!-- 目录：灰色不可选中的分组标题，按 depth 缩进形成树形层级（无路由、不可跳转） -->
@@ -131,7 +144,7 @@
               >
                 <span class="cmd-item-icon"><MenuIcon :icon="it.icon" /></span>
                 <span>{{ it.name }}</span>
-                <span class="dir-badge mono">目录</span>
+                <span class="dir-badge mono">{{ t('layout.search.dirBadge') }}</span>
               </div>
               <!-- 菜单：可选中跳转，按 depth 缩进展示树形结构 -->
               <div
@@ -153,10 +166,10 @@
         </div>
 
         <div class="cmd-foot">
-          <span><span class="kbd">↑</span><span class="kbd">↓</span> 切换</span>
-          <span><span class="kbd">↵</span> 跳转</span>
-          <span><span class="kbd">esc</span> 关闭</span>
-          <span v-if="!searchLoading && menuCount" class="cmd-foot-count mono">{{ menuCount }} 项</span>
+          <span><span class="kbd">↑</span><span class="kbd">↓</span> {{ t('layout.search.kbdSwitch') }}</span>
+          <span><span class="kbd">↵</span> {{ t('layout.search.kbdGoto') }}</span>
+          <span><span class="kbd">esc</span> {{ t('layout.search.kbdClose') }}</span>
+          <span v-if="!searchLoading && menuCount" class="cmd-foot-count mono">{{ t('layout.search.itemCount', { n: menuCount }) }}</span>
         </div>
       </div>
     </n-modal>
@@ -166,22 +179,26 @@
 <script setup lang="ts">
 import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NButton, NIcon,
   NModal, NForm, NFormItem, NInput, NPopover, NTag, useMessage,
   type DropdownOption, type FormInst, type FormRules, type TagProps,
 } from 'naive-ui'
-import { MenuOutline, SearchOutline, DownloadOutline } from '@vicons/ionicons5'
+import { MenuOutline, SearchOutline, DownloadOutline, LanguageOutline } from '@vicons/ionicons5'
 import { useUserStore } from '../stores/user'
 import { renderMenuIcon } from '../utils/menuIcon'
 import { changePassword, searchMenus, listRecentExports, getExportBlob } from '../api'
 import { saveBlob, parseDispositionFilename } from '../utils/download'
+import { getLocale, setLocale, type AppLocale } from '../locales'
+import { refreshRouteTitles } from '../router/dynamic'
 import type { ExportRecord, MenuHit, MenuNode } from '../api/types'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const message = useMessage()
+const { t } = useI18n()
 
 // 折叠状态持久化到 localStorage，刷新后保持
 const COLLAPSED_KEY = 'sider_collapsed'
@@ -191,6 +208,54 @@ function toggleCollapsed() {
   collapsed.value = !collapsed.value
   localStorage.setItem(COLLAPSED_KEY, collapsed.value ? '1' : '0')
 }
+
+// ---- 语言切换：持久化后重新拉取菜单（后端按 Accept-Language 返回本地化菜单名）；
+// 面包屑/侧边栏响应 userStore.menus 即时刷新；refreshRouteTitles 同步路由记录 meta.title，
+// 供 router.afterEach 在后续导航时写对浏览器标题（meta 非响应式，值更新即可，不靠它驱动渲染） ----
+const localeOptions: DropdownOption[] = [
+  { label: '中文', key: 'zh-CN' },
+  { label: 'English', key: 'en-US' },
+]
+
+async function onLocaleChange(key: string | number) {
+  const next = String(key) as AppLocale
+  if (next === getLocale()) return
+  setLocale(next)
+  try {
+    await userStore.loadUserContext()
+    refreshRouteTitles(userStore.menus)
+  } catch {
+    // 菜单刷新失败不阻塞语言切换（菜单名待下次进入系统时更新）
+  }
+  syncDocumentTitle()
+}
+
+// 浏览器标题随语言即时刷新（afterEach 只在导航时触发）
+function syncDocumentTitle() {
+  const title = crumbTitle.value
+  document.title = title ? `${title} - SmileX Admin` : 'SmileX Admin'
+}
+
+// 面包屑标题：前端自有路由走 titleKey 重译；菜单路由从 userStore.menus 按 code（即路由 name）
+// 查名 —— route.meta.title 是路由记录上的普通对象、非响应式，语言切换后 menus 会重新拉取（响应式），
+// 直接依赖 menus 才能即时刷新（meta.title 仅作 menus 未就绪时的兜底）
+function findMenuName(nodes: MenuNode[], code: string): string | null {
+  for (const m of nodes ?? []) {
+    if (m.code === code) return m.name
+    if (m.children?.length) {
+      const hit = findMenuName(m.children, code)
+      if (hit) return hit
+    }
+  }
+  return null
+}
+
+const crumbTitle = computed(() => {
+  const titleKey = route.meta?.titleKey as string | undefined
+  if (titleKey) return t(titleKey)
+  const name = findMenuName(userStore.menus, route.name as string)
+  return name || (route.meta?.title as string) || t('menu.home')
+})
 
 // 图标支持本地 ionicons5 名称 / 网络图片 URL，统一走 menuIcon 渲染
 const renderIcon = (icon?: string) => () => h('span', { style: 'display:inline-flex;align-items:center' }, renderMenuIcon(icon))
@@ -240,12 +305,12 @@ function onMenuSelect(key: string) {
 
 const avatarChar = computed(() => (userStore.user?.nickname || userStore.user?.username || 'U').charAt(0).toUpperCase())
 
-const userOptions: DropdownOption[] = [
-  { label: '个人中心', key: 'profile' },
-  { label: '修改密码', key: 'password' },
+const userOptions = computed<DropdownOption[]>(() => [
+  { label: t('layout.profile'), key: 'profile' },
+  { label: t('layout.changePassword'), key: 'password' },
   { type: 'divider', key: 'divider' },
-  { label: '退出登录', key: 'logout' },
-]
+  { label: t('layout.logout'), key: 'logout' },
+])
 
 async function onUserAction(key: string | number) {
   if (key === 'logout') {
@@ -264,17 +329,18 @@ const pwdSaving = ref(false)
 const pwdFormRef = ref<FormInst | null>(null)
 const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 // 与后端 binding 保持一致：新密码 6-20 位（旧密码不限上限，兼容历史长密码），两次输入须一致
-const pwdRules: FormRules = {
-  oldPassword: [{ required: true, message: '请输入原密码', trigger: ['blur', 'input'] }],
+// computed：校验文案随语言切换重译
+const pwdRules = computed<FormRules>(() => ({
+  oldPassword: [{ required: true, message: t('layout.pwd.oldRequired'), trigger: ['blur', 'input'] }],
   newPassword: [
-    { required: true, message: '请输入新密码', trigger: ['blur', 'input'] },
-    { min: 6, max: 20, message: '密码长度 6-20 位', trigger: ['blur', 'input'] },
+    { required: true, message: t('layout.pwd.newRequired'), trigger: ['blur', 'input'] },
+    { min: 6, max: 20, message: t('layout.pwd.length'), trigger: ['blur', 'input'] },
   ],
   confirmPassword: [
-    { required: true, message: '请再次输入新密码', trigger: ['blur', 'input'] },
-    { validator: (_rule, v: string) => v === pwdForm.newPassword, message: '两次输入的密码不一致', trigger: ['blur', 'input'] },
+    { required: true, message: t('layout.pwd.confirmRequired'), trigger: ['blur', 'input'] },
+    { validator: (_rule, v: string) => v === pwdForm.newPassword, message: t('layout.pwd.mismatch'), trigger: ['blur', 'input'] },
   ],
-}
+}))
 
 function openPwdModal() {
   Object.assign(pwdForm, { oldPassword: '', newPassword: '', confirmPassword: '' })
@@ -291,11 +357,11 @@ async function savePwd() {
   try {
     await changePassword({ old_password: pwdForm.oldPassword, new_password: pwdForm.newPassword })
     showPwd.value = false
-    message.success('密码已修改，请重新登录')
+    message.success(t('layout.pwd.changed'))
     await userStore.logout()
     router.push('/login')
   } catch (e: any) {
-    message.error(e?.response?.data?.msg || '修改失败')
+    message.error(e?.response?.data?.msg || t('layout.pwd.failed'))
   } finally {
     pwdSaving.value = false
   }
@@ -427,7 +493,10 @@ let exportTimer: number | undefined
 const exportStatusType = (s: ExportRecord['status']): TagProps['type'] =>
   s === 'pending' ? 'info' : s === 'running' ? 'warning' : s === 'done' ? 'success' : 'error'
 const exportStatusText = (s: ExportRecord['status']) =>
-  s === 'pending' ? '排队中' : s === 'running' ? '导出中' : s === 'done' ? '已完成' : '失败'
+  s === 'pending' ? t('layout.exportPanel.pending')
+    : s === 'running' ? t('layout.exportPanel.running')
+    : s === 'done' ? t('layout.exportPanel.done')
+    : t('layout.exportPanel.failed')
 
 async function loadRecentExports() {
   try {
@@ -466,7 +535,7 @@ async function downloadExport(rec: ExportRecord) {
     const filename = parseDispositionFilename(resp.headers['content-disposition']) || `${rec.name}.csv`
     saveBlob(resp.data, filename)
   } catch {
-    message.error('下载失败')
+    message.error(t('layout.exportPanel.downloadFailed'))
   } finally {
     downloadingId.value = 0
   }
@@ -660,12 +729,13 @@ onUnmounted(() => {
   color: var(--sx-ink);
 }
 
-/* 顶栏右侧：搜索图标 + 用户区 */
+/* 顶栏右侧：语言切换 + 搜索图标 + 用户区 */
 .header-right {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+.locale-trigger,
 .search-trigger,
 .export-trigger {
   flex-shrink: 0;

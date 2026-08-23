@@ -1,17 +1,19 @@
 <template>
   <div class="err-page">
     <div class="err-code mono">404</div>
-    <div class="err-title">页面不存在</div>
-    <div class="err-desc">你访问的地址不存在或已被移除。</div>
-    <n-button type="primary" @click="goHome">返回首页</n-button>
+    <div class="err-title">{{ t('errorPage.notFoundTitle') }}</div>
+    <div class="err-desc">{{ t('errorPage.notFoundDesc') }}</div>
+    <n-button type="primary" @click="goHome">{{ t('errorPage.backHome') }}</n-button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { NButton } from 'naive-ui'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const { t } = useI18n()
 
 function goHome() {
   router.push('/')

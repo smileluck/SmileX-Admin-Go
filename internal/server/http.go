@@ -34,6 +34,7 @@ import (
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
 	usersvc "github.com/smilex/smilex-admin-gin/internal/service/user"
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 	"github.com/smilex/smilex-admin-gin/pkg/logger"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
 	"go.uber.org/zap"
@@ -41,17 +42,17 @@ import (
 
 // HTTPServer 聚合全部应用服务
 type HTTPServer struct {
-	cfg      *conf.Bootstrap
-	auth     *authsvc.Service
-	user     *usersvc.Service
-	role     *rolesvc.Service
-	perm     *permsvc.Service
-	session  *sessionsvc.Service
-	log      *logsvc.Service
-	file     *filesvc.Service
-	export   *exportsvc.Service
-	engine   *gin.Engine
-	srv      *http.Server
+	cfg     *conf.Bootstrap
+	auth    *authsvc.Service
+	user    *usersvc.Service
+	role    *rolesvc.Service
+	perm    *permsvc.Service
+	session *sessionsvc.Service
+	log     *logsvc.Service
+	file    *filesvc.Service
+	export  *exportsvc.Service
+	engine  *gin.Engine
+	srv     *http.Server
 }
 
 // NewHTTPServer 构造并注册路由
@@ -63,6 +64,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
 	e.MaxMultipartMemory = 8 << 20
 	e.Use(gin.Recovery(),
+		middleware.I18n(),
 		middleware.SecurityHeaders(),
 		middleware.CORS(),
 		middleware.XSSFilter(),
@@ -90,7 +92,7 @@ func (s *HTTPServer) registerRoutes() {
 		authg.GET("/captcha", func(c *gin.Context) {
 			vo, err := s.auth.GenerateCaptcha()
 			if err != nil {
-				response.ServerError(c, err.Error())
+				response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 				return
 			}
 			response.OK(c, vo)
@@ -99,7 +101,7 @@ func (s *HTTPServer) registerRoutes() {
 		authg.POST("/login", middleware.LoginIPGuard(s.log), middleware.LoginRateLimit(), func(c *gin.Context) {
 			var req authsvc.LoginRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
-				response.BadRequest(c, err.Error())
+				response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 				return
 			}
 			// 登录环境注入（建立会话用；UA 截断防止超长存储）
@@ -121,10 +123,10 @@ func (s *HTTPServer) registerRoutes() {
 			if err != nil {
 				// 验证码错误属入参问题，返回 400 便于前端区分提示并自动刷新
 				if errors.Is(err, bizauth.ErrCaptcha) {
-					response.BadRequest(c, err.Error())
+					response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 					return
 				}
-				response.Unauthorized(c, err.Error())
+				response.FailI18n(c, http.StatusUnauthorized, response.CodeUnauthorized, err)
 				return
 			}
 			response.OK(c, tp)
@@ -132,12 +134,12 @@ func (s *HTTPServer) registerRoutes() {
 		authg.POST("/refresh", func(c *gin.Context) {
 			var req authsvc.RefreshRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
-				response.BadRequest(c, err.Error())
+				response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 				return
 			}
 			tp, err := s.auth.Refresh(c.Request.Context(), req)
 			if err != nil {
-				response.Unauthorized(c, err.Error())
+				response.FailI18n(c, http.StatusUnauthorized, response.CodeUnauthorized, err)
 				return
 			}
 			response.OK(c, tp)
@@ -163,7 +165,7 @@ func (s *HTTPServer) registerRoutes() {
 			sub := middleware.Subject(c)
 			vo, err := s.auth.Profile(c.Request.Context(), sub.UserID)
 			if err != nil {
-				response.ServerError(c, err.Error())
+				response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 				return
 			}
 			response.OK(c, vo)
@@ -173,12 +175,12 @@ func (s *HTTPServer) registerRoutes() {
 			sub := middleware.Subject(c)
 			var req authsvc.UpdateProfileRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
-				response.BadRequest(c, err.Error())
+				response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 				return
 			}
 			vo, err := s.auth.UpdateProfile(c.Request.Context(), sub.UserID, req)
 			if err != nil {
-				response.BadRequest(c, err.Error())
+				response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 				return
 			}
 			response.OK(c, vo)
@@ -188,7 +190,7 @@ func (s *HTTPServer) registerRoutes() {
 			sub := middleware.Subject(c)
 			var req authsvc.ChangePasswordRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
-				response.BadRequest(c, err.Error())
+				response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 				return
 			}
 			sid := ""
@@ -197,10 +199,10 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			if err := s.auth.ChangePassword(c.Request.Context(), sub.UserID, req, sid); err != nil {
 				if errors.Is(err, bizauth.ErrInvalidCredentials) {
-					response.BadRequest(c, "原密码不正确")
+					response.BadRequest(c, i18n.T(c.Request.Context(), "profile.wrong_old_password"))
 					return
 				}
-				response.ServerError(c, err.Error())
+				response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 				return
 			}
 			response.OK(c, nil)
@@ -210,7 +212,7 @@ func (s *HTTPServer) registerRoutes() {
 			sub := middleware.Subject(c)
 			tree, err := s.perm.UserMenuTree(c.Request.Context(), sub.UserID)
 			if err != nil {
-				response.ServerError(c, err.Error())
+				response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 				return
 			}
 			response.OK(c, tree)
@@ -221,7 +223,7 @@ func (s *HTTPServer) registerRoutes() {
 			kw := strings.TrimSpace(c.Query("kw"))
 			hits, err := s.perm.SearchUserMenus(c.Request.Context(), sub.UserID, kw)
 			if err != nil {
-				response.ServerError(c, err.Error())
+				response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 				return
 			}
 			if hits == nil {
@@ -359,7 +361,7 @@ func (s *HTTPServer) listUsers(c *gin.Context) {
 	}
 	users, pg, err := s.user.List(c.Request.Context(), q, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, listResult{List: users, Page: pg})
@@ -368,12 +370,12 @@ func (s *HTTPServer) listUsers(c *gin.Context) {
 func (s *HTTPServer) createUser(c *gin.Context) {
 	var req usersvc.CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	vo, err := s.user.Create(c.Request.Context(), req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, vo)
@@ -386,7 +388,7 @@ func (s *HTTPServer) getUser(c *gin.Context) {
 	}
 	vo, err := s.user.Get(c.Request.Context(), id)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, vo)
@@ -399,7 +401,7 @@ func (s *HTTPServer) updateUser(c *gin.Context) {
 	}
 	var req usersvc.UpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	if err := s.user.Update(user.WithOperator(c.Request.Context(), middleware.Subject(c).UserID), id, req); err != nil {
@@ -428,7 +430,7 @@ func (s *HTTPServer) setUserRoles(c *gin.Context) {
 	}
 	var req usersvc.SetRolesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	if err := s.user.SetRoles(user.WithOperator(c.Request.Context(), middleware.Subject(c).UserID), id, req); err != nil {
@@ -445,7 +447,7 @@ func (s *HTTPServer) resetUserPassword(c *gin.Context) {
 	}
 	var req usersvc.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	if err := s.user.ResetPassword(user.WithOperator(c.Request.Context(), middleware.Subject(c).UserID), id, req); err != nil {
@@ -461,7 +463,7 @@ func (s *HTTPServer) listRoles(c *gin.Context) {
 	page, size := pageParams(c)
 	roles, pg, err := s.role.List(c.Request.Context(), role.Query{Name: c.Query("name")}, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, listResult{List: roles, Page: pg})
@@ -470,12 +472,12 @@ func (s *HTTPServer) listRoles(c *gin.Context) {
 func (s *HTTPServer) createRole(c *gin.Context) {
 	var req rolesvc.CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	r, err := s.role.Create(c.Request.Context(), req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, r)
@@ -488,7 +490,7 @@ func (s *HTTPServer) getRole(c *gin.Context) {
 	}
 	r, err := s.role.Get(c.Request.Context(), id)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, r)
@@ -501,7 +503,7 @@ func (s *HTTPServer) updateRole(c *gin.Context) {
 	}
 	var req rolesvc.UpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	if err := s.role.Update(c.Request.Context(), id, req); err != nil {
@@ -530,7 +532,7 @@ func (s *HTTPServer) setRolePermissions(c *gin.Context) {
 	}
 	var req rolesvc.SetPermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	if err := s.role.SetPermissions(c.Request.Context(), id, req); err != nil {
@@ -551,7 +553,7 @@ func (s *HTTPServer) listPerms(c *gin.Context) {
 	q := bizperm.Query{Type: c.Query("type")}
 	ps, pg, err := s.perm.List(c.Request.Context(), q, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, listResult{List: ps, Page: pg})
@@ -560,12 +562,12 @@ func (s *HTTPServer) listPerms(c *gin.Context) {
 func (s *HTTPServer) createPerm(c *gin.Context) {
 	var req permsvc.CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	p, err := s.perm.Create(c.Request.Context(), req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, p)
@@ -578,7 +580,7 @@ func (s *HTTPServer) getPerm(c *gin.Context) {
 	}
 	p, err := s.perm.Get(c.Request.Context(), id)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, p)
@@ -591,11 +593,11 @@ func (s *HTTPServer) updatePerm(c *gin.Context) {
 	}
 	var req permsvc.UpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
 	if err := s.perm.Update(c.Request.Context(), id, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, nil)
@@ -607,7 +609,7 @@ func (s *HTTPServer) deletePerm(c *gin.Context) {
 		return
 	}
 	if err := s.perm.Delete(c.Request.Context(), id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	response.OK(c, nil)
@@ -626,7 +628,7 @@ func (s *HTTPServer) listOnlineUsers(c *gin.Context) {
 	}
 	vos, pg, err := s.session.List(c.Request.Context(), q, page, size, currentSid)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, listResult{List: vos, Page: pg})
@@ -668,32 +670,32 @@ func (s *HTTPServer) kickUserSessions(c *gin.Context) {
 // sessionErr 会话操作错误映射：超管保护返回 403，会话不存在返回 404，其余返回 400
 func (s *HTTPServer) sessionErr(c *gin.Context, err error) {
 	if errors.Is(err, user.ErrSuperAdminProtected) {
-		response.Forbidden(c, err.Error())
+		response.FailI18n(c, http.StatusForbidden, response.CodeForbidden, err)
 		return
 	}
 	if errors.Is(err, bizsession.ErrSessionNotFound) {
-		response.NotFound(c, "会话不存在或已下线")
+		response.NotFound(c, i18n.T(c.Request.Context(), "session.not_found"))
 		return
 	}
-	response.BadRequest(c, err.Error())
+	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 }
 
 // userErr 用户操作错误映射：超管保护类返回 403，其余返回 400
 func (s *HTTPServer) userErr(c *gin.Context, err error) {
 	if errors.Is(err, user.ErrSuperAdminProtected) || errors.Is(err, user.ErrDeleteSuperAdmin) {
-		response.Forbidden(c, err.Error())
+		response.FailI18n(c, http.StatusForbidden, response.CodeForbidden, err)
 		return
 	}
-	response.BadRequest(c, err.Error())
+	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 }
 
 // roleErr 角色操作错误映射：超管角色保护类返回 403，其余返回 400
 func (s *HTTPServer) roleErr(c *gin.Context, err error) {
 	if errors.Is(err, role.ErrSuperRoleLocked) {
-		response.Forbidden(c, err.Error())
+		response.FailI18n(c, http.StatusForbidden, response.CodeForbidden, err)
 		return
 	}
-	response.BadRequest(c, err.Error())
+	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 }
 
 // ---- 日志 ----
@@ -721,7 +723,7 @@ func (s *HTTPServer) listLoginLogs(c *gin.Context) {
 	}
 	logs, pg, err := s.log.ListLoginLogs(c.Request.Context(), q, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, logListResult{List: logs, Page: pg, RetentionDays: s.log.RetentionDays()})
@@ -730,7 +732,7 @@ func (s *HTTPServer) listLoginLogs(c *gin.Context) {
 func (s *HTTPServer) clearLoginLogs(c *gin.Context) {
 	n, err := s.log.ClearLoginLogs(c.Request.Context())
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, gin.H{"deleted": n})
@@ -747,7 +749,7 @@ func (s *HTTPServer) listOperationLogs(c *gin.Context) {
 	}
 	logs, pg, err := s.log.ListOperationLogs(c.Request.Context(), q, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, logListResult{List: logs, Page: pg, RetentionDays: s.log.RetentionDays()})
@@ -756,7 +758,7 @@ func (s *HTTPServer) listOperationLogs(c *gin.Context) {
 func (s *HTTPServer) clearOperationLogs(c *gin.Context) {
 	n, err := s.log.ClearOperationLogs(c.Request.Context())
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, gin.H{"deleted": n})
@@ -768,7 +770,7 @@ func (s *HTTPServer) listFiles(c *gin.Context) {
 	page, size := pageParams(c)
 	files, pg, err := s.file.List(c.Request.Context(), bizfile.Query{Name: c.Query("name")}, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, listResult{List: files, Page: pg})
@@ -778,16 +780,16 @@ func (s *HTTPServer) uploadFile(c *gin.Context) {
 	sub := middleware.Subject(c)
 	fh, err := c.FormFile("file")
 	if err != nil {
-		response.BadRequest(c, "请选择要上传的文件（表单字段 file）")
+		response.BadRequest(c, i18n.T(c.Request.Context(), "file.no_file"))
 		return
 	}
 	if max := s.cfg.Storage.MaxSizeMB << 20; max > 0 && fh.Size > max {
-		response.BadRequest(c, fmt.Sprintf("文件大小超出限制（上限 %dMB）", s.cfg.Storage.MaxSizeMB))
+		response.BadRequest(c, i18n.T(c.Request.Context(), "file.too_large", s.cfg.Storage.MaxSizeMB))
 		return
 	}
 	src, err := fh.Open()
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
 	}
 	defer src.Close()
@@ -846,13 +848,16 @@ func (s *HTTPServer) deleteFile(c *gin.Context) {
 func (s *HTTPServer) fileErr(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, bizfile.ErrFileNotFound):
-		response.NotFound(c, err.Error())
-	case errors.Is(err, bizfile.ErrFileTooLarge), errors.Is(err, bizfile.ErrFileTypeDenied):
-		response.BadRequest(c, err.Error())
+		response.FailI18n(c, http.StatusNotFound, response.CodeErr, err)
+	case errors.Is(err, bizfile.ErrFileTooLarge):
+		// 上限参数按当前配置渲染（biz 层只返回哨兵错误）
+		response.BadRequest(c, i18n.T(c.Request.Context(), "file.too_large", s.cfg.Storage.MaxSizeMB))
+	case errors.Is(err, bizfile.ErrFileTypeDenied):
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 	case errors.Is(err, bizfile.ErrDriverUnavailable):
-		response.Fail(c, http.StatusServiceUnavailable, response.CodeErr, err.Error())
+		response.FailI18n(c, http.StatusServiceUnavailable, response.CodeErr, err)
 	default:
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 	}
 }
 
@@ -869,11 +874,11 @@ func (s *HTTPServer) submitExport(c *gin.Context, biz string) {
 	if err != nil {
 		switch {
 		case errors.Is(err, bizexport.ErrQueueFull):
-			response.TooManyRequests(c, err.Error())
+			response.FailI18n(c, http.StatusTooManyRequests, response.CodeErr, err)
 		case errors.Is(err, bizexport.ErrUnsupportedBiz):
-			response.BadRequest(c, err.Error())
+			response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		default:
-			response.ServerError(c, err.Error())
+			response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		}
 		return
 	}
@@ -885,7 +890,7 @@ func (s *HTTPServer) listExports(c *gin.Context) {
 	if c.Query("recent") == "1" {
 		vos, err := s.export.Recent(c.Request.Context(), sub.UserID, 5)
 		if err != nil {
-			response.ServerError(c, err.Error())
+			response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 			return
 		}
 		response.OK(c, vos)
@@ -894,7 +899,7 @@ func (s *HTTPServer) listExports(c *gin.Context) {
 	page, size := pageParams(c)
 	vos, pg, err := s.export.List(c.Request.Context(), sub.UserID, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
 	}
 	response.OK(c, listResult{List: vos, Page: pg})
@@ -945,17 +950,17 @@ func (s *HTTPServer) deleteExport(c *gin.Context) {
 func (s *HTTPServer) exportErr(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, bizexport.ErrNotFound):
-		response.NotFound(c, err.Error())
+		response.FailI18n(c, http.StatusNotFound, response.CodeErr, err)
 	case errors.Is(err, bizexport.ErrNotOwner):
-		response.Forbidden(c, err.Error())
+		response.FailI18n(c, http.StatusForbidden, response.CodeForbidden, err)
 	case errors.Is(err, bizexport.ErrNotReady):
-		response.Fail(c, http.StatusConflict, response.CodeErr, err.Error())
+		response.FailI18n(c, http.StatusConflict, response.CodeErr, err)
 	case errors.Is(err, bizexport.ErrQueueFull):
-		response.TooManyRequests(c, err.Error())
+		response.FailI18n(c, http.StatusTooManyRequests, response.CodeErr, err)
 	case errors.Is(err, bizfile.ErrDriverUnavailable):
-		response.Fail(c, http.StatusServiceUnavailable, response.CodeErr, err.Error())
+		response.FailI18n(c, http.StatusServiceUnavailable, response.CodeErr, err)
 	default:
-		response.ServerError(c, err.Error())
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 	}
 }
 

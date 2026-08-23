@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
 	"github.com/smilex/smilex-admin-gin/pkg/security"
 )
@@ -93,7 +94,7 @@ func SQLInjectionGuard() gin.HandlerFunc {
 		for _, vs := range c.Request.URL.Query() {
 			for _, v := range vs {
 				if security.ContainsSQLInjection(v) {
-					response.BadRequest(c, "请求参数包含非法字符")
+					response.BadRequest(c, i18n.T(c.Request.Context(), "security.invalid_chars"))
 					c.Abort()
 					return
 				}
@@ -101,7 +102,7 @@ func SQLInjectionGuard() gin.HandlerFunc {
 		}
 		for _, p := range c.Params {
 			if security.ContainsSQLInjection(p.Value) {
-				response.BadRequest(c, "请求参数包含非法字符")
+				response.BadRequest(c, i18n.T(c.Request.Context(), "security.invalid_chars"))
 				c.Abort()
 				return
 			}
@@ -136,7 +137,7 @@ func LoginRateLimit() gin.HandlerFunc {
 			l.hits[ip] = kept
 			l.mu.Unlock()
 			c.Header("Retry-After", "60")
-			response.TooManyRequests(c, "登录尝试过于频繁，请稍后再试")
+			response.TooManyRequests(c, i18n.T(c.Request.Context(), "security.login_frequent"))
 			c.Abort()
 			return
 		}

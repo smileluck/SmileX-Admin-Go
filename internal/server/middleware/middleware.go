@@ -10,8 +10,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
 )
+
+// I18n 按 Accept-Language 头识别请求语言并注入 context（须在全局链最前注册，
+// 保证后续中间件与 handler 都能从 context 取到语言）
+func I18n() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		l := i18n.Detect(c.GetHeader("Accept-Language"))
+		c.Set("locale", string(l))
+		c.Request = c.Request.WithContext(i18n.WithLocale(c.Request.Context(), l))
+		c.Next()
+	}
+}
 
 // CORS 跨域
 func CORS() gin.HandlerFunc {

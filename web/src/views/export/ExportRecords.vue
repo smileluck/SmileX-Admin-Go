@@ -8,9 +8,12 @@
 import { computed, h, onMounted, onBeforeUnmount, reactive, ref, type VNode } from 'vue'
 import { NButton, NCard, NDataTable, NTag, NTooltip, useMessage, useDialog, type DataTableColumns, type TagProps } from 'naive-ui'
 import { renderActions, type TableAction } from '../../utils/tableActions'
+import { useI18n } from 'vue-i18n'
 import { listExportRecords, getExportBlob, deleteExport } from '../../api'
 import { saveBlob, parseDispositionFilename } from '../../utils/download'
 import type { ExportRecord } from '../../api/types'
+
+const { t } = useI18n()
 
 const message = useMessage()
 const dialog = useDialog()
@@ -57,7 +60,7 @@ async function download(row: ExportRecord) {
     const filename = parseDispositionFilename(resp.headers['content-disposition']) || `${row.name}.csv`
     saveBlob(resp.data, filename)
   } catch {
-    message.error('下载失败')
+    message.error(t('exportRecords.downloadFailed'))
   } finally {
     downloadingId.value = 0
   }
@@ -65,28 +68,34 @@ async function download(row: ExportRecord) {
 
 function confirmDelete(row: ExportRecord) {
   dialog.warning({
-    title: '删除确认',
-    content: `确定删除导出记录「${row.name}」吗？导出文件将一并删除，不可恢复。`,
-    positiveText: '删除',
-    negativeText: '取消',
+    title: t('exportRecords.deleteConfirmTitle'),
+    content: t('exportRecords.deleteConfirmContent', { name: row.name }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
     onPositiveClick: async () => {
       try {
         await deleteExport(row.id)
-        message.success('已删除')
+        message.success(t('common.deleteSuccess'))
         load()
       } catch (e: any) {
-        message.error(e?.response?.data?.msg || '删除失败')
+        message.error(e?.response?.data?.msg || t('exportRecords.deleteFailed'))
       }
     },
   })
 }
 
-const bizNames: Record<string, string> = { user: '用户列表', login_log: '登录日志', op_log: '操作日志' }
+const bizNames = computed<Record<string, string>>(() => ({
+  user: t('exportRecords.biz.user'), login_log: t('exportRecords.biz.loginLog'), op_log: t('exportRecords.biz.opLog'),
+}))
 
 const statusType = (s: ExportRecord['status']): TagProps['type'] =>
   s === 'pending' ? 'info' : s === 'running' ? 'warning' : s === 'done' ? 'success' : 'error'
-const statusText = (s: ExportRecord['status']) =>
-  s === 'pending' ? '排队中' : s === 'running' ? '导出中' : s === 'done' ? '已完成' : '失败'
+const statusText = computed<Record<ExportRecord['status'], string>>(() => ({
+  pending: t('exportRecords.status.pending'),
+  running: t('exportRecords.status.running'),
+  done: t('exportRecords.status.done'),
+  failed: t('exportRecords.status.failed'),
+}))
 
 function fmtSize(n: number) {
   if (!n) return '—'
@@ -97,7 +106,7 @@ function fmtSize(n: number) {
 
 // 状态标签：失败行 hover 显示错误原因
 function renderStatus(row: ExportRecord): VNode {
-  const tag = h(NTag, { type: statusType(row.status), size: 'small' }, { default: () => statusText(row.status) })
+  const tag = h(NTag, { type: statusType(row.status), size: 'small' }, { default: () => statusText.value[row.status] })
   if (row.status === 'failed' && row.error) {
     return h(NTooltip, null, { trigger: () => tag, default: () => row.error })
   }
@@ -105,37 +114,37 @@ function renderStatus(row: ExportRecord): VNode {
 }
 
 const columns = computed<DataTableColumns<ExportRecord>>(() => [
-  { title: '文件名', key: 'name', ellipsis: { tooltip: true } },
+  { title: t('exportRecords.name'), key: 'name', ellipsis: { tooltip: true } },
   {
-    title: '业务类型', key: 'biz', width: 110,
-    render: (row) => h(NTag, { size: 'small', bordered: false }, { default: () => bizNames[row.biz] || row.biz }),
+    title: t('exportRecords.bizType'), key: 'biz', width: 110,
+    render: (row) => h(NTag, { size: 'small', bordered: false }, { default: () => bizNames.value[row.biz] || row.biz }),
   },
-  { title: '状态', key: 'status', width: 90, render: renderStatus },
+  { title: t('common.status'), key: 'status', width: 90, render: renderStatus },
   {
-    title: '行数', key: 'rows', width: 120,
+    title: t('exportRecords.rows'), key: 'rows', width: 120,
     render: (row) =>
       h('span', { style: 'display: inline-flex; align-items: center; gap: 6px' }, [
         String(row.rows),
         row.truncated
-          ? h(NTag, { type: 'warning', size: 'tiny', bordered: false }, { default: () => '已截断' })
+          ? h(NTag, { type: 'warning', size: 'tiny', bordered: false }, { default: () => t('exportRecords.truncated') })
           : null,
       ]),
   },
-  { title: '大小', key: 'size', width: 100, render: (row) => fmtSize(row.size) },
-  { title: '创建时间', key: 'created_at', width: 170 },
-  { title: '完成时间', key: 'finished_at', width: 170, render: (row) => row.finished_at || '—' },
+  { title: t('exportRecords.size'), key: 'size', width: 100, render: (row) => fmtSize(row.size) },
+  { title: t('common.createTime'), key: 'created_at', width: 170 },
+  { title: t('exportRecords.finishTime'), key: 'finished_at', width: 170, render: (row) => row.finished_at || '—' },
   {
-    title: '操作', key: 'actions', width: 110,
+    title: t('common.operation'), key: 'actions', width: 110,
     render(row) {
       const actions: Array<TableAction | VNode> = []
       if (row.status === 'done') {
         actions.push({
-          label: downloadingId.value === row.id ? '下载中' : '下载',
+          label: downloadingId.value === row.id ? t('exportRecords.downloading') : t('common.download'),
           accent: true,
           onClick: () => { if (!downloadingId.value) download(row) },
         })
       }
-      actions.push({ label: '删除', danger: true, onClick: () => confirmDelete(row) })
+      actions.push({ label: t('common.delete'), danger: true, onClick: () => confirmDelete(row) })
       return renderActions(actions)
     },
   },

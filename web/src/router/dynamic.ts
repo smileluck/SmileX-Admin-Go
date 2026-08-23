@@ -60,7 +60,7 @@ export async function setupDynamicRoutes(): Promise<string> {
       path: '/profile',
       name: 'profile',
       component: () => import('../views/profile/Profile.vue'),
-      meta: { title: '个人中心' },
+      meta: { titleKey: 'menu.profile' },
     })
   }
   // 隐藏路由：导出记录（不在菜单树中，任何登录用户可访问）
@@ -69,7 +69,7 @@ export async function setupDynamicRoutes(): Promise<string> {
       path: '/exports',
       name: 'export-records',
       component: () => import('../views/export/ExportRecords.vue'),
-      meta: { title: '导出记录' },
+      meta: { titleKey: 'menu.exportRecords' },
     })
   }
   // 菜单路由注册完成后再挂 404 兜底，避免刷新深链接时原始路径被吞（见 ./index.ts）；
@@ -79,9 +79,24 @@ export async function setupDynamicRoutes(): Promise<string> {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/error/NotFound.vue'),
-      meta: { title: '页面不存在' },
+      meta: { titleKey: 'menu.notFound' },
     })
   }
   userStore.routesLoaded = true
   return dynamic.length ? dynamic[0].path : '/'
+}
+
+// 语言切换后：菜单名由后端按新语言返回，就地更新已注册菜单路由的 meta.title
+//（路由记录对象在 currentRoute 的 matched 中被共享，改 meta 即可驱动面包屑/标题刷新）
+export function refreshRouteTitles(menus: any[]) {
+  const walk = (nodes: any[]) => {
+    for (const m of nodes ?? []) {
+      if (m.type !== 'dir' && m.code && router.hasRoute(m.code)) {
+        const rec = router.getRoutes().find((r) => r.name === m.code)
+        if (rec) rec.meta.title = m.name
+      }
+      if (m.children?.length) walk(m.children)
+    }
+  }
+  walk(menus)
 }

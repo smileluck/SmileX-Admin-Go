@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider :theme="null" :theme-overrides="themeOverrides" :locale="zhCN" :date-locale="dateZhCN">
+  <n-config-provider :theme="null" :theme-overrides="themeOverrides" :locale="naiveLocale" :date-locale="naiveDateLocale">
     <n-message-provider>
       <n-dialog-provider>
         <router-view />
@@ -9,7 +9,14 @@
 </template>
 
 <script setup lang="ts">
-import { NConfigProvider, NMessageProvider, NDialogProvider, zhCN, dateZhCN, type GlobalThemeOverrides } from 'naive-ui'
+import { computed } from 'vue'
+import { NConfigProvider, NMessageProvider, NDialogProvider, zhCN, enUS, dateZhCN, dateEnUS, type GlobalThemeOverrides } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+// naive-ui 组件文案随 i18n 语言切换
+const { locale } = useI18n()
+const naiveLocale = computed(() => (locale.value === 'en-US' ? enUS : zhCN))
+const naiveDateLocale = computed(() => (locale.value === 'en-US' ? dateEnUS : dateZhCN))
 
 // 主题规范：色值与 src/styles/tokens.css 同源，改主题两处同步调整
 const themeOverrides: GlobalThemeOverrides = {

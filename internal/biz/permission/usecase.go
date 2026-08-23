@@ -5,7 +5,24 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 	"github.com/smilex/smilex-admin-gin/pkg/pagination"
+)
+
+// 父子层级规则错误（dir → menu → button 三级模型校验用，供 i18n 注册表 errors.Is 匹配）
+var (
+	// ErrDirTopLevelOnly 目录只能挂在顶级
+	ErrDirTopLevelOnly = errors.New("目录只能挂在顶级")
+	// ErrMenuParentNotDir 菜单的父级必须是目录
+	ErrMenuParentNotDir = errors.New("菜单的父级必须是目录")
+	// ErrButtonParentNotMenu 权限点的父级必须是菜单
+	ErrButtonParentNotMenu = errors.New("权限点的父级必须是菜单")
+	// ErrParentIsSelf 父级不能是自身
+	ErrParentIsSelf = errors.New("父级不能是自身")
+	// ErrParentIsDescendant 父级不能是自身的子级
+	ErrParentIsDescendant = errors.New("父级不能是自身的子级")
+	// ErrWildcardLocked 超管通配权限禁止删除
+	ErrWildcardLocked = errors.New("超管通配权限禁止删除")
 )
 
 // Usecase 权限领域用例
@@ -33,11 +50,11 @@ func (uc *Usecase) Create(ctx context.Context, name, code string, t Type, method
 
 // validateParentType 按节点类型校验父级层级（dir → menu → button 三级模型）：
 // dir 只能挂在顶级；menu 父级必须是 dir；button 父级必须是 menu。menu/button 允许顶级
-//（顶级页面菜单、超管通配权限点等场景）。
+// （顶级页面菜单、超管通配权限点等场景）。
 func (uc *Usecase) validateParentType(ctx context.Context, t Type, parentID uint) error {
 	if t == TypeDir {
 		if parentID != 0 {
-			return errors.New("目录只能挂在顶级")
+			return ErrDirTopLevelOnly
 		}
 		return nil
 	}
@@ -49,10 +66,10 @@ func (uc *Usecase) validateParentType(ctx context.Context, t Type, parentID uint
 		return err
 	}
 	if t == TypeMenu && parent.Type != TypeDir {
-		return errors.New("菜单的父级必须是目录")
+		return ErrMenuParentNotDir
 	}
 	if t == TypeButton && parent.Type != TypeMenu {
-		return errors.New("权限点的父级必须是菜单")
+		return ErrButtonParentNotMenu
 	}
 	return nil
 }
@@ -94,12 +111,12 @@ func (uc *Usecase) validateParent(ctx context.Context, id, parentID uint) error 
 		return nil
 	}
 	if parentID == id {
-		return errors.New("父级不能是自身")
+		return ErrParentIsSelf
 	}
 	cur := parentID
 	for cur != 0 {
 		if cur == id {
-			return errors.New("父级不能是自身的子级")
+			return ErrParentIsDescendant
 		}
 		p, err := uc.repo.FindByID(ctx, cur)
 		if err != nil {
@@ -113,7 +130,7 @@ func (uc *Usecase) validateParent(ctx context.Context, id, parentID uint) error 
 // Delete 删除权限：超管通配权限（id=1）禁止删除；存在子级时须先删子级
 func (uc *Usecase) Delete(ctx context.Context, id uint) error {
 	if id == 1 {
-		return errors.New("超管通配权限禁止删除")
+		return ErrWildcardLocked
 	}
 	n, err := uc.repo.CountByParentID(ctx, id)
 	if err != nil {
@@ -149,7 +166,24 @@ func (uc *Usecase) UserMenuTree(ctx context.Context, userID uint) ([]*MenuNode, 
 			menus = append(menus, p)
 		}
 	}
-	return BuildMenuTree(menus, 0), nil
+	tree := BuildMenuTree(menus, 0)
+	localizeMenuNames(ctx, tree)
+	return tree, nil
+}
+
+// localizeMenuNames 按请求 locale 用语言包（menu.<code>）覆盖菜单名；
+// 语言包未命中（T 返回 key 本身）时保留库中原名。SearchUserMenus 基于本树构建，
+// 其 Parents 父级链随之一并本地化
+func localizeMenuNames(ctx context.Context, nodes []*MenuNode) {
+	for _, n := range nodes {
+		key := "menu." + n.Code
+		if v := i18n.T(ctx, key); v != key {
+			n.Name = v
+		}
+		if len(n.Children) > 0 {
+			localizeMenuNames(ctx, n.Children)
+		}
+	}
 }
 
 // MenuHit 菜单搜索命中项（顶栏命令面板用；Parents 为父级链提示，不含自身）

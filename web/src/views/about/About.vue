@@ -24,9 +24,9 @@
       </n-card>
 
       <!-- 右：更新记录（git 提交日志构建时生成） -->
-      <n-card class="log-card" title="更新记录">
+      <n-card class="log-card" :title="t('about.updateLog')">
         <template #header-extra>
-          <span class="gen-meta mono">{{ commits.length }} 条提交 · 构建时自动生成</span>
+          <span class="gen-meta mono">{{ t('about.commitMeta', { n: commits.length }) }}</span>
         </template>
         <div class="log-list">
           <div v-for="c in commits" :key="c.hash" class="log-item">
@@ -42,7 +42,9 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { NCard, NTag, NIcon } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import {
   AppsOutline, GitCommitOutline, DesktopOutline, ServerOutline,
   DiscOutline, LayersOutline, PersonOutline,
@@ -50,32 +52,37 @@ import {
 import pkg from '../../../package.json'
 import changelog from '../../generated/changelog.json'
 
+const { t } = useI18n()
 const version = pkg.version
 const commits = changelog.commits
 
 // 左侧信息行：icon + 灰标签 + 粗体值
-const infoRows = [
-  { icon: AppsOutline, label: '应用名称', value: 'SmileX Admin' },
-  { icon: GitCommitOutline, label: '当前版本', value: `v${version}` },
-  { icon: DesktopOutline, label: '前端技术', value: 'Vue 3 · Naive UI' },
-  { icon: ServerOutline, label: '后端技术', value: 'Go · Gin · GORM' },
-  { icon: DiscOutline, label: '数据库', value: 'MySQL / PostgreSQL / SQLite' },
-  { icon: LayersOutline, label: '架构风格', value: 'DDD 四层 + Wire 依赖注入' },
-  { icon: PersonOutline, label: '开发者', value: 'SmileX' },
-]
+const infoRows = computed(() => [
+  { icon: AppsOutline, label: t('about.info.appName'), value: 'SmileX Admin' },
+  { icon: GitCommitOutline, label: t('about.info.currentVersion'), value: `v${version}` },
+  { icon: DesktopOutline, label: t('about.info.frontend'), value: 'Vue 3 · Naive UI' },
+  { icon: ServerOutline, label: t('about.info.backend'), value: 'Go · Gin · GORM' },
+  { icon: DiscOutline, label: t('about.info.database'), value: 'MySQL / PostgreSQL / SQLite' },
+  { icon: LayersOutline, label: t('about.info.arch'), value: t('about.archValue') },
+  { icon: PersonOutline, label: t('about.info.developer'), value: 'SmileX' },
+])
 
-// 提交类型 -> 标签色与中文名（conventional commits）
-const TYPE_MAP: Record<string, { tag: 'primary' | 'error' | 'info' | 'warning' | 'success' | 'default'; label: string }> = {
-  feat: { tag: 'primary', label: '新增' },
-  fix: { tag: 'error', label: '修复' },
-  style: { tag: 'info', label: '样式' },
-  refactor: { tag: 'warning', label: '重构' },
-  perf: { tag: 'success', label: '性能' },
-  docs: { tag: 'default', label: '文档' },
-  test: { tag: 'default', label: '测试' },
-  chore: { tag: 'default', label: '杂项' },
+// 提交类型 -> 标签色（conventional commits），文案见 about.type.*
+type TagType = 'primary' | 'error' | 'info' | 'warning' | 'success' | 'default'
+const TYPE_TAGS: Record<string, TagType> = {
+  feat: 'primary',
+  fix: 'error',
+  style: 'info',
+  refactor: 'warning',
+  perf: 'success',
+  docs: 'default',
+  test: 'default',
+  chore: 'default',
 }
-const typeMeta = (t: string) => TYPE_MAP[t] ?? { tag: 'default' as const, label: '其他' }
+const typeMeta = (type: string) => ({
+  tag: TYPE_TAGS[type] ?? ('default' as const),
+  label: t(`about.type.${TYPE_TAGS[type] ? type : 'other'}`),
+})
 </script>
 
 <style scoped>

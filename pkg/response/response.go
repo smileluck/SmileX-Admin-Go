@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 )
 
 type Body struct {
@@ -26,6 +27,20 @@ func OK(c *gin.Context, data interface{}) {
 
 func Fail(c *gin.Context, httpStatus, code int, msg string) {
 	c.JSON(httpStatus, Body{Code: code, Msg: msg})
+}
+
+// ErrKeyFunc 错误 -> i18n key 映射钩子（由 server 层注册，避免 response 反向依赖业务包）
+var ErrKeyFunc func(err error) (key string, ok bool)
+
+// FailI18n 按请求 locale 输出本地化错误消息：命中注册表走语言包，未命中透传 err.Error()
+func FailI18n(c *gin.Context, httpStatus, code int, err error) {
+	if ErrKeyFunc != nil {
+		if key, ok := ErrKeyFunc(err); ok {
+			Fail(c, httpStatus, code, i18n.T(c.Request.Context(), key))
+			return
+		}
+	}
+	Fail(c, httpStatus, code, err.Error())
 }
 
 func BadRequest(c *gin.Context, msg string) { Fail(c, http.StatusBadRequest, CodeErr, msg) }

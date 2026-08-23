@@ -1,7 +1,7 @@
 <template>
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
   <SearchCard storage-key="files" @search="load" @reset="resetQuery">
-    <n-input v-model:value="query.name" placeholder="文件名" clearable style="width: 200px" @keyup.enter="load" />
+    <n-input v-model:value="query.name" :placeholder="t('file.name')" clearable style="width: 200px" @keyup.enter="load" />
   </SearchCard>
 
   <n-card>
@@ -9,7 +9,7 @@
       <div class="page-actions">
         <!-- 隐藏原生文件选择框，按钮触发；选择后立即上传 -->
         <input ref="fileInput" type="file" style="display: none" @change="onPick" />
-        <n-button type="primary" ghost :loading="uploading" @click="pickFile" v-permission="['file:upload']">上传文件</n-button>
+        <n-button type="primary" ghost :loading="uploading" @click="pickFile" v-permission="['file:upload']">{{ t('file.upload') }}</n-button>
       </div>
     </template>
 
@@ -20,7 +20,7 @@
   <n-modal v-model:show="showPreview" preset="card" :title="previewName" style="width: 720px">
     <div class="preview-body">
       <n-spin :show="previewLoading">
-        <img v-if="previewUrl" :src="previewUrl" class="preview-img" alt="预览" />
+        <img v-if="previewUrl" :src="previewUrl" class="preview-img" :alt="t('file.preview')" />
       </n-spin>
     </div>
   </n-modal>
@@ -31,10 +31,13 @@ import { computed, h, onMounted, onBeforeUnmount, reactive, ref, type VNode } fr
 import { NCard, NInput, NButton, NDataTable, NModal, NSpin, NTag, useMessage, useDialog, type DataTableColumns } from 'naive-ui'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
+import { useI18n } from 'vue-i18n'
 import { listFiles, uploadFile, deleteFile, getFileBlob } from '../../api'
 import { saveBlob } from '../../utils/download'
 import { useUserStore } from '../../stores/user'
 import type { FileInfo } from '../../api/types'
+
+const { t } = useI18n()
 
 const message = useMessage()
 const dialog = useDialog()
@@ -86,10 +89,10 @@ async function onPick(e: Event) {
   uploading.value = true
   try {
     await uploadFile(file)
-    message.success('上传成功')
+    message.success(t('file.uploadSuccess'))
     load()
   } catch (e: any) {
-    message.error(e?.response?.data?.msg || '上传失败')
+    message.error(e?.response?.data?.msg || t('file.uploadFailed'))
   } finally {
     uploading.value = false
   }
@@ -111,7 +114,7 @@ async function download(row: FileInfo) {
     const { data } = await getFileBlob(row.id, true)
     saveBlob(data, row.name)
   } catch (e: any) {
-    message.error(e?.response?.data?.msg || '下载失败')
+    message.error(e?.response?.data?.msg || t('file.downloadFailed'))
   }
 }
 
@@ -125,7 +128,7 @@ async function preview(row: FileInfo) {
     previewUrl.value = URL.createObjectURL(data)
   } catch (e: any) {
     showPreview.value = false
-    message.error(e?.response?.data?.msg || '预览失败')
+    message.error(e?.response?.data?.msg || t('file.previewFailed'))
   } finally {
     previewLoading.value = false
   }
@@ -133,47 +136,48 @@ async function preview(row: FileInfo) {
 
 function confirmDelete(row: FileInfo) {
   dialog.warning({
-    title: '删除确认',
-    content: `确定删除文件「${row.name}」吗？存储对象将一并删除，不可恢复。`,
-    positiveText: '删除',
-    negativeText: '取消',
+    title: t('file.deleteConfirmTitle'),
+    content: t('file.deleteConfirmContent', { name: row.name }),
+    positiveText: t('common.delete'),
+    negativeText: t('common.cancel'),
     onPositiveClick: async () => {
       try {
         await deleteFile(row.id)
-        message.success('已删除')
+        message.success(t('common.deleteSuccess'))
         load()
       } catch (e: any) {
-        message.error(e?.response?.data?.msg || '删除失败')
+        message.error(e?.response?.data?.msg || t('file.deleteFailed'))
       }
     },
   })
 }
 
-const driverNames: Record<string, string> = {
-  local: '本地', oss: '阿里云OSS', cos: '腾讯云COS', tos: '火山云TOS', minio: 'MinIO',
-}
+const driverNames = computed<Record<string, string>>(() => ({
+  local: t('file.drivers.local'), oss: t('file.drivers.oss'), cos: t('file.drivers.cos'),
+  tos: t('file.drivers.tos'), minio: t('file.drivers.minio'),
+}))
 
 // 操作列依赖按钮权限，computed 使权限变化后重新渲染
 const columns = computed<DataTableColumns<FileInfo>>(() => [
   { title: 'ID', key: 'id', width: 60 },
-  { title: '文件名', key: 'name', ellipsis: { tooltip: true } },
-  { title: '大小', key: 'size', width: 100, render: (row) => fmtSize(row.size) },
+  { title: t('file.name'), key: 'name', ellipsis: { tooltip: true } },
+  { title: t('file.size'), key: 'size', width: 100, render: (row) => fmtSize(row.size) },
   {
-    title: '存储', key: 'driver', width: 110,
-    render: (row) => h(NTag, { size: 'small', bordered: false }, { default: () => driverNames[row.driver] || row.driver }),
+    title: t('file.driver'), key: 'driver', width: 110,
+    render: (row) => h(NTag, { size: 'small', bordered: false }, { default: () => driverNames.value[row.driver] || row.driver }),
   },
-  { title: '上传人', key: 'uploader_name', width: 110 },
-  { title: '上传时间', key: 'created_at', width: 170 },
+  { title: t('file.uploader'), key: 'uploader_name', width: 110 },
+  { title: t('file.uploadTime'), key: 'created_at', width: 170 },
   {
-    title: '操作', key: 'actions', width: 150,
+    title: t('common.operation'), key: 'actions', width: 150,
     render(row) {
       const actions: Array<TableAction | VNode> = []
       if (userStore.has('file:view')) {
-        if (isImage(row)) actions.push({ label: '预览', onClick: () => preview(row) })
-        actions.push({ label: '下载', accent: true, onClick: () => download(row) })
+        if (isImage(row)) actions.push({ label: t('file.preview'), onClick: () => preview(row) })
+        actions.push({ label: t('common.download'), accent: true, onClick: () => download(row) })
       }
       if (userStore.has('file:delete')) {
-        actions.push({ label: '删除', danger: true, onClick: () => confirmDelete(row) })
+        actions.push({ label: t('common.delete'), danger: true, onClick: () => confirmDelete(row) })
       }
       return renderActions(actions)
     },
