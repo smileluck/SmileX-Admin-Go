@@ -2,7 +2,7 @@
   <div class="about-page">
     <!-- 固定左右布局：左信息卡固定宽、右更新记录自适应，任何窗口宽度都不堆叠 -->
     <div class="about-layout">
-      <!-- 左：产品信息卡 -->
+      <!-- 左：产品信息卡（品牌 + 系统简介 + 核心特性） -->
       <n-card class="info-card">
         <div class="brand">
           <div class="seal">S</div>
@@ -12,11 +12,13 @@
           </div>
         </div>
 
-        <div class="info-rows">
-          <div v-for="row in infoRows" :key="row.label" class="info-row">
-            <span class="info-icon"><n-icon :component="row.icon" :size="15" /></span>
-            <span class="info-label">{{ row.label }}</span>
-            <span class="info-value">{{ row.value }}</span>
+        <p class="intro">{{ t('about.intro') }}</p>
+
+        <div class="features">
+          <div class="features-title">{{ t('about.featuresTitle') }}</div>
+          <div v-for="f in features" :key="f" class="feature-item">
+            <span class="feature-dot" />
+            <span>{{ f }}</span>
           </div>
         </div>
 
@@ -43,12 +45,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NCard, NTag, NIcon } from 'naive-ui'
+import { NCard, NTag } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
-import {
-  AppsOutline, GitCommitOutline, DesktopOutline, ServerOutline,
-  DiscOutline, LayersOutline, PersonOutline,
-} from '@vicons/ionicons5'
 import pkg from '../../../package.json'
 import changelog from '../../generated/changelog.json'
 
@@ -56,15 +54,14 @@ const { t } = useI18n()
 const version = pkg.version
 const commits = changelog.commits
 
-// 左侧信息行：icon + 灰标签 + 粗体值
-const infoRows = computed(() => [
-  { icon: AppsOutline, label: t('about.info.appName'), value: 'SmileX Admin' },
-  { icon: GitCommitOutline, label: t('about.info.currentVersion'), value: `v${version}` },
-  { icon: DesktopOutline, label: t('about.info.frontend'), value: 'Vue 3 · Naive UI' },
-  { icon: ServerOutline, label: t('about.info.backend'), value: 'Go · Gin · GORM' },
-  { icon: DiscOutline, label: t('about.info.database'), value: 'MySQL / PostgreSQL / SQLite' },
-  { icon: LayersOutline, label: t('about.info.arch'), value: t('about.archValue') },
-  { icon: PersonOutline, label: t('about.info.developer'), value: 'SmileX' },
+// 核心特性列表（文案见 about.features.*，与 README 特性说明同源）
+const features = computed(() => [
+  t('about.features.arch'),
+  t('about.features.db'),
+  t('about.features.rbac'),
+  t('about.features.menu'),
+  t('about.features.token'),
+  t('about.features.i18n'),
 ])
 
 // 提交类型 -> 标签色（conventional commits），文案见 about.type.*
@@ -158,31 +155,41 @@ const typeMeta = (type: string) => ({
   color: var(--sx-ink);
 }
 
-/* 信息行：icon + 灰标签 … 黑色粗体值 */
-.info-rows {
-  padding: 14px 0 2px;
+/* 系统简介段落 */
+.intro {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--sx-ink);
 }
-.info-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+
+/* 核心特性列表 */
+.features {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sx-line);
 }
-.info-icon {
-  display: inline-flex;
-  align-items: center;
-  color: var(--sx-muted);
-}
-.info-label {
+.features-title {
   font-size: 12px;
   color: var(--sx-muted);
+  margin-bottom: 6px;
 }
-.info-value {
-  margin-left: auto;
-  font-size: 13px;
-  font-weight: 600;
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12px;
+  line-height: 1.7;
   color: var(--sx-ink);
-  text-align: right;
+}
+.feature-dot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--sx-accent);
 }
 
 .copyright {
