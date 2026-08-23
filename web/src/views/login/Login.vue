@@ -42,6 +42,9 @@
             <h2 class="form-title">{{ t('login.formTitle') }}</h2>
             <p class="form-sub">{{ t('login.formSub') }}</p>
           </div>
+          <n-dropdown class="locale-switch" :options="localeOptions" @select="onLocaleChange">
+            <button type="button" class="locale-btn">{{ locale === 'en-US' ? 'EN' : '中文' }}</button>
+          </n-dropdown>
         </div>
 
         <n-form ref="formRef" :model="form" :rules="rules" :show-label="false">
@@ -76,9 +79,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { NForm, NFormItem, NInput, NButton, NCheckbox, useMessage, type FormInst } from 'naive-ui'
+import { NForm, NFormItem, NInput, NButton, NCheckbox, NDropdown, useMessage, type FormInst, type DropdownOption } from 'naive-ui'
 import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
+import { setLocale, type AppLocale } from '../../locales'
 import MapFlow3D from './MapFlow3D.vue'
 import PulseWave from './PulseWave.vue'
 
@@ -88,7 +92,17 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const message = useMessage()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+// 登录页语言切换（未登录无接口依赖，仅切前端文案；登录后请求自动带上新语言）
+const localeOptions: DropdownOption[] = [
+  { label: '中文', key: 'zh-CN' },
+  { label: 'English', key: 'en-US' },
+]
+
+function onLocaleChange(key: string | number) {
+  setLocale(String(key) as AppLocale)
+}
 const formRef = ref<FormInst | null>(null)
 const loading = ref(false)
 const form = reactive({ username: 'admin', password: '', captchaCode: '' })
@@ -350,6 +364,25 @@ onMounted(() => {
   align-items: center;
   gap: 14px;
   margin-bottom: 32px;
+}
+/* 语言切换：靠行右，低调文字按钮 */
+.locale-switch {
+  margin-left: auto;
+  align-self: flex-start;
+}
+.locale-btn {
+  border: 1px solid var(--sx-line);
+  background: transparent;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--sx-muted);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.locale-btn:hover {
+  color: var(--sx-accent);
+  border-color: var(--sx-accent);
 }
 .seal--sm {
   width: 44px;
