@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
@@ -55,6 +56,12 @@ var errKeys = []struct {
 	{bizexport.ErrNotReady, "export.not_ready"},
 	// 会话
 	{bizsession.ErrSessionNotFound, "session.not_found"},
+	// IP 黑名单
+	{bizblacklist.ErrInvalidIP, "blacklist.invalid_ip"},
+	{bizblacklist.ErrInvalidExpire, "blacklist.invalid_expire"},
+	{bizblacklist.ErrIPExists, "blacklist.ip_exists"},
+	{bizblacklist.ErrSelfBan, "blacklist.self_ban"},
+	{bizblacklist.ErrNotFound, "blacklist.not_found"},
 }
 
 // init 将错误 -> i18n key 匹配函数注册到 response 包（response 不便反向依赖 server，走钩子）

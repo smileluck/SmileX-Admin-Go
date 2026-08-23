@@ -6,6 +6,7 @@ package main
 import (
 	"github.com/google/wire"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
@@ -15,6 +16,7 @@ import (
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
+	datablacklist "github.com/smilex/smilex-admin-gin/internal/data/blacklist"
 	dataexport "github.com/smilex/smilex-admin-gin/internal/data/export"
 	datafile "github.com/smilex/smilex-admin-gin/internal/data/file"
 	datalog "github.com/smilex/smilex-admin-gin/internal/data/log"
@@ -24,6 +26,7 @@ import (
 	datauser "github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	blacklistsvc "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
 	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
@@ -41,6 +44,7 @@ var bizSet = wire.NewSet(
 	bizsession.NewUsecase,
 	bizlog.NewUsecase,
 	bizfile.NewUsecase,
+	bizblacklist.NewUsecase,
 	bizexport.NewUsecase,
 	bizexport.NewRegistry,
 	bizexport.NewUserExporter,
@@ -64,6 +68,7 @@ var dataRepoSet = wire.NewSet(
 	datalog.NewRepo,
 	datafile.NewRepo,
 	datafile.NewStorageManager,
+	datablacklist.NewRepo,
 	dataexport.NewRepo,
 	dataexport.NewWorker,
 	// 跨上下文最小依赖接口绑定
@@ -71,6 +76,7 @@ var dataRepoSet = wire.NewSet(
 	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
 	wire.Bind(new(auth.PermissionReader), new(bizperm.Repo)),
 	wire.Bind(new(bizlog.Repo), new(*datalog.Repo)),
+	wire.Bind(new(bizblacklist.Repo), new(*datablacklist.Repo)),
 	wire.Bind(new(bizexport.Enqueuer), new(*dataexport.Worker)),
 )
 
@@ -82,6 +88,7 @@ var serviceSet = wire.NewSet(
 	sessionsvc.NewService,
 	logsvc.NewService,
 	filesvc.NewService,
+	blacklistsvc.NewService,
 	exportsvc.NewService,
 )
 

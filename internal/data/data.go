@@ -124,7 +124,7 @@ func (d *Data) migrateAndSeed() error {
 		&model.UserPO{}, &model.RolePO{}, &model.PermissionPO{},
 		&model.UserRolePO{}, &model.RolePermissionPO{},
 		&model.LoginLogPO{}, &model.OperationLogPO{},
-		&model.FilePO{}, &model.ExportRecordPO{},
+		&model.FilePO{}, &model.ExportRecordPO{}, &model.IPBlacklistPO{},
 	); err != nil {
 		return err
 	}
@@ -217,6 +217,8 @@ var systemMenus = []systemMenuDef{
 	{Name: "操作日志", Code: "menu:opLog", Path: "/log/operation-logs", Icon: "ClipboardOutline", Sort: 2, ParentCode: "menu:log"},
 	// 文件管理（顶级菜单）
 	{Name: "文件管理", Code: "menu:file", Path: "/file", Icon: "FolderOpenOutline", Sort: 4},
+	// IP 黑名单（挂在系统管理目录下）
+	{Name: "IP黑名单", Code: "menu:blacklist", Path: "/system/blacklist", Icon: "BanOutline", Sort: 6, ParentCode: "menu:system"},
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
@@ -317,6 +319,10 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "上传文件", Code: "file:upload", Menu: "menu:file", Method: "POST", Path: "/api/v1/files", Sort: 2},
 	{Name: "下载文件", Code: "file:view", Menu: "menu:file", Method: "GET", Path: "/api/v1/files/*", Sort: 3},
 	{Name: "删除文件", Code: "file:delete", Menu: "menu:file", Method: "DELETE", Path: "/api/v1/files/*", Sort: 4},
+	// IP 黑名单
+	{Name: "查询黑名单", Code: "blacklist:list", Menu: "menu:blacklist", Method: "GET", Path: "/api/v1/ip-blacklist", Sort: 1},
+	{Name: "新增黑名单", Code: "blacklist:create", Menu: "menu:blacklist", Method: "POST", Path: "/api/v1/ip-blacklist", Sort: 2},
+	{Name: "解封黑名单", Code: "blacklist:delete", Menu: "menu:blacklist", Method: "DELETE", Path: "/api/v1/ip-blacklist/*", Sort: 3},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -326,7 +332,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID

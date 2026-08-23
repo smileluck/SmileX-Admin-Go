@@ -152,3 +152,24 @@ func recordBlockedLogin(c *gin.Context, rec LoginLogRecorder, ip string) {
 	}
 	rec.RecordLogin(context.Background(), l)
 }
+
+// ---- 管理员手工维护的持久化 IP 黑名单 ----
+
+// Checker 持久化黑名单判定接口（由 blacklist 领域用例实现，内部为 30s TTL 内存快照）
+type Checker interface {
+	IsBlocked(ip string) bool
+}
+
+// IPBlacklist 持久化 IP 黑名单中间件：挂在 /api/v1 组上、JWT 之前生效，
+// 命中即 403 拦截全部 /api/ 请求（不拦截静态前端资源）；
+// 与上方登录失败临时封禁 LoginIPGuard 独立共存。
+func IPBlacklist(chk Checker) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if chk != nil && chk.IsBlocked(c.ClientIP()) {
+			response.Forbidden(c, i18n.T(c.Request.Context(), "blacklist.ip_blocked"))
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}

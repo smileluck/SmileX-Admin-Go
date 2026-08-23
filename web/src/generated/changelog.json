@@ -1,6 +1,27 @@
 {
-  "generatedAt": "2026-08-23T07:26:05.750Z",
+  "generatedAt": "2026-08-23T09:46:32.502Z",
   "commits": [
+    {
+      "hash": "083090a",
+      "date": "2026-08-23",
+      "type": "feat",
+      "scope": "about",
+      "message": "左卡由技术栈罗列改为系统简介与核心特性（对齐 README）"
+    },
+    {
+      "hash": "5db8cc7",
+      "date": "2026-08-23",
+      "type": "feat",
+      "scope": "login",
+      "message": "登录页欢迎区右侧新增语言切换"
+    },
+    {
+      "hash": "f99dcdf",
+      "date": "2026-08-23",
+      "type": "fix",
+      "scope": "admin-layout",
+      "message": "面包屑/浏览器标题随语言即时切换，搜索面板支持点击遮罩关闭"
+    },
     {
       "hash": "1862701",
       "date": "2026-08-23",

@@ -77,6 +77,8 @@ make web-dev    # 终端2：前端 :5173（/api 自动代理到后端）
 | GET/POST | /roles | 角色列表 / 创建 |
 | PUT | /roles/:id/permissions | 绑定权限 |
 | GET/POST | /permissions | 权限列表 / 创建（支持 type=menu 筛选） |
+| GET/POST | /ip-blacklist | IP 黑名单列表 / 新增 |
+| DELETE | /ip-blacklist/:id | 解封指定黑名单 |
 
 ## 🏛️ 架构与依赖方向
 

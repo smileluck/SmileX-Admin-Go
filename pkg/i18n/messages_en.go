@@ -46,6 +46,13 @@ var messagesEn = map[string]string{
 	"security.invalid_chars":  "Request parameters contain illegal characters",
 	"security.login_frequent": "Too many login attempts, please try again later",
 	"blacklist.ip_banned":     "This IP has been temporarily banned due to repeated login failures; please try again in about %d minutes",
+	// IP blacklist (manually maintained, persistent)
+	"blacklist.ip_blocked":     "This IP is on the blacklist; access denied",
+	"blacklist.invalid_ip":     "Invalid IP address format",
+	"blacklist.invalid_expire": "Expiration time cannot be earlier than now",
+	"blacklist.ip_exists":      "This IP is already on the blacklist",
+	"blacklist.self_ban":       "You cannot blacklist the IP you are currently using",
+	"blacklist.not_found":      "Blacklist entry not found",
 	// 菜单（key 为 menu. + 权限 code，未命中保留库中原名）
 	"menu.menu:dashboard": "Dashboard",
 	"menu.menu:system":    "System",
@@ -58,4 +65,5 @@ var messagesEn = map[string]string{
 	"menu.menu:loginLog":  "Login Logs",
 	"menu.menu:opLog":     "Operation Logs",
 	"menu.menu:file":      "Files",
+	"menu.menu:blacklist": "IP Blacklist",
 }

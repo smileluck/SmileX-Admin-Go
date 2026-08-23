@@ -1,5 +1,5 @@
 import request from './request'
-import type { CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
+import type { BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -73,6 +73,13 @@ export const clearLoginLogs = () => request.delete<R<{ deleted: number }>>('/log
 export const listOperationLogs = (params: { page: number; page_size: number; username?: string; method?: string; kw?: string; start?: number; end?: number }) =>
   request.get<R<LogPageResult<OperationLogInfo>>>('/operation-logs', { params })
 export const clearOperationLogs = () => request.delete<R<{ deleted: number }>>('/operation-logs')
+
+// ---- IP 黑名单 ----
+export const listBlacklist = (params: { page: number; page_size: number; ip?: string }) =>
+  request.get<R<PageResult<BlacklistItem>>>('/ip-blacklist', { params })
+export const createBlacklist = (data: { ip: string; reason?: string; expire_at?: number | null }) =>
+  request.post<R<BlacklistItem>>('/ip-blacklist', data)
+export const deleteBlacklist = (id: number) => request.delete<R<null>>(`/ip-blacklist/${id}`)
 
 // ---- 文件 ----
 export const listFiles = (params: { page: number; page_size: number; name?: string }) =>

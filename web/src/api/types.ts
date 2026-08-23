@@ -140,6 +140,16 @@ export interface ExportRecord {
   finished_at: string
 }
 
+// IP 黑名单项
+export interface BlacklistItem {
+  id: number
+  ip: string
+  reason: string
+  expire_at: string | null // 为空字符串或 null 表示永久
+  creator_name: string
+  created_at: string
+}
+
 // 文件元数据（后端 files 表；object_key 不下发）
 export interface FileInfo {
   id: number

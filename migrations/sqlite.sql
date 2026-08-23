@@ -86,3 +86,17 @@ CREATE TABLE IF NOT EXISTS export_records (
 CREATE INDEX IF NOT EXISTS idx_export_records_user_id ON export_records (user_id);
 CREATE INDEX IF NOT EXISTS idx_export_records_status ON export_records (status);
 CREATE INDEX IF NOT EXISTS idx_export_records_created_at ON export_records (created_at);
+
+-- IP 黑名单表（管理员手工维护的持久化封禁；软删即解封留痕）
+CREATE TABLE IF NOT EXISTS ip_blacklist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT NOT NULL UNIQUE,              -- 单个 IP（不支持 CIDR）
+  reason TEXT DEFAULT '',               -- 封禁原因
+  expire_at DATETIME,                   -- 过期时间（NULL 为永久封禁）
+  creator_id INTEGER DEFAULT 0,
+  creator_name TEXT DEFAULT '',
+  created_at DATETIME,
+  updated_at DATETIME,
+  deleted_at DATETIME
+);
+CREATE INDEX IF NOT EXISTS idx_ip_blacklist_deleted_at ON ip_blacklist (deleted_at);

@@ -5,6 +5,7 @@ package model
 import (
 	"time"
 
+	"github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	"github.com/smilex/smilex-admin-gin/internal/biz/export"
 	"github.com/smilex/smilex-admin-gin/internal/biz/file"
 	"github.com/smilex/smilex-admin-gin/internal/biz/log"
@@ -125,6 +126,21 @@ type FilePO struct {
 }
 
 func (FilePO) TableName() string { return "files" }
+
+// IPBlacklistPO IP 黑名单表（管理员手工维护的持久化封禁；软删即解封留痕）
+type IPBlacklistPO struct {
+	ID          uint       `gorm:"primaryKey"`
+	IP          string     `gorm:"size:64;uniqueIndex"` // 仅单个 IP（不支持 CIDR），归一化后存储
+	Reason      string     `gorm:"size:255"`            // 封禁原因（选填）
+	ExpireAt    *time.Time // 过期时间（NULL 为永久封禁，到期惰性放行）
+	CreatorID   uint       // 操作人
+	CreatorName string     `gorm:"size:64"` // 操作人用户名快照
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
+}
+
+func (IPBlacklistPO) TableName() string { return "ip_blacklist" }
 
 // ExportRecordPO 异步导出任务记录表（产物本体在 driver 对应的存储后端；
 // 追加型流水：无软删，保留期清理与手动删除均为物理删除）
@@ -253,5 +269,20 @@ func ExportRecordFromPO(p *ExportRecordPO) *export.ExportRecord {
 		Driver: p.Driver, ObjectKey: p.ObjectKey, Size: p.Size, Rows: p.Rows,
 		Status: p.Status, Truncated: p.Truncated, Error: p.Error,
 		CreatedAt: p.CreatedAt, FinishedAt: p.FinishedAt,
+	}
+}
+
+func IPBlacklistToPO(b *blacklist.IPBlacklist) *IPBlacklistPO {
+	return &IPBlacklistPO{
+		ID: b.ID, IP: b.IP, Reason: b.Reason, ExpireAt: b.ExpireAt,
+		CreatorID: b.CreatorID, CreatorName: b.CreatorName,
+	}
+}
+
+func IPBlacklistFromPO(p *IPBlacklistPO) *blacklist.IPBlacklist {
+	return &blacklist.IPBlacklist{
+		ID: p.ID, IP: p.IP, Reason: p.Reason, ExpireAt: p.ExpireAt,
+		CreatorID: p.CreatorID, CreatorName: p.CreatorName,
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 	}
 }

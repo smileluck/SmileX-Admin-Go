@@ -9,6 +9,7 @@ import permMenu from './permMenu'
 import online from './online'
 import loginLog from './loginLog'
 import opLog from './opLog'
+import blacklist from './blacklist'
 import file from './file'
 import exportRecords from './exportRecords'
 import profile from './profile'
@@ -27,6 +28,7 @@ export default {
   online,
   loginLog,
   opLog,
+  blacklist,
   file,
   exportRecords,
   profile,

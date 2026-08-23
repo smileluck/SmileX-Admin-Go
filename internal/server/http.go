@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
@@ -27,6 +29,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/internal/server/middleware"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	blacklistsvc "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
 	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
@@ -51,6 +54,7 @@ type HTTPServer struct {
 	log     *logsvc.Service
 	file    *filesvc.Service
 	export  *exportsvc.Service
+	blacklist *blacklistsvc.Service
 	engine  *gin.Engine
 	srv     *http.Server
 }
@@ -58,7 +62,7 @@ type HTTPServer struct {
 // NewHTTPServer 构造并注册路由
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
 	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service,
-	file *filesvc.Service, export *exportsvc.Service) *HTTPServer {
+	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -71,7 +75,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 		middleware.SQLInjectionGuard(),
 	)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -83,7 +87,8 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 }
 
 func (s *HTTPServer) registerRoutes() {
-	v1 := s.engine.Group("/api/v1")
+	// 持久化 IP 黑名单在 JWT 之前拦截全部 /api/ 请求（静态前端资源不经过此组）
+	v1 := s.engine.Group("/api/v1", middleware.IPBlacklist(s.blacklist.Checker()))
 
 	// ---- 公开接口 ----
 	authg := v1.Group("/auth")
@@ -308,6 +313,14 @@ func (s *HTTPServer) registerRoutes() {
 		// 下载/预览：云存储 302 到预签名 URL，本地存储后端代理流式输出
 		files.GET("/:id/raw", s.downloadFile)
 		files.DELETE("/:id", s.deleteFile)
+	}
+
+	ipBlacklist := protected.Group("/ip-blacklist")
+	{
+		ipBlacklist.GET("", s.listIPBlacklist)
+		ipBlacklist.POST("", s.createIPBlacklist)
+		// 解封（软删留痕）
+		ipBlacklist.DELETE("/:id", s.deleteIPBlacklist)
 	}
 }
 
@@ -859,6 +872,50 @@ func (s *HTTPServer) fileErr(c *gin.Context, err error) {
 	default:
 		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 	}
+}
+
+// ---- IP 黑名单 ----
+
+func (s *HTTPServer) listIPBlacklist(c *gin.Context) {
+	page, size := pageParams(c)
+	list, pg, err := s.blacklist.List(c.Request.Context(), bizblacklist.Query{IP: c.Query("ip")}, page, size)
+	if err != nil {
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, listResult{List: list, Page: pg})
+}
+
+func (s *HTTPServer) createIPBlacklist(c *gin.Context) {
+	sub := middleware.Subject(c)
+	var req blacklistsvc.CreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	// 防呆：禁止封禁当前操作者自己的 IP（归一化后比较，避免自我锁定）
+	if ip := net.ParseIP(strings.TrimSpace(req.IP)); ip != nil && ip.String() == c.ClientIP() {
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, bizblacklist.ErrSelfBan)
+		return
+	}
+	vo, err := s.blacklist.Create(c.Request.Context(), req, sub.UserID, sub.Username)
+	if err != nil {
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) deleteIPBlacklist(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	if err := s.blacklist.Delete(c.Request.Context(), id); err != nil {
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
 // ---- 异步导出 ----

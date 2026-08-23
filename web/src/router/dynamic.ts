@@ -17,6 +17,7 @@ const viewModules: Record<string, () => Promise<any>> = {
   'menu:loginLog': () => import('../views/log/LoginLogs.vue'),
   'menu:opLog': () => import('../views/log/OperationLogs.vue'),
   'menu:file': () => import('../views/file/Files.vue'),
+  'menu:blacklist': () => import('../views/system/Blacklist.vue'),
   'menu:about': () => import('../views/about/About.vue'),
 }
 

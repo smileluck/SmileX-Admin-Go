@@ -46,6 +46,13 @@ var messagesZh = map[string]string{
 	"security.invalid_chars":  "请求参数包含非法字符",
 	"security.login_frequent": "登录尝试过于频繁，请稍后再试",
 	"blacklist.ip_banned":     "该 IP 因连续登录失败已被临时封禁，请约 %d 分钟后再试",
+	// IP 黑名单（管理员手工维护的持久化封禁）
+	"blacklist.ip_blocked":     "该 IP 已被加入黑名单，访问被拒绝",
+	"blacklist.invalid_ip":     "IP 地址格式不正确",
+	"blacklist.invalid_expire": "过期时间不能早于当前时间",
+	"blacklist.ip_exists":      "该 IP 已在黑名单中",
+	"blacklist.self_ban":       "不能将当前使用的 IP 加入黑名单",
+	"blacklist.not_found":      "黑名单记录不存在",
 	// 菜单（key 为 menu. + 权限 code，未命中保留库中原名）
 	"menu.menu:dashboard": "首页",
 	"menu.menu:system":    "系统管理",
@@ -58,4 +65,5 @@ var messagesZh = map[string]string{
 	"menu.menu:loginLog":  "登录日志",
 	"menu.menu:opLog":     "操作日志",
 	"menu.menu:file":      "文件管理",
+	"menu.menu:blacklist": "IP黑名单",
 }
