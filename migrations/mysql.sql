@@ -83,3 +83,24 @@ CREATE TABLE IF NOT EXISTS files (
   KEY idx_uploader_id (uploader_id),
   KEY idx_deleted (deleted_at)
 );
+
+-- 异步导出任务记录表（产物本体在 driver 对应的存储后端；无软删，保留期清理为物理删除）
+CREATE TABLE IF NOT EXISTS export_records (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED DEFAULT 0,    -- 任务归属用户
+  biz VARCHAR(32) DEFAULT '',           -- 业务类型（user / login_log / op_log）
+  name VARCHAR(255) DEFAULT '',         -- 展示名（兼作下载文件名）
+  params TEXT,                          -- 查询条件快照（JSON）
+  driver VARCHAR(16) DEFAULT '',        -- 产物落库时的存储后端
+  object_key VARCHAR(512) DEFAULT '',   -- 产物对象 key
+  size BIGINT DEFAULT 0,                -- 产物字节数（含 BOM）
+  rows INT DEFAULT 0,                   -- 已导出数据行数（不含表头）
+  status VARCHAR(16) DEFAULT 'pending', -- pending | running | done | failed
+  truncated TINYINT(1) DEFAULT 0,       -- 触及大小/行数上限被截断
+  error VARCHAR(512) DEFAULT '',        -- 失败原因（成功为空）
+  created_at DATETIME,
+  finished_at DATETIME,                 -- 完成/失败时间（未结束为 NULL）
+  KEY idx_user_id (user_id),
+  KEY idx_status (status),
+  KEY idx_created_at (created_at)
+);

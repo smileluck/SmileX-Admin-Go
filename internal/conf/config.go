@@ -14,6 +14,7 @@ type Bootstrap struct {
 	Auth    Auth    `mapstructure:"auth"`
 	Log     Log     `mapstructure:"log"`
 	Storage Storage `mapstructure:"storage"`
+	Export  Export  `mapstructure:"export"`
 }
 
 type Server struct {
@@ -77,6 +78,15 @@ type Auth struct {
 type Log struct {
 	// RetentionDays 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
 	RetentionDays int `mapstructure:"retentionDays"`
+}
+
+// Export 异步导出配置：产物经存储后端（storage.driver）落盘，到期自动清理
+type Export struct {
+	MaxSizeMB     int64             `mapstructure:"maxSizeMB"`     // 单文件大小上限（MB），超出截断
+	MaxRows       int               `mapstructure:"maxRows"`       // 单文件最大数据行数，超出截断
+	RetentionDays int               `mapstructure:"retentionDays"` // 导出记录保留天数，超期每日自动清理；0 表示永久保留
+	QueueSize     int               `mapstructure:"queueSize"`     // 导出任务队列容量，满则拒绝新任务
+	Mask          map[string]string `mapstructure:"mask"`          // 导出字段名 -> 脱敏规则（phone/email/idcard/bankcard/name/ip/none）
 }
 
 // Storage 文件存储配置：driver 决定新上传写入的后端；
@@ -143,6 +153,11 @@ func Load(path string) (*Bootstrap, error) {
 	v.SetDefault("auth.captchaEnabled", true)
 	// 默认值：日志默认保留 90 天
 	v.SetDefault("log.retentionDays", 90)
+	// 默认值：异步导出单文件 50MB / 10 万行，产物保留 7 天，任务队列 64
+	v.SetDefault("export.maxSizeMB", 50)
+	v.SetDefault("export.maxRows", 100000)
+	v.SetDefault("export.retentionDays", 7)
+	v.SetDefault("export.queueSize", 64)
 	// 默认值：文件存储默认本地驱动，上传上限 20MB，预签名 URL 15 分钟
 	v.SetDefault("storage.driver", "local")
 	v.SetDefault("storage.maxSizeMB", 20)

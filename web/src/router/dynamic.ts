@@ -63,6 +63,15 @@ export async function setupDynamicRoutes(): Promise<string> {
       meta: { title: '个人中心' },
     })
   }
+  // 隐藏路由：导出记录（不在菜单树中，任何登录用户可访问）
+  if (!router.hasRoute('export-records')) {
+    router.addRoute('layout-root', {
+      path: '/exports',
+      name: 'export-records',
+      component: () => import('../views/export/ExportRecords.vue'),
+      meta: { title: '导出记录' },
+    })
+  }
   // 菜单路由注册完成后再挂 404 兜底，避免刷新深链接时原始路径被吞（见 ./index.ts）；
   // 真正的未知路径渲染 404 错误页
   if (!router.hasRoute('not-found')) {

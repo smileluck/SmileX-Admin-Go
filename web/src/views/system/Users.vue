@@ -7,6 +7,7 @@
   <n-card>
     <template #header>
       <div class="page-actions">
+        <n-button ghost :loading="exporting" @click="doExport" v-permission="['user:export']">导出</n-button>
         <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">新增用户</n-button>
       </div>
     </template>
@@ -55,7 +56,7 @@ import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
 import { NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
-import { createUser, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
+import { createUser, createExport, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
 import { useUserStore } from '../../stores/user'
 import type { UserInfo } from '../../api/types'
 
@@ -127,6 +128,24 @@ function resetQuery() {
   query.username = ''
   query.page = 1
   load()
+}
+
+// 异步导出：提交当前过滤条件（page/page_size 与空值由 createExport 剔除）
+const exporting = ref(false)
+async function doExport() {
+  exporting.value = true
+  try {
+    await createExport('users', { ...query })
+    message.success('已加入导出队列，可在右上角导出图标查看进度')
+  } catch (e: any) {
+    if (e?.response?.status === 429) {
+      message.warning('导出任务过多，请稍后再试')
+    } else {
+      message.error(e?.response?.data?.msg || '导出失败')
+    }
+  } finally {
+    exporting.value = false
+  }
 }
 
 async function loadRoles() {
@@ -246,5 +265,6 @@ onMounted(() => { load(); loadRoles() })
   width: 100%;
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 }
 </style>

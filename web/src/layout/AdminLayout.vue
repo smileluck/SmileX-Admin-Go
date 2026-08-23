@@ -41,6 +41,33 @@
               <n-icon :component="SearchOutline" />
             </template>
           </n-button>
+          <n-popover v-model:show="showExports" trigger="click" :width="360" @update:show="onExportsToggle">
+            <template #trigger>
+              <n-button class="export-trigger" quaternary circle :focusable="false" aria-label="导出记录">
+                <template #icon>
+                  <n-icon :component="DownloadOutline" />
+                </template>
+              </n-button>
+            </template>
+            <div class="export-panel">
+              <div class="export-list">
+                <div v-if="!exportRows.length" class="export-empty">暂无导出记录</div>
+                <div v-for="rec in exportRows" :key="rec.id" class="export-item">
+                  <span class="export-item-name" :title="rec.name">{{ rec.name }}</span>
+                  <n-tag :type="exportStatusType(rec.status)" size="small" :bordered="false"
+                    :title="rec.status === 'failed' ? rec.error : undefined">
+                    {{ exportStatusText(rec.status) }}
+                  </n-tag>
+                  <span class="export-item-time mono">{{ rec.created_at }}</span>
+                  <n-button v-if="rec.status === 'done'" text type="primary" size="tiny" class="export-item-dl"
+                    :loading="downloadingId === rec.id" @click="downloadExport(rec)">下载</n-button>
+                </div>
+              </div>
+              <div class="export-foot">
+                <n-button text size="small" class="export-more" @click="gotoExports">查看全部</n-button>
+              </div>
+            </div>
+          </n-popover>
           <n-dropdown :options="userOptions" @select="onUserAction">
             <div class="user-chip">
               <div class="avatar">{{ avatarChar }}</div>
@@ -141,14 +168,15 @@ import { computed, h, nextTick, onMounted, onUnmounted, reactive, ref, watch } f
 import { useRoute, useRouter } from 'vue-router'
 import {
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NDropdown, NButton, NIcon,
-  NModal, NForm, NFormItem, NInput, useMessage,
-  type DropdownOption, type FormInst, type FormRules,
+  NModal, NForm, NFormItem, NInput, NPopover, NTag, useMessage,
+  type DropdownOption, type FormInst, type FormRules, type TagProps,
 } from 'naive-ui'
-import { MenuOutline, SearchOutline } from '@vicons/ionicons5'
+import { MenuOutline, SearchOutline, DownloadOutline } from '@vicons/ionicons5'
 import { useUserStore } from '../stores/user'
 import { renderMenuIcon } from '../utils/menuIcon'
-import { changePassword, searchMenus } from '../api'
-import type { MenuHit, MenuNode } from '../api/types'
+import { changePassword, searchMenus, listRecentExports, getExportBlob } from '../api'
+import { saveBlob, parseDispositionFilename } from '../utils/download'
+import type { ExportRecord, MenuHit, MenuNode } from '../api/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -390,10 +418,70 @@ function onGlobalKeydown(e: KeyboardEvent) {
   }
 }
 
+// ---- 顶栏导出记录悬浮框（打开时拉取近期 5 条；有进行中任务时每 5s 轮询） ----
+const showExports = ref(false)
+const exportRows = ref<ExportRecord[]>([])
+const downloadingId = ref(0)
+let exportTimer: number | undefined
+
+const exportStatusType = (s: ExportRecord['status']): TagProps['type'] =>
+  s === 'pending' ? 'info' : s === 'running' ? 'warning' : s === 'done' ? 'success' : 'error'
+const exportStatusText = (s: ExportRecord['status']) =>
+  s === 'pending' ? '排队中' : s === 'running' ? '导出中' : s === 'done' ? '已完成' : '失败'
+
+async function loadRecentExports() {
+  try {
+    const { data } = await listRecentExports()
+    exportRows.value = data.data ?? []
+  } catch {
+    // 拉取失败不打扰用户，保留旧列表
+  }
+}
+
+// 仅在悬浮框打开且存在进行中任务时轮询；无进行中任务即停表
+function syncExportPolling() {
+  window.clearInterval(exportTimer)
+  exportTimer = undefined
+  const hasActive = exportRows.value.some((r) => r.status === 'pending' || r.status === 'running')
+  if (showExports.value && hasActive) {
+    exportTimer = window.setInterval(async () => {
+      await loadRecentExports()
+      syncExportPolling()
+    }, 5000)
+  }
+}
+
+async function onExportsToggle(show: boolean) {
+  if (show) {
+    await loadRecentExports()
+  }
+  syncExportPolling()
+}
+
+// 文件名优先取 Content-Disposition（RFC5987），取不到用记录名加 .csv 兜底
+async function downloadExport(rec: ExportRecord) {
+  downloadingId.value = rec.id
+  try {
+    const resp = await getExportBlob(rec.id)
+    const filename = parseDispositionFilename(resp.headers['content-disposition']) || `${rec.name}.csv`
+    saveBlob(resp.data, filename)
+  } catch {
+    message.error('下载失败')
+  } finally {
+    downloadingId.value = 0
+  }
+}
+
+function gotoExports() {
+  showExports.value = false
+  router.push('/exports')
+}
+
 onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
 onUnmounted(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
   window.clearTimeout(searchTimer)
+  window.clearInterval(exportTimer)
 })
 </script>
 
@@ -578,9 +666,64 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
 }
-.search-trigger {
+.search-trigger,
+.export-trigger {
   flex-shrink: 0;
   color: var(--sx-muted);
+}
+
+/* 导出记录悬浮框：行式列表 + 底部入口，风格对齐命令面板 */
+.export-panel {
+  display: flex;
+  flex-direction: column;
+}
+.export-list {
+  max-height: 300px;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 6px;
+}
+.export-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+}
+.export-item:hover {
+  background: var(--sx-accent-soft);
+}
+.export-item-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--sx-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.export-item-time {
+  font-size: 11px;
+  color: var(--sx-muted);
+  white-space: nowrap;
+}
+.export-item-dl {
+  font-size: 12px;
+}
+.export-empty {
+  padding: 26px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--sx-muted);
+}
+.export-foot {
+  display: flex;
+  justify-content: center;
+  padding: 8px 16px;
+  border-top: 1px solid var(--sx-line);
+}
+.export-more {
+  font-size: 12px;
 }
 
 .user-chip {

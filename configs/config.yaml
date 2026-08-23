@@ -43,6 +43,17 @@ auth:
 log:
   retentionDays: 90 # 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
 
+export:
+  maxSizeMB: 50 # 单个导出文件大小上限（MB），超出截断并在记录上标记 truncated
+  maxRows: 100000 # 单个导出文件最大数据行数，超出截断
+  retentionDays: 7 # 导出记录与产物文件保留天数，超期每日自动清理；0 表示永久保留
+  queueSize: 64 # 导出任务队列容量，满则新任务返回 429
+  # 导出字段脱敏：导出列 key -> 脱敏规则；可用规则 phone / email / idcard / bankcard / name / ip / none
+  # 未配置的列按原值导出；规则 none 表示显式不脱敏
+  mask:
+    phone: phone
+    email: email
+
 storage:
   driver: local # 当前写入的存储后端：local | oss | cos | tos | minio
   # 切换 driver 只影响新上传；读/删按文件记录落库时的后端解析，升级后端后旧文件仍可访问（旧后端配置需保留）

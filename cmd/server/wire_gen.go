@@ -10,6 +10,7 @@ import (
 	"github.com/google/wire"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	"github.com/smilex/smilex-admin-gin/internal/biz/captcha"
+	export2 "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	file2 "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	log2 "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	permission2 "github.com/smilex/smilex-admin-gin/internal/biz/permission"
@@ -17,6 +18,7 @@ import (
 	session2 "github.com/smilex/smilex-admin-gin/internal/biz/session"
 	user2 "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
+	"github.com/smilex/smilex-admin-gin/internal/data/export"
 	"github.com/smilex/smilex-admin-gin/internal/data/file"
 	"github.com/smilex/smilex-admin-gin/internal/data/log"
 	"github.com/smilex/smilex-admin-gin/internal/data/permission"
@@ -25,6 +27,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	auth2 "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	export3 "github.com/smilex/smilex-admin-gin/internal/service/export"
 	file3 "github.com/smilex/smilex-admin-gin/internal/service/file"
 	log3 "github.com/smilex/smilex-admin-gin/internal/service/log"
 	permission3 "github.com/smilex/smilex-admin-gin/internal/service/permission"
@@ -84,8 +87,23 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	}
 	fileUsecase := file2.NewUsecase(fileRepo, storageManager, bootstrap)
 	fileService := file3.NewService(fileUsecase)
-	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService)
+	exportRepo := export.NewRepo(dataData)
+	userExporter := export2.NewUserExporter(repo, bootstrap)
+	loginLogExporter := export2.NewLoginLogExporter(logRepo, bootstrap)
+	opLogExporter := export2.NewOpLogExporter(logRepo, bootstrap)
+	registry := export2.NewRegistry(userExporter, loginLogExporter, opLogExporter)
+	worker, cleanup4, err := export.NewWorker(dataData, bootstrap, registry, storageManager, exportRepo)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	exportUsecase := export2.NewUsecase(exportRepo, registry, worker, storageManager, bootstrap)
+	exportService := export3.NewService(exportUsecase)
+	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService, exportService)
 	return httpServer, func() {
+		cleanup4()
 		cleanup3()
 		cleanup2()
 		cleanup()
@@ -94,10 +112,10 @@ func wireApp() (*server.HTTPServer, func(), error) {
 
 // wire.go:
 
-var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha.NewUsecase, session2.NewUsecase, log2.NewUsecase, file2.NewUsecase, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)))
+var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha.NewUsecase, session2.NewUsecase, log2.NewUsecase, file2.NewUsecase, export2.NewUsecase, export2.NewRegistry, export2.NewUserExporter, export2.NewLoginLogExporter, export2.NewOpLogExporter, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)))
 
-var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)))
+var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, export.NewRepo, export.NewWorker, wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)), wire.Bind(new(export2.Enqueuer), new(*export.Worker)))
 
-var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService, log3.NewService, file3.NewService)
+var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService, log3.NewService, file3.NewService, export3.NewService)
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

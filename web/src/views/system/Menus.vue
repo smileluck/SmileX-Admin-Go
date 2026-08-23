@@ -2,16 +2,12 @@
   <n-card>
     <template #header>
       <div class="page-actions">
+        <n-button class="expand-toggle" @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
         <n-button type="primary" ghost @click="openCreate(0, 'dir')" v-permission="['menu:create']">新增顶级目录</n-button>
         <n-button type="primary" ghost @click="openCreate(0, 'menu')" v-permission="['menu:create']">新增顶级菜单</n-button>
         <n-button type="primary" ghost @click="openCreate(0, 'button')" v-permission="['menu:create']">新增权限点</n-button>
       </div>
     </template>
-
-    <!-- 表格控制行：与用户/角色页的搜索栏同层，保持三页节奏一致 -->
-    <div class="search-bar">
-      <n-button @click="toggleExpand">{{ expandAll ? '全部收起' : '全部展开' }}</n-button>
-    </div>
 
     <n-data-table :columns="columns" :data="tree" :loading="loading" :row-key="rowKey"
       :expanded-row-keys="expandedKeys" @update:expanded-row-keys="onExpandUpdate" />
@@ -382,15 +378,9 @@ onMounted(refresh)
   justify-content: flex-end;
   gap: 8px;
 }
-/* 表格控制行：发丝线与表格分区，与其他系统页的搜索栏同层 */
-.search-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--sx-line);
+/* 展开/收起按钮固定在行最左，其余新增按钮靠右 */
+.expand-toggle {
+  margin-right: auto;
 }
 .icon-grid {
   max-height: 360px;

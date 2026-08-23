@@ -1,5 +1,5 @@
 import request from './request'
-import type { CaptchaInfo, FileInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
+import type { CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -87,3 +87,24 @@ export const deleteFile = (id: number) => request.delete<R<null>>(`/files/${id}`
 // 下载/预览均走鉴权接口：云存储会 302 到预签名 URL（axios 自动跟随），统一按 blob 取回
 export const getFileBlob = (id: number, download = false) =>
   request.get<Blob>(`/files/${id}/raw`, { responseType: 'blob', timeout: 0, params: download ? { download: 1 } : {} })
+
+// ---- 异步导出 ----
+// 提交导出任务：params 为当前列表过滤条件（剔除 page/page_size 与空值）；429 表示队列满
+export const createExport = (biz: 'users' | 'login-logs' | 'operation-logs', params: Record<string, any>) => {
+  const query: Record<string, any> = {}
+  for (const [k, v] of Object.entries(params)) {
+    if (k === 'page' || k === 'page_size') continue
+    if (v === undefined || v === null || v === '') continue
+    query[k] = v
+  }
+  return request.post<R<ExportRecord>>(`/${biz}/export`, null, { params: query })
+}
+// 近期 5 条导出记录（顶栏悬浮框）
+export const listRecentExports = () => request.get<R<ExportRecord[]>>('/exports', { params: { recent: 1 } })
+// 本人导出记录分页
+export const listExportRecords = (params: { page: number; page_size: number }) =>
+  request.get<R<PageResult<ExportRecord>>>('/exports', { params })
+// 导出文件下载：大文件覆写默认 15s 超时；409 未完成 / 403 非本人
+export const getExportBlob = (id: number) =>
+  request.get<Blob>(`/exports/${id}/download`, { responseType: 'blob', timeout: 0 })
+export const deleteExport = (id: number) => request.delete<R<null>>(`/exports/${id}`)

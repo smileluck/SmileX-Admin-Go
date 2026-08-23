@@ -5,6 +5,7 @@ package model
 import (
 	"time"
 
+	"github.com/smilex/smilex-admin-gin/internal/biz/export"
 	"github.com/smilex/smilex-admin-gin/internal/biz/file"
 	"github.com/smilex/smilex-admin-gin/internal/biz/log"
 	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
@@ -125,6 +126,27 @@ type FilePO struct {
 
 func (FilePO) TableName() string { return "files" }
 
+// ExportRecordPO 异步导出任务记录表（产物本体在 driver 对应的存储后端；
+// 追加型流水：无软删，保留期清理与手动删除均为物理删除）
+type ExportRecordPO struct {
+	ID         uint       `gorm:"primaryKey"`
+	UserID     uint       `gorm:"index"` // 任务归属用户
+	Biz        string     `gorm:"size:32"` // 业务类型（user / login_log / op_log）
+	Name       string     `gorm:"size:255"` // 展示名（兼作下载文件名）
+	Params     string     `gorm:"type:text"` // 查询条件快照（JSON）
+	Driver     string     `gorm:"size:16"` // 产物落库时的存储后端
+	ObjectKey  string     `gorm:"size:512"` // 产物对象 key
+	Size       int64      // 产物字节数（含 BOM）
+	Rows       int        // 已导出数据行数（不含表头）
+	Status     string     `gorm:"size:16;index"` // pending | running | done | failed
+	Truncated  bool       // 触及大小/行数上限被截断
+	Error      string     `gorm:"size:512"` // 失败原因（成功为空）
+	CreatedAt  time.Time  `gorm:"index"`
+	FinishedAt *time.Time // 完成/失败时间（未结束为 NULL）
+}
+
+func (ExportRecordPO) TableName() string { return "export_records" }
+
 // ---- 转换器 ----
 
 func UserToPO(u *user.User) *UserPO {
@@ -213,5 +235,23 @@ func FileFromPO(p *FilePO) *file.File {
 		Ext: p.Ext, Size: p.Size, ContentType: p.ContentType,
 		UploaderID: p.UploaderID, UploaderName: p.UploaderName,
 		CreatedAt: p.CreatedAt,
+	}
+}
+
+func ExportRecordToPO(r *export.ExportRecord) *ExportRecordPO {
+	return &ExportRecordPO{
+		ID: r.ID, UserID: r.UserID, Biz: r.Biz, Name: r.Name, Params: r.Params,
+		Driver: r.Driver, ObjectKey: r.ObjectKey, Size: r.Size, Rows: r.Rows,
+		Status: r.Status, Truncated: r.Truncated, Error: r.Error,
+		CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
+	}
+}
+
+func ExportRecordFromPO(p *ExportRecordPO) *export.ExportRecord {
+	return &export.ExportRecord{
+		ID: p.ID, UserID: p.UserID, Biz: p.Biz, Name: p.Name, Params: p.Params,
+		Driver: p.Driver, ObjectKey: p.ObjectKey, Size: p.Size, Rows: p.Rows,
+		Status: p.Status, Truncated: p.Truncated, Error: p.Error,
+		CreatedAt: p.CreatedAt, FinishedAt: p.FinishedAt,
 	}
 }

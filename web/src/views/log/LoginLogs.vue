@@ -11,7 +11,10 @@
     <template #header>
       <div class="page-header">
         <span class="retention-hint">{{ retentionHint }}</span>
-        <n-button type="error" ghost v-permission="['log:login:clear']" @click="confirmClear">清理</n-button>
+        <div class="page-actions">
+          <n-button ghost :loading="exporting" v-permission="['log:login:export']" @click="doExport">导出</n-button>
+          <n-button type="error" ghost v-permission="['log:login:clear']" @click="confirmClear">清理</n-button>
+        </div>
       </div>
     </template>
 
@@ -23,7 +26,7 @@
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { NButton, NCard, NDataTable, NDatePicker, NEllipsis, NInput, NSelect, NTag, useDialog, useMessage, type DataTableColumns } from 'naive-ui'
 import SearchCard from '../../components/SearchCard.vue'
-import { clearLoginLogs, listLoginLogs } from '../../api'
+import { clearLoginLogs, createExport, listLoginLogs } from '../../api'
 import type { LoginLogInfo } from '../../api/types'
 
 const message = useMessage()
@@ -76,6 +79,30 @@ function resetQuery() {
   range.value = null
   query.page = 1
   load()
+}
+
+// 异步导出：提交当前过滤条件（与列表查询一致，剔除分页参数）
+const exporting = ref(false)
+async function doExport() {
+  exporting.value = true
+  try {
+    await createExport('login-logs', {
+      username: query.username,
+      ip: query.ip,
+      status: query.status,
+      start: range.value ? Math.floor(range.value[0] / 1000) : undefined,
+      end: range.value ? Math.floor(range.value[1] / 1000) : undefined,
+    })
+    message.success('已加入导出队列，可在右上角导出图标查看进度')
+  } catch (e: any) {
+    if (e?.response?.status === 429) {
+      message.warning('导出任务过多，请稍后再试')
+    } else {
+      message.error(e?.response?.data?.msg || '导出失败')
+    }
+  } finally {
+    exporting.value = false
+  }
 }
 
 function confirmClear() {
@@ -145,5 +172,9 @@ onMounted(load)
 .retention-hint {
   font-size: 13px;
   color: var(--sx-muted);
+}
+.page-actions {
+  display: flex;
+  gap: 10px;
 }
 </style>

@@ -32,6 +32,7 @@ import { NCard, NInput, NButton, NDataTable, NModal, NSpin, NTag, useMessage, us
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { listFiles, uploadFile, deleteFile, getFileBlob } from '../../api'
+import { saveBlob } from '../../utils/download'
 import { useUserStore } from '../../stores/user'
 import type { FileInfo } from '../../api/types'
 
@@ -108,12 +109,7 @@ function fmtSize(n: number) {
 async function download(row: FileInfo) {
   try {
     const { data } = await getFileBlob(row.id, true)
-    const url = URL.createObjectURL(data)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = row.name
-    a.click()
-    URL.revokeObjectURL(url)
+    saveBlob(data, row.name)
   } catch (e: any) {
     message.error(e?.response?.data?.msg || '下载失败')
   }

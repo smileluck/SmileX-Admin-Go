@@ -126,6 +126,20 @@ export interface LogPageResult<T> {
   retention_days: number
 }
 
+// 异步导出记录（一行 = 一次导出任务；仅本人可见）
+export interface ExportRecord {
+  id: number
+  biz: 'user' | 'login_log' | 'op_log'
+  name: string
+  status: 'pending' | 'running' | 'done' | 'failed'
+  size: number
+  rows: number
+  truncated: boolean // 超过单文件行数上限被截断
+  error: string // 失败原因（成功为空）
+  created_at: string
+  finished_at: string
+}
+
 // 文件元数据（后端 files 表；object_key 不下发）
 export interface FileInfo {
   id: number

@@ -65,3 +65,24 @@ CREATE INDEX IF NOT EXISTS idx_files_driver ON files (driver);
 CREATE INDEX IF NOT EXISTS idx_files_ext ON files (ext);
 CREATE INDEX IF NOT EXISTS idx_files_uploader_id ON files (uploader_id);
 CREATE INDEX IF NOT EXISTS idx_files_deleted_at ON files (deleted_at);
+
+-- 异步导出任务记录表（产物本体在 driver 对应的存储后端；无软删，保留期清理为物理删除）
+CREATE TABLE IF NOT EXISTS export_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER DEFAULT 0,            -- 任务归属用户
+  biz TEXT DEFAULT '',                  -- 业务类型（user / login_log / op_log）
+  name TEXT DEFAULT '',                 -- 展示名（兼作下载文件名）
+  params TEXT,                          -- 查询条件快照（JSON）
+  driver TEXT DEFAULT '',               -- 产物落库时的存储后端
+  object_key TEXT DEFAULT '',           -- 产物对象 key
+  size INTEGER DEFAULT 0,               -- 产物字节数（含 BOM）
+  rows INTEGER DEFAULT 0,               -- 已导出数据行数（不含表头）
+  status TEXT DEFAULT 'pending',        -- pending | running | done | failed
+  truncated INTEGER DEFAULT 0,          -- 触及大小/行数上限被截断
+  error TEXT DEFAULT '',                -- 失败原因（成功为空）
+  created_at DATETIME,
+  finished_at DATETIME                  -- 完成/失败时间（未结束为 NULL）
+);
+CREATE INDEX IF NOT EXISTS idx_export_records_user_id ON export_records (user_id);
+CREATE INDEX IF NOT EXISTS idx_export_records_status ON export_records (status);
+CREATE INDEX IF NOT EXISTS idx_export_records_created_at ON export_records (created_at);

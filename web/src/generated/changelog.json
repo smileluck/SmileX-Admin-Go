@@ -1,6 +1,20 @@
 {
-  "generatedAt": "2026-08-22T09:32:03.340Z",
+  "generatedAt": "2026-08-23T02:53:01.812Z",
   "commits": [
+    {
+      "hash": "a3dd57f",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "admin-layout",
+      "message": "优化侧边菜单展开逻辑与菜单key生成"
+    },
+    {
+      "hash": "70d6ec2",
+      "date": "2026-08-22",
+      "type": "feat",
+      "scope": "permission,web",
+      "message": "实现三级权限目录模型，新增目录类型并重构权限树"
+    },
     {
       "hash": "1b8a8cf",
       "date": "2026-08-22",

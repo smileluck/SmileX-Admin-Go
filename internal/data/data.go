@@ -124,7 +124,7 @@ func (d *Data) migrateAndSeed() error {
 		&model.UserPO{}, &model.RolePO{}, &model.PermissionPO{},
 		&model.UserRolePO{}, &model.RolePermissionPO{},
 		&model.LoginLogPO{}, &model.OperationLogPO{},
-		&model.FilePO{},
+		&model.FilePO{}, &model.ExportRecordPO{},
 	); err != nil {
 		return err
 	}
@@ -287,6 +287,7 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "删除用户", Code: "user:delete", Menu: "menu:user", Method: "DELETE", Path: "/api/v1/users/*", Sort: 5},
 	{Name: "分配角色", Code: "user:setRoles", Menu: "menu:user", Method: "PUT", Path: "/api/v1/users/*/roles", Sort: 6},
 	{Name: "重置密码", Code: "user:resetPassword", Menu: "menu:user", Method: "PUT", Path: "/api/v1/users/*/password", Sort: 7},
+	{Name: "导出用户", Code: "user:export", Menu: "menu:user", Method: "POST", Path: "/api/v1/users/export", Sort: 8},
 	// 角色管理
 	{Name: "查询角色", Code: "role:list", Menu: "menu:role", Method: "GET", Path: "/api/v1/roles", Sort: 1},
 	{Name: "角色详情", Code: "role:view", Menu: "menu:role", Method: "GET", Path: "/api/v1/roles/*", Sort: 2},
@@ -307,8 +308,10 @@ var systemButtonPerms = []systemButtonPermDef{
 	// 日志管理
 	{Name: "查询登录日志", Code: "log:login:list", Menu: "menu:loginLog", Method: "GET", Path: "/api/v1/login-logs", Sort: 1},
 	{Name: "清理登录日志", Code: "log:login:clear", Menu: "menu:loginLog", Method: "DELETE", Path: "/api/v1/login-logs", Sort: 2},
+	{Name: "导出登录日志", Code: "log:login:export", Menu: "menu:loginLog", Method: "POST", Path: "/api/v1/login-logs/export", Sort: 3},
 	{Name: "查询操作日志", Code: "log:op:list", Menu: "menu:opLog", Method: "GET", Path: "/api/v1/operation-logs", Sort: 1},
 	{Name: "清理操作日志", Code: "log:op:clear", Menu: "menu:opLog", Method: "DELETE", Path: "/api/v1/operation-logs", Sort: 2},
+	{Name: "导出操作日志", Code: "log:op:export", Menu: "menu:opLog", Method: "POST", Path: "/api/v1/operation-logs/export", Sort: 3},
 	// 文件管理
 	{Name: "查询文件", Code: "file:list", Menu: "menu:file", Method: "GET", Path: "/api/v1/files", Sort: 1},
 	{Name: "上传文件", Code: "file:upload", Menu: "menu:file", Method: "POST", Path: "/api/v1/files", Sort: 2},

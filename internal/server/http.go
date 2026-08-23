@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
+	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
@@ -26,6 +27,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/internal/server/middleware"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
@@ -47,6 +49,7 @@ type HTTPServer struct {
 	session  *sessionsvc.Service
 	log      *logsvc.Service
 	file     *filesvc.Service
+	export   *exportsvc.Service
 	engine   *gin.Engine
 	srv      *http.Server
 }
@@ -54,7 +57,7 @@ type HTTPServer struct {
 // NewHTTPServer 构造并注册路由
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
 	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service,
-	file *filesvc.Service) *HTTPServer {
+	file *filesvc.Service, export *exportsvc.Service) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -66,7 +69,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 		middleware.SQLInjectionGuard(),
 	)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -226,6 +229,17 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			response.OK(c, hits)
 		})
+
+		// 异步导出：记录归属当前用户，列表/下载/删除均强制按 sub.UserID 过滤（biz 层校验），
+		// 与 profile/menus 同属自身数据接口，故仅 JWT 不走 RBAC；导出入口（POST */export）在 protected 组按按钮权限点控制
+		exports := basic.Group("/exports")
+		{
+			// recent=1 返回近期 5 条（任务浮层轮询）；否则分页返回本人记录
+			exports.GET("", s.listExports)
+			// 下载：云存储 302 到预签名 URL，本地存储后端代理流式输出
+			exports.GET("/:id/download", s.downloadExport)
+			exports.DELETE("/:id", s.deleteExport)
+		}
 	}
 
 	// ---- 受保护接口：JWT -> 操作日志（RBAC 拒绝的尝试也记录）-> RBAC ----
@@ -240,6 +254,8 @@ func (s *HTTPServer) registerRoutes() {
 		users.DELETE("/:id", s.deleteUser)
 		users.PUT("/:id/roles", s.setUserRoles)
 		users.PUT("/:id/password", s.resetUserPassword)
+		// 导出用户列表（查询条件透传 query，与列表页一致）
+		users.POST("/export", func(c *gin.Context) { s.submitExport(c, "user") })
 		// 踢某用户全部端下线（挂在 users 资源下，避免与 /online-users/:sid 路由冲突）
 		users.DELETE("/:id/sessions", s.kickUserSessions)
 	}
@@ -273,12 +289,14 @@ func (s *HTTPServer) registerRoutes() {
 	{
 		loginLogs.GET("", s.listLoginLogs)
 		loginLogs.DELETE("", s.clearLoginLogs)
+		loginLogs.POST("/export", func(c *gin.Context) { s.submitExport(c, "login_log") })
 	}
 
 	opLogs := protected.Group("/operation-logs")
 	{
 		opLogs.GET("", s.listOperationLogs)
 		opLogs.DELETE("", s.clearOperationLogs)
+		opLogs.POST("/export", func(c *gin.Context) { s.submitExport(c, "op_log") })
 	}
 
 	files := protected.Group("/files")
@@ -831,6 +849,109 @@ func (s *HTTPServer) fileErr(c *gin.Context, err error) {
 		response.NotFound(c, err.Error())
 	case errors.Is(err, bizfile.ErrFileTooLarge), errors.Is(err, bizfile.ErrFileTypeDenied):
 		response.BadRequest(c, err.Error())
+	case errors.Is(err, bizfile.ErrDriverUnavailable):
+		response.Fail(c, http.StatusServiceUnavailable, response.CodeErr, err.Error())
+	default:
+		response.ServerError(c, err.Error())
+	}
+}
+
+// ---- 异步导出 ----
+
+// submitExport 提交导出任务：原始查询条件（query，剔除分页参数）快照进记录，
+// worker 按同一套条件分批拉数，保证导出结果与列表页所见一致
+func (s *HTTPServer) submitExport(c *gin.Context, biz string) {
+	sub := middleware.Subject(c)
+	params := c.Request.URL.Query()
+	params.Del("page")
+	params.Del("page_size")
+	vo, err := s.export.Submit(c.Request.Context(), biz, params, sub.UserID, sub.Username)
+	if err != nil {
+		switch {
+		case errors.Is(err, bizexport.ErrQueueFull):
+			response.TooManyRequests(c, err.Error())
+		case errors.Is(err, bizexport.ErrUnsupportedBiz):
+			response.BadRequest(c, err.Error())
+		default:
+			response.ServerError(c, err.Error())
+		}
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) listExports(c *gin.Context) {
+	sub := middleware.Subject(c)
+	if c.Query("recent") == "1" {
+		vos, err := s.export.Recent(c.Request.Context(), sub.UserID, 5)
+		if err != nil {
+			response.ServerError(c, err.Error())
+			return
+		}
+		response.OK(c, vos)
+		return
+	}
+	page, size := pageParams(c)
+	vos, pg, err := s.export.List(c.Request.Context(), sub.UserID, page, size)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.OK(c, listResult{List: vos, Page: pg})
+}
+
+func (s *HTTPServer) downloadExport(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	sub := middleware.Subject(c)
+	d, err := s.export.ResolveDownload(c.Request.Context(), id, sub.UserID)
+	if err != nil {
+		s.exportErr(c, err)
+		return
+	}
+	// 云存储：鉴权通过后 302 到短时效预签名 URL
+	if d.URL != "" {
+		c.Redirect(http.StatusFound, d.URL)
+		return
+	}
+	// 本地存储：后端代理流式输出（强制 attachment + nosniff，CSV 不内联渲染）
+	defer d.Body.Close()
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Disposition", contentDisposition("attachment", d.Record.Name))
+	if d.Record.Size > 0 {
+		c.Header("Content-Length", strconv.FormatInt(d.Record.Size, 10))
+	}
+	c.Status(http.StatusOK)
+	_, _ = io.Copy(c.Writer, d.Body)
+}
+
+func (s *HTTPServer) deleteExport(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	sub := middleware.Subject(c)
+	if err := s.export.Delete(c.Request.Context(), id, sub.UserID); err != nil {
+		s.exportErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// exportErr 导出操作错误映射：不存在 404，越权 403，未完成 409，队列满 429，存储后端未配置 503，其余 500
+func (s *HTTPServer) exportErr(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, bizexport.ErrNotFound):
+		response.NotFound(c, err.Error())
+	case errors.Is(err, bizexport.ErrNotOwner):
+		response.Forbidden(c, err.Error())
+	case errors.Is(err, bizexport.ErrNotReady):
+		response.Fail(c, http.StatusConflict, response.CodeErr, err.Error())
+	case errors.Is(err, bizexport.ErrQueueFull):
+		response.TooManyRequests(c, err.Error())
 	case errors.Is(err, bizfile.ErrDriverUnavailable):
 		response.Fail(c, http.StatusServiceUnavailable, response.CodeErr, err.Error())
 	default:
