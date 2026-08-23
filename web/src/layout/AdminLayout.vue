@@ -396,8 +396,20 @@ watch(showSearch, async (v) => {
   if (v) {
     await nextTick()
     searchRef.value?.focus()
+    document.addEventListener('click', onSearchOverlayClick, true)
+  } else {
+    document.removeEventListener('click', onSearchOverlayClick, true)
   }
 })
+
+// 点击遮罩区域关闭：naive-ui 的 .n-modal-scroll-content 覆盖整屏且压在 mask 之上，
+// mask 自带的点击关闭实际不可达，这里自行处理——捕获阶段点击落在面板外即关闭
+//（监听仅在弹窗打开期间挂载；打开弹窗的那次点击先于监听挂载，不会误触发）
+function onSearchOverlayClick(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest('.cmd-palette')) {
+    showSearch.value = false
+  }
+}
 
 // 关键词变化：防抖 300ms 调接口搜索；序号防过期响应竞态
 let searchTimer: number | undefined
@@ -549,6 +561,7 @@ function gotoExports() {
 onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
 onUnmounted(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
+  document.removeEventListener('click', onSearchOverlayClick, true)
   window.clearTimeout(searchTimer)
   window.clearInterval(exportTimer)
 })
