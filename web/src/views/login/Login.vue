@@ -37,13 +37,23 @@
     <main class="form-panel">
       <div class="form-box">
         <div class="form-head">
-          <div class="seal seal--sm">S</div>
-          <div>
-            <h2 class="form-title">{{ t('login.formTitle') }}</h2>
-            <p class="form-sub">{{ t('login.formSub') }}</p>
+          <!-- 左：品牌图标 + 标题 -->
+          <div class="form-head-left">
+            <div class="seal seal--sm">S</div>
+            <div>
+              <h2 class="form-title">{{ t('login.formTitle') }}</h2>
+              <p class="form-sub">{{ t('login.formSub') }}</p>
+            </div>
           </div>
+          <!-- 中：占位，撑开左右两块 -->
+          <div class="form-head-center"></div>
+          <!-- 右：语言切换，与主页面顶栏同款 -->
           <n-dropdown class="locale-switch" :options="localeOptions" @select="onLocaleChange">
-            <button type="button" class="locale-btn">{{ locale === 'en-US' ? 'EN' : '中文' }}</button>
+            <n-button quaternary circle :focusable="false" :aria-label="t('layout.language')">
+              <template #icon>
+                <n-icon :component="LanguageOutline" />
+              </template>
+            </n-button>
           </n-dropdown>
         </div>
 
@@ -79,7 +89,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { NForm, NFormItem, NInput, NButton, NCheckbox, NDropdown, useMessage, type FormInst, type DropdownOption } from 'naive-ui'
+import { NForm, NFormItem, NInput, NButton, NCheckbox, NDropdown, NIcon, useMessage, type FormInst, type DropdownOption } from 'naive-ui'
+import { LanguageOutline } from '@vicons/ionicons5'
 import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
 import { setLocale, type AppLocale } from '../../locales'
@@ -92,7 +103,7 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const message = useMessage()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 
 // 登录页语言切换（未登录无接口依赖，仅切前端文案；登录后请求自动带上新语言）
 const localeOptions: DropdownOption[] = [
@@ -363,26 +374,23 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 14px;
+  width: 100%;
   margin-bottom: 32px;
 }
-/* 语言切换：靠行右，低调文字按钮 */
+/* 左：品牌图标 + 标题 */
+.form-head-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+/* 中：占位，撑满剩余空间，把语言切换顶到最右 */
+.form-head-center {
+  flex: 1;
+}
+/* 右：语言切换图标按钮，与主页面顶栏一致 */
 .locale-switch {
-  margin-left: auto;
-  align-self: flex-start;
-}
-.locale-btn {
-  border: 1px solid var(--sx-line);
-  background: transparent;
-  border-radius: 6px;
-  padding: 3px 10px;
-  font-size: 12px;
+  flex-shrink: 0;
   color: var(--sx-muted);
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-.locale-btn:hover {
-  color: var(--sx-accent);
-  border-color: var(--sx-accent);
 }
 .seal--sm {
   width: 44px;

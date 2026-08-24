@@ -1,6 +1,27 @@
 {
-  "generatedAt": "2026-08-24T04:29:04.293Z",
+  "generatedAt": "2026-08-24T08:29:04.135Z",
   "commits": [
+    {
+      "hash": "38325c0",
+      "date": "2026-08-24",
+      "type": "feat",
+      "scope": "cache&middleware",
+      "message": "add singleflight cache & optimize rbac middleware"
+    },
+    {
+      "hash": "36aa8b4",
+      "date": "2026-08-24",
+      "type": "feat",
+      "scope": "",
+      "message": "新增二级缓存、会话节流刷新，优化验证码与权限缓存"
+    },
+    {
+      "hash": "413a99e",
+      "date": "2026-08-24",
+      "type": "refactor",
+      "scope": "",
+      "message": "封装通用分页hook，简化各页面分页代码"
+    },
     {
       "hash": "f81fcd7",
       "date": "2026-08-24",
