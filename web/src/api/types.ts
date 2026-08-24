@@ -145,6 +145,7 @@ export interface BlacklistItem {
   id: number
   ip: string
   reason: string
+  source: string // manual | auto（登录连续失败自动封禁）
   expire_at: string | null // 为空字符串或 null 表示永久
   creator_name: string
   created_at: string

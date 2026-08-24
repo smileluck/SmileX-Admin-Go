@@ -19,12 +19,13 @@ func NewService(uc *bizblacklist.Usecase) *Service {
 
 // BlacklistVO 黑名单视图
 type BlacklistVO struct {
-	ID          uint       `json:"id"`
-	IP          string     `json:"ip"`
-	Reason      string     `json:"reason"`
-	ExpireAt    *string    `json:"expire_at"` // 空字符串表示永久
-	CreatorName string     `json:"creator_name"`
-	CreatedAt   string     `json:"created_at"`
+	ID          uint    `json:"id"`
+	IP          string  `json:"ip"`
+	Reason      string  `json:"reason"`
+	Source      string  `json:"source"`    // manual | auto（登录连续失败自动封禁）
+	ExpireAt    *string `json:"expire_at"` // 空字符串表示永久
+	CreatorName string  `json:"creator_name"`
+	CreatedAt   string  `json:"created_at"`
 }
 
 // CreateRequest 新增黑名单请求
@@ -41,6 +42,11 @@ type Checker interface {
 
 // Checker 返回判定器接口
 func (s *Service) Checker() Checker {
+	return s.uc
+}
+
+// LoginGuard 返回登录防护用例（实现 middleware.LoginGuard：临时封禁 / 失败计数 / 限流）
+func (s *Service) LoginGuard() *bizblacklist.Usecase {
 	return s.uc
 }
 
@@ -80,7 +86,7 @@ func (s *Service) List(ctx context.Context, q bizblacklist.Query, page, pageSize
 
 func (s *Service) toVO(b *bizblacklist.IPBlacklist) *BlacklistVO {
 	vo := &BlacklistVO{
-		ID: b.ID, IP: b.IP, Reason: b.Reason,
+		ID: b.ID, IP: b.IP, Reason: b.Reason, Source: b.Source,
 		CreatorName: b.CreatorName,
 		CreatedAt:   formatTime(b.CreatedAt),
 	}

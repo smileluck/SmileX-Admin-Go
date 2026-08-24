@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NButton, NCard, NDataTable, NDatePicker, NForm, NFormItem, NInput, NModal, NSpace, useDialog, useMessage, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { NButton, NCard, NDataTable, NDatePicker, NForm, NFormItem, NInput, NModal, NSpace, NTag, useDialog, useMessage, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import SearchCard from '../../components/SearchCard.vue'
 import { createBlacklist, deleteBlacklist, listBlacklist } from '../../api'
@@ -140,6 +140,11 @@ const columns = computed<DataTableColumns<BlacklistItem>>(() => [
   { title: 'ID', key: 'id', width: 70 },
   { title: t('blacklist.ip'), key: 'ip', width: 160 },
   { title: t('blacklist.reason'), key: 'reason', render: (row) => row.reason || '—' },
+  {
+    title: t('blacklist.source'), key: 'source', width: 90,
+    render: (row) => h(NTag, { size: 'small', type: row.source === 'auto' ? 'warning' : 'default', bordered: false },
+      { default: () => row.source === 'auto' ? t('blacklist.sourceAuto') : t('blacklist.sourceManual') }),
+  },
   { title: t('blacklist.expireAt'), key: 'expire_at', width: 170, render: (row) => row.expire_at || t('blacklist.permanent') },
   { title: t('blacklist.creator'), key: 'creator_name', width: 120 },
   { title: t('common.createTime'), key: 'created_at', width: 170 },

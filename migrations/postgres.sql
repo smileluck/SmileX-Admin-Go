@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS ip_blacklist (
   id BIGSERIAL PRIMARY KEY,
   ip VARCHAR(64) NOT NULL UNIQUE,       -- 单个 IP（不支持 CIDR）
   reason VARCHAR(255) DEFAULT '',       -- 封禁原因
+  source VARCHAR(16) NOT NULL DEFAULT 'manual', -- manual | auto（登录连续失败自动封禁）
   expire_at TIMESTAMPTZ,                -- 过期时间（NULL 为永久封禁）
   creator_id BIGINT DEFAULT 0,
   creator_name VARCHAR(64) DEFAULT '',

@@ -104,8 +104,8 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	}
 	exportUsecase := export2.NewUsecase(exportRepo, registry, worker, storageManager, bootstrap)
 	exportService := export3.NewService(exportUsecase)
-	blacklistRepo := blacklist.NewRepo(dataData)
-	blacklistUsecase := blacklist2.NewUsecase(blacklistRepo)
+	blacklistRepo := blacklist.NewRepo(dataData, client)
+	blacklistUsecase := blacklist2.NewUsecase(blacklistRepo, blacklistRepo)
 	blacklistService := blacklist3.NewService(blacklistUsecase)
 	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService, exportService, blacklistService)
 	return httpServer, func() {
@@ -120,7 +120,7 @@ func wireApp() (*server.HTTPServer, func(), error) {
 
 var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha.NewUsecase, session2.NewUsecase, log2.NewUsecase, file2.NewUsecase, blacklist2.NewUsecase, export2.NewUsecase, export2.NewRegistry, export2.NewUserExporter, export2.NewLoginLogExporter, export2.NewOpLogExporter, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)))
 
-var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, blacklist.NewRepo, export.NewRepo, export.NewWorker, wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)), wire.Bind(new(blacklist2.Repo), new(*blacklist.Repo)), wire.Bind(new(export2.Enqueuer), new(*export.Worker)))
+var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, blacklist.NewRepo, export.NewRepo, export.NewWorker, wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)), wire.Bind(new(blacklist2.Repo), new(*blacklist.Repo)), wire.Bind(new(blacklist2.LoginProtector), new(*blacklist.Repo)), wire.Bind(new(export2.Enqueuer), new(*export.Worker)))
 
 var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService, log3.NewService, file3.NewService, blacklist3.NewService, export3.NewService)
 

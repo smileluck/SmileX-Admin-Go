@@ -127,14 +127,15 @@ type FilePO struct {
 
 func (FilePO) TableName() string { return "files" }
 
-// IPBlacklistPO IP 黑名单表（管理员手工维护的持久化封禁；软删即解封留痕）
+// IPBlacklistPO IP 黑名单表（手工持久化封禁 + 登录失败自动临时封禁；软删即解封留痕）
 type IPBlacklistPO struct {
 	ID          uint       `gorm:"primaryKey"`
-	IP          string     `gorm:"size:64;uniqueIndex"` // 仅单个 IP（不支持 CIDR），归一化后存储
-	Reason      string     `gorm:"size:255"`            // 封禁原因（选填）
+	IP          string     `gorm:"size:64;uniqueIndex"`    // 仅单个 IP（不支持 CIDR），归一化后存储
+	Reason      string     `gorm:"size:255"`               // 封禁原因（选填）
+	Source      string     `gorm:"size:16;default:manual"` // manual | auto（登录连续失败自动封禁）
 	ExpireAt    *time.Time // 过期时间（NULL 为永久封禁，到期惰性放行）
-	CreatorID   uint       // 操作人
-	CreatorName string     `gorm:"size:64"` // 操作人用户名快照
+	CreatorID   uint       // 操作人（自动封禁为 0）
+	CreatorName string     `gorm:"size:64"` // 操作人用户名快照（自动封禁为 system）
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
@@ -274,14 +275,14 @@ func ExportRecordFromPO(p *ExportRecordPO) *export.ExportRecord {
 
 func IPBlacklistToPO(b *blacklist.IPBlacklist) *IPBlacklistPO {
 	return &IPBlacklistPO{
-		ID: b.ID, IP: b.IP, Reason: b.Reason, ExpireAt: b.ExpireAt,
+		ID: b.ID, IP: b.IP, Reason: b.Reason, Source: b.Source, ExpireAt: b.ExpireAt,
 		CreatorID: b.CreatorID, CreatorName: b.CreatorName,
 	}
 }
 
 func IPBlacklistFromPO(p *IPBlacklistPO) *blacklist.IPBlacklist {
 	return &blacklist.IPBlacklist{
-		ID: p.ID, IP: p.IP, Reason: p.Reason, ExpireAt: p.ExpireAt,
+		ID: p.ID, IP: p.IP, Reason: p.Reason, Source: p.Source, ExpireAt: p.ExpireAt,
 		CreatorID: p.CreatorID, CreatorName: p.CreatorName,
 		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 	}

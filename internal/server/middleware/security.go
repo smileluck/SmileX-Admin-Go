@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/smilex/smilex-admin-gin/pkg/i18n"
@@ -111,46 +109,15 @@ func SQLInjectionGuard() gin.HandlerFunc {
 	}
 }
 
-// loginLimiter 登录接口内存滑动窗口限流（单机版；多实例部署时应换共享存储实现）
-type loginLimiter struct {
-	mu      sync.Mutex
-	hits    map[string][]time.Time
-	window  time.Duration
-	maxHits int
-}
-
-// LoginRateLimit 按 IP 限流登录尝试（默认 60s 内 5 次），超出返回 429，防口令爆破
-func LoginRateLimit() gin.HandlerFunc {
-	l := &loginLimiter{hits: map[string][]time.Time{}, window: time.Minute, maxHits: 5}
+// LoginRateLimit 按 IP 限流登录尝试（固定窗口 60s 内 5 次，计数存 Redis 多实例共享），超出返回 429，防口令爆破
+func LoginRateLimit(guard LoginGuard) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		now := time.Now()
-		l.mu.Lock()
-		hs := l.hits[ip]
-		kept := hs[:0]
-		for _, t := range hs {
-			if now.Sub(t) < l.window {
-				kept = append(kept, t)
-			}
-		}
-		if len(kept) >= l.maxHits {
-			l.hits[ip] = kept
-			l.mu.Unlock()
+		if guard.HitLoginRate(c.Request.Context(), c.ClientIP()) {
 			c.Header("Retry-After", "60")
 			response.TooManyRequests(c, i18n.T(c.Request.Context(), "security.login_frequent"))
 			c.Abort()
 			return
 		}
-		l.hits[ip] = append(kept, now)
-		// IP 数超阈值时清理窗口外的非活跃条目，防止长期运行缓慢增长
-		if len(l.hits) > 10000 {
-			for k, v := range l.hits {
-				if len(v) == 0 || now.Sub(v[len(v)-1]) >= l.window {
-					delete(l.hits, k)
-				}
-			}
-		}
-		l.mu.Unlock()
 		c.Next()
 	}
 }

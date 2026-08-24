@@ -102,8 +102,8 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			response.OK(c, vo)
 		})
-		// 登录接口：IP 黑名单（连续失败拉黑）→ 频率限制 → 登录，防口令爆破
-		authg.POST("/login", middleware.LoginIPGuard(s.log), middleware.LoginRateLimit(), func(c *gin.Context) {
+		// 登录接口：IP 临时封禁（连续失败拉黑）→ 频率限制 → 登录，防口令爆破
+		authg.POST("/login", middleware.LoginIPGuard(s.log, s.blacklist.LoginGuard()), middleware.LoginRateLimit(s.blacklist.LoginGuard()), func(c *gin.Context) {
 			var req authsvc.LoginRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
 				response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
