@@ -32,9 +32,16 @@ func main() {
 			panic("load config: " + err.Error())
 		}
 	}
-	if err := logger.Init(cfg.Server.Mode); err != nil {
+	if err := logger.Init(cfg.Server.Mode, logger.Config{
+		Dir:        cfg.Log.Dir,
+		Filename:   cfg.Log.Filename,
+		Level:      cfg.Log.Level,
+		MaxAgeDays: cfg.Log.MaxAgeDays,
+		Console:    cfg.Log.Console,
+	}); err != nil {
 		panic(err)
 	}
+	defer logger.Sync()
 
 	app, cleanup, err := wireApp()
 	if err != nil {

@@ -42,6 +42,12 @@ auth:
 
 log:
   retentionDays: 90 # 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
+  # 应用运行日志：按日期滚动落盘（dir/filename-2006-01-02.log）
+  dir: ./logs # 日志文件目录；置空则只输出控制台
+  filename: app # 文件名前缀
+  level: "" # 最低级别 debug|info|warn|error；空则 debug 模式=debug，release 模式=info
+  maxAgeDays: 30 # 日志文件保留天数，超期自动清理；0 永久保留
+  console: false # 是否同时输出到控制台（debug 模式无论此项都会输出控制台）
 
 export:
   maxSizeMB: 50 # 单个导出文件大小上限（MB），超出截断并在记录上标记 truncated

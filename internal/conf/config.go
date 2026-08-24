@@ -78,6 +78,16 @@ type Auth struct {
 type Log struct {
 	// RetentionDays 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
 	RetentionDays int `mapstructure:"retentionDays"`
+	// Dir 应用运行日志文件目录
+	Dir string `mapstructure:"dir"`
+	// Filename 日志文件名前缀（实际文件为 prefix-2006-01-02.log，按日期滚动）
+	Filename string `mapstructure:"filename"`
+	// Level 最低日志级别（debug|info|warn|error）；空则 debug 环境=debug，release=info
+	Level string `mapstructure:"level"`
+	// MaxAgeDays 日志文件保留天数，超期每日自动清理；0 表示永久保留
+	MaxAgeDays int `mapstructure:"maxAgeDays"`
+	// Console 是否同时输出到控制台（debug 默认开，release 默认关）
+	Console bool `mapstructure:"console"`
 }
 
 // Export 异步导出配置：产物经存储后端（storage.driver）落盘，到期自动清理
@@ -153,6 +163,10 @@ func Load(path string) (*Bootstrap, error) {
 	v.SetDefault("auth.captchaEnabled", true)
 	// 默认值：日志默认保留 90 天
 	v.SetDefault("log.retentionDays", 90)
+	// 默认值：运行日志按日滚动落盘 ./logs，保留 30 天
+	v.SetDefault("log.dir", "./logs")
+	v.SetDefault("log.filename", "app")
+	v.SetDefault("log.maxAgeDays", 30)
 	// 默认值：异步导出单文件 50MB / 10 万行，产物保留 7 天，任务队列 64
 	v.SetDefault("export.maxSizeMB", 50)
 	v.SetDefault("export.maxRows", 100000)
