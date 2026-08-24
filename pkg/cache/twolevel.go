@@ -1,21 +1,26 @@
 // Package cache 二级缓存：L1 进程内存 + L2 Redis。
 //
-// 读路径 L1 → L2 → miss（由调用方回源并 Set 回填两级）；
+// 读路径 L1 → L2 → singleflight 回源（Load 的 loader）→ 回填两级；
+// 也保留 Get/Set 由调用方自行回源回填的用法。
 // L2 可通过开关关闭（l2Enabled=false 时退化为纯 L1，多实例间不共享）。
 // 定位为短 TTL 读缓存：不保证强一致，变更一致性由 TTL 兜底。
+// 写入 TTL 带 ±10% 随机抖动，避免批量同刻过期引发雪崩。
+// Flush 提供前缀级清理，作为将来多实例 Redis Pub/Sub 失效广播的落点。
 package cache
 
 import (
 	"context"
+	"math/rand/v2"
 	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/smilex/smilex-admin-gin/pkg/logger"
 	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 )
 
-// l1MaxEntries L1 条目数上限，超过时惰性清理过期条目
+// l1MaxEntries L1 条目数硬上限，超过时先清理过期条目，仍超限则随机淘汰一批
 const l1MaxEntries = 4096
 
 type l1Entry struct {
@@ -32,6 +37,8 @@ type TwoLevel struct {
 
 	mu sync.RWMutex
 	l1 map[string]l1Entry
+
+	sf singleflight.Group
 }
 
 // NewTwoLevel 构造二级缓存；l2Enabled=false 或 rdb=nil 时仅启用 L1
@@ -69,13 +76,37 @@ func (c *TwoLevel) Get(ctx context.Context, key string) (string, bool) {
 	return val, true
 }
 
-// Set 写入两级缓存（L2 失败仅记日志，L1 仍生效）
+// Load 读缓存，miss 时用 singleflight 合并并发回源（loader）并回填两级；
+// loader 出错时不回填，所有并发等待者收到同一错误。
+func (c *TwoLevel) Load(ctx context.Context, key string, loader func(ctx context.Context) (string, error)) (string, error) {
+	if val, ok := c.Get(ctx, key); ok {
+		return val, nil
+	}
+	v, err, _ := c.sf.Do(c.prefix+key, func() (any, error) {
+		// 等待期间可能已被其他请求回填，再查一次避免重复回源
+		if val, ok := c.Get(ctx, key); ok {
+			return val, nil
+		}
+		val, err := loader(ctx)
+		if err != nil {
+			return "", err
+		}
+		c.Set(ctx, key, val)
+		return val, nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return v.(string), nil
+}
+
+// Set 写入两级缓存（L2 失败仅记日志，L1 仍生效）；TTL 带 ±10% 抖动
 func (c *TwoLevel) Set(ctx context.Context, key, val string) {
 	c.setL1(key, val)
 	if c.rdb == nil {
 		return
 	}
-	if err := c.rdb.Set(ctx, c.prefix+key, val, c.l2TTL).Err(); err != nil {
+	if err := c.rdb.Set(ctx, c.prefix+key, val, jitter(c.l2TTL)).Err(); err != nil {
 		logger.Warn("l2 cache set failed", zap.String("key", key), zap.Error(err))
 	}
 }
@@ -93,16 +124,63 @@ func (c *TwoLevel) Del(ctx context.Context, key string) {
 	}
 }
 
+// Flush 前缀级清理：清空整个 L1，并用 SCAN 删除 L2 中该前缀的全部 key。
+// 预留给多实例 Redis Pub/Sub 失效广播使用。
+func (c *TwoLevel) Flush(ctx context.Context) {
+	c.mu.Lock()
+	c.l1 = map[string]l1Entry{}
+	c.mu.Unlock()
+	if c.rdb == nil {
+		return
+	}
+	var cursor uint64
+	for {
+		keys, next, err := c.rdb.Scan(ctx, cursor, c.prefix+"*", 100).Result()
+		if err != nil {
+			logger.Warn("l2 cache flush scan failed", zap.String("prefix", c.prefix), zap.Error(err))
+			return
+		}
+		if len(keys) > 0 {
+			if err := c.rdb.Del(ctx, keys...).Err(); err != nil {
+				logger.Warn("l2 cache flush del failed", zap.String("prefix", c.prefix), zap.Error(err))
+			}
+		}
+		if next == 0 {
+			return
+		}
+		cursor = next
+	}
+}
+
 func (c *TwoLevel) setL1(key, val string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if len(c.l1) > l1MaxEntries {
+	if len(c.l1) >= l1MaxEntries {
 		now := time.Now()
 		for k, e := range c.l1 {
 			if now.After(e.expireAt) {
 				delete(c.l1, k)
 			}
 		}
+		// 清理过期项后仍超限：随机淘汰约 1/8（Go map 迭代顺序随机）
+		if len(c.l1) >= l1MaxEntries {
+			n := l1MaxEntries / 8
+			for k := range c.l1 {
+				delete(c.l1, k)
+				if n--; n <= 0 {
+					break
+				}
+			}
+		}
 	}
-	c.l1[key] = l1Entry{val: val, expireAt: time.Now().Add(c.l1TTL)}
+	c.l1[key] = l1Entry{val: val, expireAt: time.Now().Add(jitter(c.l1TTL))}
+}
+
+// jitter 返回带 ±10% 随机抖动的 TTL
+func jitter(d time.Duration) time.Duration {
+	delta := int64(d) / 10
+	if delta <= 0 {
+		return d
+	}
+	return d + time.Duration(rand.Int64N(2*delta+1)-delta)
 }

@@ -2,6 +2,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -88,20 +89,19 @@ func RBAC(authSvc *authsvc.Service, cache *cache.TwoLevel) gin.HandlerFunc {
 			return
 		}
 		key := fmt.Sprintf("%d|%s|%s", s.UserID, c.Request.Method, c.Request.URL.Path)
-		if v, ok := cache.Get(c.Request.Context(), key); ok {
-			if v != "1" {
-				response.Forbidden(c, "permission denied")
-				c.Abort()
+		// Load 内部 singleflight 合并并发回源，miss 时不会打爆数据库
+		val, err := cache.Load(c.Request.Context(), key, func(ctx context.Context) (string, error) {
+			if authSvc.Authorize(ctx, s.UserID, c.Request.Method, c.Request.URL.Path) {
+				return "1", nil
 			}
+			return "0", nil
+		})
+		if err != nil {
+			response.ServerError(c, "authorize failed")
+			c.Abort()
 			return
 		}
-		allow := authSvc.Authorize(c.Request.Context(), s.UserID, c.Request.Method, c.Request.URL.Path)
-		val := "0"
-		if allow {
-			val = "1"
-		}
-		cache.Set(c.Request.Context(), key, val)
-		if !allow {
+		if val != "1" {
 			response.Forbidden(c, "permission denied")
 			c.Abort()
 		}
