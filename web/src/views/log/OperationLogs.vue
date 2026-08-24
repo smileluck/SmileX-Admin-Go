@@ -50,6 +50,7 @@ import { NButton, NCard, NDataTable, NDatePicker, NEllipsis, NInput, NModal, NSe
 import SearchCard from '../../components/SearchCard.vue'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import { clearOperationLogs, createExport, listOperationLogs } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import type { OperationLogInfo } from '../../api/types'
 import { useI18n } from 'vue-i18n'
 
@@ -77,11 +78,7 @@ const methodOptions = [
 const methodTagType = (m: string): 'success' | 'warning' | 'error' | 'info' =>
   m === 'POST' ? 'success' : m === 'PUT' ? 'warning' : m === 'DELETE' ? 'error' : 'info'
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -99,7 +96,7 @@ async function load() {
     retentionDays.value = data.data.retention_days
     pagination.page = query.page
     pagination.pageSize = query.page_size
-    pagination.pageCount = Math.max(1, Math.ceil(data.data.page.total / query.page_size))
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }
@@ -175,7 +172,7 @@ const columns = computed<DataTableColumns<OperationLogInfo>>(() => [
     render: (row) =>
       h('span', { style: 'display: inline-flex; align-items: center; gap: 6px; min-width: 0' }, [
         h(NTag, { type: methodTagType(row.method), size: 'small' }, { default: () => row.method }),
-        h(NEllipsis, { style: 'max-width: 260px' }, { tooltip: true, default: () => row.path }),
+        h(NEllipsis, { style: 'max-width: 260px', tooltip: true }, { default: () => row.path }),
       ]),
   },
   { title: 'IP', key: 'ip', width: 125 },

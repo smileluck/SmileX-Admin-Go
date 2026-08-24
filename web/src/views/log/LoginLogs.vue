@@ -28,6 +28,7 @@ import { NButton, NCard, NDataTable, NDatePicker, NEllipsis, NInput, NSelect, NT
 import { useI18n } from 'vue-i18n'
 import SearchCard from '../../components/SearchCard.vue'
 import { clearLoginLogs, createExport, listLoginLogs } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import type { LoginLogInfo } from '../../api/types'
 
 const { t } = useI18n()
@@ -46,11 +47,7 @@ const statusOptions = computed(() => [
   { label: t('loginLog.failed'), value: 0 },
 ])
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -68,7 +65,7 @@ async function load() {
     retentionDays.value = data.data.retention_days
     pagination.page = query.page
     pagination.pageSize = query.page_size
-    pagination.pageCount = Math.max(1, Math.ceil(data.data.page.total / query.page_size))
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }
@@ -144,7 +141,7 @@ const columns = computed<DataTableColumns<LoginLogInfo>>(() => [
   },
   {
     title: t('loginLog.browser'), key: 'user_agent',
-    render: (row) => h(NEllipsis, { style: 'max-width: 200px' }, { tooltip: true, default: () => row.user_agent || '—' }),
+    render: (row) => h(NEllipsis, { style: 'max-width: 200px', tooltip: true }, { default: () => row.user_agent || '—' }),
   },
   {
     title: t('loginLog.result'), key: 'status', width: 80,

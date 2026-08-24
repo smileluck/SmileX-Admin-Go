@@ -58,6 +58,7 @@ import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { useI18n } from 'vue-i18n'
 import { createUser, createExport, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import { useUserStore } from '../../stores/user'
 import type { UserInfo } from '../../api/types'
 
@@ -72,7 +73,6 @@ const canOperate = (row: UserInfo) => row.id !== SUPER_ADMIN_ID || userStore.use
 const loading = ref(false)
 const saving = ref(false)
 const rows = ref<UserInfo[]>([])
-const total = ref(0)
 const query = reactive({ username: '', page: 1, page_size: 10 })
 const roleOptions = ref<{ label: string; value: number }[]>([])
 
@@ -106,21 +106,16 @@ const rules = computed<FormRules>(() => ({
   ],
 }))
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
   try {
     const { data } = await listUsers(query)
     rows.value = data.data.list
-    total.value = data.data.page.total
     pagination.page = query.page
     pagination.pageSize = query.page_size
-    pagination.pageCount = Math.ceil(total.value / query.page_size)
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }

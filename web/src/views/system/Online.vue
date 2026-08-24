@@ -27,6 +27,7 @@ import { useI18n } from 'vue-i18n'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { kickOnlineSession, kickUserSessions, listOnlineUsers } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import { useUserStore } from '../../stores/user'
 import type { OnlineSession } from '../../api/types'
 
@@ -41,7 +42,6 @@ const canOperate = (row: OnlineSession) => row.user_id !== SUPER_ADMIN_ID || use
 
 const loading = ref(false)
 const rows = ref<OnlineSession[]>([])
-const total = ref(0)
 const query = reactive({ username: '', device: null as string | null, page: 1, page_size: 10 })
 
 const deviceOptions = computed(() => [
@@ -49,11 +49,7 @@ const deviceOptions = computed(() => [
   { label: t('online.app'), value: 'app' },
 ])
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -65,10 +61,9 @@ async function load() {
       device: query.device || undefined,
     })
     rows.value = data.data.list
-    total.value = data.data.page.total
     pagination.page = query.page
     pagination.pageSize = query.page_size
-    pagination.pageCount = Math.max(1, Math.ceil(total.value / query.page_size))
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }
@@ -143,7 +138,7 @@ const columns = computed<DataTableColumns<OnlineSession>>(() => [
   { title: 'IP', key: 'ip', width: 130 },
   {
     title: t('online.deviceInfo'), key: 'user_agent',
-    render: (row) => h(NEllipsis, { style: 'max-width: 220px' }, { tooltip: true, default: () => row.user_agent || '—' }),
+    render: (row) => h(NEllipsis, { style: 'max-width: 220px', tooltip: true }, { default: () => row.user_agent || '—' }),
   },
   { title: t('online.loginTime'), key: 'login_at', width: 170 },
   { title: t('online.lastActive'), key: 'last_active_at', width: 170 },

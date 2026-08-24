@@ -52,6 +52,7 @@ import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { useI18n } from 'vue-i18n'
 import { createRole, deleteRole, getRole, listAllPermissions, listRoles, setRolePermissions, updateRole } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import { useUserStore } from '../../stores/user'
 import type { Permission, Role } from '../../api/types'
 
@@ -85,11 +86,7 @@ const permTree = ref<any[]>([])
 const expandedKeys = ref<number[]>([])
 const checkedKeys = ref<number[]>([])
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -97,7 +94,8 @@ async function load() {
     const { data } = await listRoles(query)
     rows.value = data.data.list
     pagination.page = query.page
-    pagination.pageCount = Math.ceil(data.data.page.total / query.page_size)
+    pagination.pageSize = query.page_size
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }

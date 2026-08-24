@@ -33,6 +33,7 @@ import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { useI18n } from 'vue-i18n'
 import { listFiles, uploadFile, deleteFile, getFileBlob } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import { saveBlob } from '../../utils/download'
 import { useUserStore } from '../../stores/user'
 import type { FileInfo } from '../../api/types'
@@ -53,11 +54,7 @@ const previewLoading = ref(false)
 const previewUrl = ref('')
 const previewName = ref('')
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -65,7 +62,8 @@ async function load() {
     const { data } = await listFiles(query)
     rows.value = data.data.list
     pagination.page = query.page
-    pagination.pageCount = Math.ceil(data.data.page.total / query.page_size)
+    pagination.pageSize = query.page_size
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }

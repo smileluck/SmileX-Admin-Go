@@ -1,6 +1,20 @@
 {
-  "generatedAt": "2026-08-24T02:38:24.448Z",
+  "generatedAt": "2026-08-24T04:29:04.293Z",
   "commits": [
+    {
+      "hash": "f81fcd7",
+      "date": "2026-08-24",
+      "type": "feat",
+      "scope": "",
+      "message": "新增登录自动封禁功能，完善黑名单管理"
+    },
+    {
+      "hash": "8909f1d",
+      "date": "2026-08-24",
+      "type": "feat",
+      "scope": "",
+      "message": "新增IP黑名单管理功能，完善日志系统"
+    },
     {
       "hash": "6b40f47",
       "date": "2026-08-23",

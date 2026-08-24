@@ -41,6 +41,7 @@ import { NButton, NCard, NDataTable, NDatePicker, NForm, NFormItem, NInput, NMod
 import { useI18n } from 'vue-i18n'
 import SearchCard from '../../components/SearchCard.vue'
 import { createBlacklist, deleteBlacklist, listBlacklist } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import type { BlacklistItem } from '../../api/types'
 
 const { t } = useI18n()
@@ -51,11 +52,7 @@ const loading = ref(false)
 const rows = ref<BlacklistItem[]>([])
 const query = reactive({ ip: '', page: 1, page_size: 10 })
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -68,7 +65,7 @@ async function load() {
     rows.value = data.data.list
     pagination.page = query.page
     pagination.pageSize = query.page_size
-    pagination.pageCount = Math.max(1, Math.ceil(data.data.page.total / query.page_size))
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }

@@ -10,6 +10,7 @@ import { NButton, NCard, NDataTable, NTag, NTooltip, useMessage, useDialog, type
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import { useI18n } from 'vue-i18n'
 import { listExportRecords, getExportBlob, deleteExport } from '../../api'
+import { usePagination } from '../../utils/pagination'
 import { saveBlob, parseDispositionFilename } from '../../utils/download'
 import type { ExportRecord } from '../../api/types'
 
@@ -22,11 +23,7 @@ const rows = ref<ExportRecord[]>([])
 const downloadingId = ref(0)
 const query = reactive({ page: 1, page_size: 10 })
 
-const pagination = reactive({
-  page: 1, pageSize: 10, pageCount: 1, showSizePicker: true,
-  onChange: (p: number) => { query.page = p; load() },
-  onUpdatePageSize: (s: number) => { query.page_size = s; load() },
-})
+const { pagination, setTotal } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -35,7 +32,7 @@ async function load() {
     rows.value = data.data.list
     pagination.page = query.page
     pagination.pageSize = query.page_size
-    pagination.pageCount = Math.max(1, Math.ceil(data.data.page.total / query.page_size))
+    setTotal(data.data.page.total)
   } finally {
     loading.value = false
   }
