@@ -9,6 +9,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/biz/export"
 	"github.com/smilex/smilex-admin-gin/internal/biz/file"
 	"github.com/smilex/smilex-admin-gin/internal/biz/log"
+	"github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
@@ -164,6 +165,41 @@ type ExportRecordPO struct {
 
 func (ExportRecordPO) TableName() string { return "export_records" }
 
+// MerchantPO 商户表（开放 API 授权；code/app_key 唯一，软删留痕；app_secret 只存哈希）
+type MerchantPO struct {
+	ID            uint   `gorm:"primaryKey"`
+	Name          string `gorm:"size:64"`
+	Code          string `gorm:"size:64;uniqueIndex"`
+	AppKey        string `gorm:"size:64;uniqueIndex"`
+	AppSecretHash string `gorm:"size:128"` // SHA-256(AppKey + ":" + secret) 的 hex，永不输出
+	ContactName   string `gorm:"size:64"`
+	ContactPhone  string `gorm:"size:32"`
+	ContactEmail  string `gorm:"size:128"`
+	Status        int    // 1 启用 2 禁用
+	Remark        string `gorm:"size:255"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
+}
+
+func (MerchantPO) TableName() string { return "merchants" }
+
+// MerchantAPILogPO 开放 API 调用日志表（追加型流水：无软删，保留期清理为物理删除）
+type MerchantAPILogPO struct {
+	ID         uint      `gorm:"primaryKey"`
+	MerchantID uint      `gorm:"index"`           // 商户（鉴权失败且商户未知时为 0）
+	AppKey     string    `gorm:"size:64;index"`   // 请求头携带的 appKey（原样记录）
+	Method     string    `gorm:"size:8"`
+	Path       string    `gorm:"size:255"`        // 请求路径（不含 query）
+	IP         string    `gorm:"size:64"`
+	StatusCode int                                // 响应状态码
+	LatencyMs  int                                // 耗时（毫秒）
+	Msg        string    `gorm:"size:255"`        // 失败原因摘要（成功为空）
+	CreatedAt  time.Time `gorm:"index"`           // 调用时间
+}
+
+func (MerchantAPILogPO) TableName() string { return "merchant_api_logs" }
+
 // ---- 转换器 ----
 
 func UserToPO(u *user.User) *UserPO {
@@ -285,5 +321,40 @@ func IPBlacklistFromPO(p *IPBlacklistPO) *blacklist.IPBlacklist {
 		ID: p.ID, IP: p.IP, Reason: p.Reason, Source: p.Source, ExpireAt: p.ExpireAt,
 		CreatorID: p.CreatorID, CreatorName: p.CreatorName,
 		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
+func MerchantToPO(m *merchant.Merchant) *MerchantPO {
+	return &MerchantPO{
+		ID: m.ID, Name: m.Name, Code: m.Code, AppKey: m.AppKey,
+		AppSecretHash: m.AppSecretHash, ContactName: m.ContactName,
+		ContactPhone: m.ContactPhone, ContactEmail: m.ContactEmail,
+		Status: int(m.Status), Remark: m.Remark,
+	}
+}
+
+func MerchantFromPO(p *MerchantPO) *merchant.Merchant {
+	return &merchant.Merchant{
+		ID: p.ID, Name: p.Name, Code: p.Code, AppKey: p.AppKey,
+		AppSecretHash: p.AppSecretHash, ContactName: p.ContactName,
+		ContactPhone: p.ContactPhone, ContactEmail: p.ContactEmail,
+		Status: merchant.Status(p.Status), Remark: p.Remark,
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
+func MerchantAPILogToPO(l *merchant.APILog) *MerchantAPILogPO {
+	return &MerchantAPILogPO{
+		ID: l.ID, MerchantID: l.MerchantID, AppKey: l.AppKey, Method: l.Method,
+		Path: l.Path, IP: l.IP, StatusCode: l.StatusCode, LatencyMs: l.LatencyMs,
+		Msg: l.Msg, CreatedAt: l.CreatedAt,
+	}
+}
+
+func MerchantAPILogFromPO(p *MerchantAPILogPO) *merchant.APILog {
+	return &merchant.APILog{
+		ID: p.ID, MerchantID: p.MerchantID, AppKey: p.AppKey, Method: p.Method,
+		Path: p.Path, IP: p.IP, StatusCode: p.StatusCode, LatencyMs: p.LatencyMs,
+		Msg: p.Msg, CreatedAt: p.CreatedAt,
 	}
 }

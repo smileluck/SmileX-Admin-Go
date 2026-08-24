@@ -10,6 +10,7 @@ import online from './online'
 import loginLog from './loginLog'
 import opLog from './opLog'
 import blacklist from './blacklist'
+import merchant from './merchant'
 import file from './file'
 import exportRecords from './exportRecords'
 import profile from './profile'
@@ -29,6 +30,7 @@ export default {
   loginLog,
   opLog,
   blacklist,
+  merchant,
   file,
   exportRecords,
   profile,

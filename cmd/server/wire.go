@@ -12,6 +12,7 @@ import (
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
+	bizmerchant "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	bizrole "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -22,6 +23,7 @@ import (
 	dataexport "github.com/smilex/smilex-admin-gin/internal/data/export"
 	datafile "github.com/smilex/smilex-admin-gin/internal/data/file"
 	datalog "github.com/smilex/smilex-admin-gin/internal/data/log"
+	datamerchant "github.com/smilex/smilex-admin-gin/internal/data/merchant"
 	dataperm "github.com/smilex/smilex-admin-gin/internal/data/permission"
 	datarole "github.com/smilex/smilex-admin-gin/internal/data/role"
 	datasession "github.com/smilex/smilex-admin-gin/internal/data/session"
@@ -32,6 +34,7 @@ import (
 	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
+	merchantsvc "github.com/smilex/smilex-admin-gin/internal/service/merchant"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
@@ -47,6 +50,7 @@ var bizSet = wire.NewSet(
 	bizlog.NewUsecase,
 	bizfile.NewUsecase,
 	bizblacklist.NewUsecase,
+	bizmerchant.NewUsecase,
 	bizexport.NewUsecase,
 	bizexport.NewRegistry,
 	bizexport.NewUserExporter,
@@ -71,6 +75,8 @@ var dataRepoSet = wire.NewSet(
 	datafile.NewRepo,
 	datafile.NewStorageManager,
 	datablacklist.NewRepo,
+	datamerchant.NewRepo,
+	datamerchant.NewAPILogRepo,
 	datacaptcha.NewStore,
 	dataexport.NewRepo,
 	dataexport.NewWorker,
@@ -95,6 +101,7 @@ var serviceSet = wire.NewSet(
 	filesvc.NewService,
 	blacklistsvc.NewService,
 	exportsvc.NewService,
+	merchantsvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

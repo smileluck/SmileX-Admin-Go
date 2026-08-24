@@ -51,6 +51,11 @@ var actionNames = map[string]string{
 	"DELETE /api/v1/operation-logs":         "清理操作日志",
 	"POST /api/v1/files":                    "上传文件",
 	"DELETE /api/v1/files/:id":              "删除文件",
+	"POST /api/v1/merchants":                "新增商户",
+	"PUT /api/v1/merchants/:id":             "编辑商户",
+	"DELETE /api/v1/merchants/:id":          "删除商户",
+	"PUT /api/v1/merchants/:id/secret":      "重置商户密钥",
+	"PUT /api/v1/merchants/:id/status":      "修改商户状态",
 }
 
 // OpLog 写请求自动审计

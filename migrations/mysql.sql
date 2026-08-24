@@ -120,3 +120,40 @@ CREATE TABLE IF NOT EXISTS ip_blacklist (
   UNIQUE KEY uk_ip (ip),
   KEY idx_deleted (deleted_at)
 );
+
+-- 商户表（开放 API 授权；app_secret 只存哈希 SHA-256(AppKey + ":" + secret)，软删留痕）
+CREATE TABLE IF NOT EXISTS merchants (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(64) NOT NULL,
+  code VARCHAR(64) NOT NULL,            -- 商户编码（创建后不可改）
+  app_key VARCHAR(64) NOT NULL,         -- 开放 API 调用凭证 key（mk_ 前缀）
+  app_secret_hash VARCHAR(128) NOT NULL, -- secret 哈希，明文仅创建/重置时返回一次
+  contact_name VARCHAR(64) DEFAULT '',
+  contact_phone VARCHAR(32) DEFAULT '',
+  contact_email VARCHAR(128) DEFAULT '',
+  status INT DEFAULT 1,                 -- 1 启用 2 禁用
+  remark VARCHAR(255) DEFAULT '',
+  created_at DATETIME,
+  updated_at DATETIME,
+  deleted_at DATETIME,
+  UNIQUE KEY uk_code (code),
+  UNIQUE KEY uk_app_key (app_key),
+  KEY idx_deleted (deleted_at)
+);
+
+-- 开放 API 调用日志表（无软删，保留期清理为物理删除）
+CREATE TABLE IF NOT EXISTS merchant_api_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  merchant_id BIGINT UNSIGNED DEFAULT 0, -- 商户（鉴权失败且商户未知时为 0）
+  app_key VARCHAR(64) DEFAULT '',       -- 请求头携带的 appKey（原样记录）
+  method VARCHAR(8) DEFAULT '',
+  path VARCHAR(255) DEFAULT '',         -- 请求路径（不含 query）
+  ip VARCHAR(64) DEFAULT '',
+  status_code INT DEFAULT 0,
+  latency_ms INT DEFAULT 0,
+  msg VARCHAR(255) DEFAULT '',          -- 失败原因摘要（成功为空）
+  created_at DATETIME,
+  KEY idx_merchant_id (merchant_id),
+  KEY idx_app_key (app_key),
+  KEY idx_created_at (created_at)
+);

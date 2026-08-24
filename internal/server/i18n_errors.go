@@ -7,6 +7,7 @@ import (
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
+	bizmerchant "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -62,6 +63,11 @@ var errKeys = []struct {
 	{bizblacklist.ErrIPExists, "blacklist.ip_exists"},
 	{bizblacklist.ErrSelfBan, "blacklist.self_ban"},
 	{bizblacklist.ErrNotFound, "blacklist.not_found"},
+	// 商户（开放 API 授权）
+	{bizmerchant.ErrMerchantNotFound, "merchant.not_found"},
+	{bizmerchant.ErrDuplicateCode, "merchant.code_exists"},
+	{bizmerchant.ErrMerchantDisabled, "merchant.disabled"},
+	{bizmerchant.ErrInvalidSign, "merchant.sign_invalid"},
 }
 
 // init 将错误 -> i18n key 匹配函数注册到 response 包（response 不便反向依赖 server，走钩子）

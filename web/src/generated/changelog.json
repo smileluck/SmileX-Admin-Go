@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-08-24T08:29:04.135Z",
+  "generatedAt": "2026-08-24T12:49:12.752Z",
   "commits": [
+    {
+      "hash": "bf91b57",
+      "date": "2026-08-24",
+      "type": "refactor",
+      "scope": "login",
+      "message": "重构登录页布局并优化语言切换组件"
+    },
     {
       "hash": "38325c0",
       "date": "2026-08-24",

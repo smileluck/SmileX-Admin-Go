@@ -1,5 +1,5 @@
 import request from './request'
-import type { BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
+import type { BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -73,6 +73,26 @@ export const clearLoginLogs = () => request.delete<R<{ deleted: number }>>('/log
 export const listOperationLogs = (params: { page: number; page_size: number; username?: string; method?: string; kw?: string; start?: number; end?: number }) =>
   request.get<R<LogPageResult<OperationLogInfo>>>('/operation-logs', { params })
 export const clearOperationLogs = () => request.delete<R<{ deleted: number }>>('/operation-logs')
+
+// ---- 商户（开放平台）----
+export const listMerchants = (params: { page: number; page_size: number; kw?: string; status?: number }) =>
+  request.get<R<PageResult<Merchant>>>('/merchants', { params })
+// 创建成功时 app_secret 仅此一次明文返回，前端需弹窗展示并提示保存
+export const createMerchant = (data: { name: string; code: string; contact_name?: string; contact_phone?: string; contact_email?: string; remark?: string }) =>
+  request.post<R<Merchant & { app_secret: string }>>('/merchants', data)
+export const getMerchant = (id: number) => request.get<R<Merchant>>(`/merchants/${id}`)
+// 联系人字段留空表示不修改（列表/详情返回的均为脱敏值，不可原样回传）
+export const updateMerchant = (id: number, data: { name: string; contact_name?: string; contact_phone?: string; contact_email?: string; remark?: string }) =>
+  request.put<R<null>>(`/merchants/${id}`, data)
+export const deleteMerchant = (id: number) => request.delete<R<null>>(`/merchants/${id}`)
+// 重置密钥：新 app_secret 仅此一次明文返回
+export const resetMerchantSecret = (id: number) =>
+  request.put<R<{ app_key: string; app_secret: string }>>(`/merchants/${id}/secret`)
+export const setMerchantStatus = (id: number, status: number) =>
+  request.put<R<null>>(`/merchants/${id}/status`, { status })
+// start/end 为 unix 秒级时间戳
+export const listMerchantAPILogs = (params: { page: number; page_size: number; app_key?: string; path?: string; status_code?: number; start?: number; end?: number }) =>
+  request.get<R<PageResult<MerchantAPILog>>>('/merchant-api-logs', { params })
 
 // ---- IP 黑名单 ----
 export const listBlacklist = (params: { page: number; page_size: number; ip?: string }) =>

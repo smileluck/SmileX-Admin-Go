@@ -23,6 +23,7 @@ import (
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
+	bizmerchant "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -34,6 +35,7 @@ import (
 	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
+	merchantsvc "github.com/smilex/smilex-admin-gin/internal/service/merchant"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
@@ -47,25 +49,29 @@ import (
 
 // HTTPServer 聚合全部应用服务
 type HTTPServer struct {
-	cfg       *conf.Bootstrap
-	auth      *authsvc.Service
-	user      *usersvc.Service
-	role      *rolesvc.Service
-	perm      *permsvc.Service
-	session   *sessionsvc.Service
-	log       *logsvc.Service
-	file      *filesvc.Service
-	export    *exportsvc.Service
-	blacklist *blacklistsvc.Service
-	rbacCache *cache.TwoLevel
-	engine    *gin.Engine
-	srv       *http.Server
+	cfg        *conf.Bootstrap
+	auth       *authsvc.Service
+	user       *usersvc.Service
+	role       *rolesvc.Service
+	perm       *permsvc.Service
+	session    *sessionsvc.Service
+	log        *logsvc.Service
+	file       *filesvc.Service
+	export     *exportsvc.Service
+	blacklist  *blacklistsvc.Service
+	merchant   *merchantsvc.Service
+	merchantUC *bizmerchant.Usecase // 开放 API 验签中间件直连领域用例
+	rbacCache  *cache.TwoLevel
+	rdb        *redis.Client // nonce 防重放（开放 API 验签）
+	engine     *gin.Engine
+	srv        *http.Server
 }
 
 // NewHTTPServer 构造并注册路由
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
 	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service,
-	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service, rdb *redis.Client) *HTTPServer {
+	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service,
+	merchant *merchantsvc.Service, merchantUC *bizmerchant.Usecase, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -81,7 +87,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	// RBAC 权限判定缓存：L1 30s 进程内存 + L2 60s Redis（cache.l2Enabled 可关）
 	rbacCache := cache.NewTwoLevel(rdb, "rbac:", 30*time.Second, 60*time.Second, cfg.Cache.L2Enabled)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, rbacCache: rbacCache, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, rbacCache: rbacCache, rdb: rdb, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -327,6 +333,35 @@ func (s *HTTPServer) registerRoutes() {
 		ipBlacklist.POST("", s.createIPBlacklist)
 		// 解封（软删留痕）
 		ipBlacklist.DELETE("/:id", s.deleteIPBlacklist)
+	}
+
+	merchants := protected.Group("/merchants")
+	{
+		merchants.GET("", s.listMerchants)
+		merchants.POST("", s.createMerchant)
+		merchants.GET("/:id", s.getMerchant)
+		merchants.PUT("/:id", s.updateMerchant)
+		merchants.DELETE("/:id", s.deleteMerchant)
+		// 重置密钥（旧 secret 立即失效，新明文仅此一次返回）
+		merchants.PUT("/:id/secret", s.resetMerchantSecret)
+		merchants.PUT("/:id/status", s.setMerchantStatus)
+	}
+
+	mapiLogs := protected.Group("/merchant-api-logs")
+	{
+		mapiLogs.GET("", s.listMerchantAPILogs)
+	}
+
+	// ---- 开放 API：IP 黑名单 → 商户 HMAC 验签（时间戳偏差 + nonce 防重放） ----
+	open := s.engine.Group("/open-api/v1",
+		middleware.IPBlacklist(s.blacklist.Checker()),
+		middleware.OpenAPIAuth(s.merchantUC, s.rdb, s.cfg.OpenAPI),
+	)
+	{
+		// 探活/凭证自检：返回当前商户脱敏信息
+		open.GET("/ping", func(c *gin.Context) {
+			response.OK(c, merchantsvc.ToVO(middleware.MerchantFromContext(c)))
+		})
 	}
 }
 
@@ -922,6 +957,141 @@ func (s *HTTPServer) deleteIPBlacklist(c *gin.Context) {
 		return
 	}
 	response.OK(c, nil)
+}
+
+// ---- 商户（开放 API 授权） ----
+
+func (s *HTTPServer) listMerchants(c *gin.Context) {
+	page, size := pageParams(c)
+	q := bizmerchant.Query{Kw: strings.TrimSpace(c.Query("kw"))}
+	if v := c.Query("status"); v != "" {
+		if st, err := strconv.Atoi(v); err == nil {
+			q.Status = &st
+		}
+	}
+	list, pg, err := s.merchant.List(c.Request.Context(), q, page, size)
+	if err != nil {
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, listResult{List: list, Page: pg})
+}
+
+func (s *HTTPServer) createMerchant(c *gin.Context) {
+	var req merchantsvc.CreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	vo, err := s.merchant.Create(c.Request.Context(), req)
+	if err != nil {
+		s.merchantErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) getMerchant(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	vo, err := s.merchant.Get(c.Request.Context(), id)
+	if err != nil {
+		s.merchantErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) updateMerchant(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req merchantsvc.UpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	if err := s.merchant.Update(c.Request.Context(), id, req); err != nil {
+		s.merchantErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) deleteMerchant(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	if err := s.merchant.Delete(c.Request.Context(), id); err != nil {
+		s.merchantErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) resetMerchantSecret(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	vo, err := s.merchant.ResetSecret(c.Request.Context(), id)
+	if err != nil {
+		s.merchantErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) setMerchantStatus(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req merchantsvc.SetStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	if err := s.merchant.SetStatus(c.Request.Context(), id, req); err != nil {
+		s.merchantErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) listMerchantAPILogs(c *gin.Context) {
+	page, size := pageParams(c)
+	q := bizmerchant.APILogQuery{AppKey: c.Query("app_key"), Path: c.Query("path")}
+	if v := c.Query("status_code"); v != "" {
+		if sc, err := strconv.Atoi(v); err == nil {
+			q.StatusCode = &sc
+		}
+	}
+	if t, ok := parseUnixParam(c.Query("start")); ok {
+		q.Start = t
+	}
+	if t, ok := parseUnixParam(c.Query("end")); ok {
+		q.End = t
+	}
+	logs, pg, err := s.merchant.ListAPILogs(c.Request.Context(), q, page, size)
+	if err != nil {
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, listResult{List: logs, Page: pg})
+}
+
+// merchantErr 商户操作错误映射：不存在 404，其余 400
+func (s *HTTPServer) merchantErr(c *gin.Context, err error) {
+	if errors.Is(err, bizmerchant.ErrMerchantNotFound) {
+		response.FailI18n(c, http.StatusNotFound, response.CodeErr, err)
+		return
+	}
+	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 }
 
 // ---- 异步导出 ----

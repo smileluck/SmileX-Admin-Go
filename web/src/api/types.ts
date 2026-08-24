@@ -151,6 +151,35 @@ export interface BlacklistItem {
   created_at: string
 }
 
+// 商户（开放平台接入方；app_secret 不下发，仅创建/重置时明文返回一次）
+export interface Merchant {
+  id: number
+  name: string
+  code: string
+  app_key: string
+  contact_name: string // 后端已脱敏
+  contact_phone: string // 后端已脱敏
+  contact_email: string // 后端已脱敏
+  status: number // 1 启用 2 禁用
+  remark: string
+  created_at: string
+  updated_at: string
+}
+
+// 商户 API 调用日志（ip 后端已脱敏）
+export interface MerchantAPILog {
+  id: number
+  merchant_id: number
+  app_key: string
+  method: string
+  path: string
+  ip: string
+  status_code: number
+  latency_ms: number
+  msg: string
+  created_at: string
+}
+
 // 文件元数据（后端 files 表；object_key 不下发）
 export interface FileInfo {
   id: number

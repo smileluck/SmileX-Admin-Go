@@ -101,3 +101,40 @@ CREATE TABLE IF NOT EXISTS ip_blacklist (
   deleted_at DATETIME
 );
 CREATE INDEX IF NOT EXISTS idx_ip_blacklist_deleted_at ON ip_blacklist (deleted_at);
+
+-- 商户表（开放 API 授权；app_secret 只存哈希 SHA-256(AppKey + ":" + secret)，软删留痕）
+CREATE TABLE IF NOT EXISTS merchants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,                   -- 商户编码（创建后不可改）
+  app_key TEXT NOT NULL,                -- 开放 API 调用凭证 key（mk_ 前缀）
+  app_secret_hash TEXT NOT NULL,        -- secret 哈希，明文仅创建/重置时返回一次
+  contact_name TEXT DEFAULT '',
+  contact_phone TEXT DEFAULT '',
+  contact_email TEXT DEFAULT '',
+  status INTEGER DEFAULT 1,             -- 1 启用 2 禁用
+  remark TEXT DEFAULT '',
+  created_at DATETIME,
+  updated_at DATETIME,
+  deleted_at DATETIME
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_merchants_code ON merchants (code);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_merchants_app_key ON merchants (app_key);
+CREATE INDEX IF NOT EXISTS idx_merchants_deleted_at ON merchants (deleted_at);
+
+-- 开放 API 调用日志表（无软删，保留期清理为物理删除）
+CREATE TABLE IF NOT EXISTS merchant_api_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  merchant_id INTEGER DEFAULT 0,        -- 商户（鉴权失败且商户未知时为 0）
+  app_key TEXT DEFAULT '',              -- 请求头携带的 appKey（原样记录）
+  method TEXT DEFAULT '',
+  path TEXT DEFAULT '',                 -- 请求路径（不含 query）
+  ip TEXT DEFAULT '',
+  status_code INTEGER DEFAULT 0,
+  latency_ms INTEGER DEFAULT 0,
+  msg TEXT DEFAULT '',                  -- 失败原因摘要（成功为空）
+  created_at DATETIME
+);
+CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_merchant_id ON merchant_api_logs (merchant_id);
+CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_app_key ON merchant_api_logs (app_key);
+CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_created_at ON merchant_api_logs (created_at);

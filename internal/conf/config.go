@@ -16,6 +16,7 @@ type Bootstrap struct {
 	Cache   Cache   `mapstructure:"cache"`
 	Storage Storage `mapstructure:"storage"`
 	Export  Export  `mapstructure:"export"`
+	OpenAPI OpenAPI `mapstructure:"openapi"`
 }
 
 type Server struct {
@@ -80,6 +81,14 @@ type Auth struct {
 type Cache struct {
 	// L2Enabled 二级缓存（Redis）开关；false 时 RBAC 等读缓存仅用进程内 L1，多实例间不共享
 	L2Enabled bool `mapstructure:"l2Enabled"`
+}
+
+// OpenAPI 开放 API 验签配置（商户 HMAC 签名）
+type OpenAPI struct {
+	// SignSkewSeconds 请求时间戳允许的最大偏差（秒），超出即拒绝（防重放窗口）
+	SignSkewSeconds int `mapstructure:"signSkewSeconds"`
+	// NonceTTLSeconds nonce 防重放去重的 Redis 键 TTL（秒），应不小于 SignSkewSeconds
+	NonceTTLSeconds int `mapstructure:"nonceTtlSeconds"`
 }
 
 type Log struct {
@@ -186,6 +195,9 @@ func Load(path string) (*Bootstrap, error) {
 	v.SetDefault("storage.maxSizeMB", 20)
 	v.SetDefault("storage.signExpireMinutes", 15)
 	v.SetDefault("storage.local.dir", "./data/uploads")
+	// 默认值：开放 API 签名时间戳允许偏差 300 秒，nonce 防重放 TTL 600 秒
+	v.SetDefault("openapi.signSkewSeconds", 300)
+	v.SetDefault("openapi.nonceTtlSeconds", 600)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}

@@ -43,6 +43,10 @@ auth:
 cache:
   l2Enabled: true # 二级缓存（Redis）开关；false 时 RBAC 等读缓存仅用进程内一级缓存（多实例间不共享）
 
+openapi: # 开放 API（商户 HMAC 签名）验签配置
+  signSkewSeconds: 300 # 请求时间戳允许的最大偏差（秒），超出即拒绝
+  nonceTtlSeconds: 600 # nonce 防重放去重的 Redis 键 TTL（秒），应不小于 signSkewSeconds
+
 log:
   retentionDays: 90 # 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
   # 应用运行日志：按日期滚动落盘（dir/filename-2006-01-02.log）
