@@ -1,6 +1,5 @@
 // merchant module messages (merchant management + merchant API logs)
 export default {
-  keywordPlaceholder: 'Name / Code / AppKey',
   statusPlaceholder: 'Status',
   name: 'Merchant Name',
   namePlaceholder: 'Required',

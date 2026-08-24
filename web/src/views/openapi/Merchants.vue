@@ -1,7 +1,9 @@
 <template>
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
   <SearchCard storage-key="merchants" @search="load" @reset="resetQuery">
-    <n-input v-model:value="query.kw" :placeholder="t('merchant.keywordPlaceholder')" clearable style="width: 220px" @keyup.enter="load" />
+    <n-input v-model:value="query.name" :placeholder="t('merchant.name')" clearable style="width: 180px" @keyup.enter="load" />
+    <n-input v-model:value="query.code" :placeholder="t('merchant.code')" clearable style="width: 160px" @keyup.enter="load" />
+    <n-input v-model:value="query.app_key" :placeholder="t('merchant.appKey')" clearable style="width: 180px" @keyup.enter="load" />
     <n-select v-model:value="query.status" :options="statusOptions" clearable :placeholder="t('merchant.statusPlaceholder')" style="width: 120px" />
   </SearchCard>
 
@@ -81,7 +83,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
 const rows = ref<Merchant[]>([])
-const query = reactive({ kw: '', status: null as number | null, page: 1, page_size: 10 })
+const query = reactive({ name: '', code: '', app_key: '', status: null as number | null, page: 1, page_size: 10 })
 
 const showModal = ref(false)
 const showSecret = ref(false)
@@ -116,7 +118,9 @@ async function load() {
     const { data } = await listMerchants({
       page: query.page,
       page_size: query.page_size,
-      kw: query.kw || undefined,
+      name: query.name || undefined,
+      code: query.code || undefined,
+      app_key: query.app_key || undefined,
       status: query.status ?? undefined,
     })
     rows.value = data.data.list
@@ -129,7 +133,9 @@ async function load() {
 }
 
 function resetQuery() {
-  query.kw = ''
+  query.name = ''
+  query.code = ''
+  query.app_key = ''
   query.status = null
   query.page = 1
   load()

@@ -110,10 +110,15 @@ func (r *repo) FindByAppKey(ctx context.Context, appKey string) (*bizmerchant.Me
 
 func (r *repo) List(ctx context.Context, q bizmerchant.Query, page, pageSize int) ([]*bizmerchant.Merchant, int64, error) {
 	tx := r.data.DB.WithContext(ctx).Model(&model.MerchantPO{})
-	if q.Kw != "" {
-		// 转义用户输入中的 LIKE 通配符，防止 %/_ 改变匹配语义（通配符注入）
-		kw := security.EscapeLike(q.Kw) + "%"
-		tx = tx.Where("name LIKE ? ESCAPE '/' OR code LIKE ? ESCAPE '/' OR app_key LIKE ? ESCAPE '/'", kw, kw, kw)
+	// 按字段独立全模糊匹配；转义用户输入中的 LIKE 通配符，防止 %/_ 改变匹配语义（通配符注入）
+	if q.Name != "" {
+		tx = tx.Where("name LIKE ? ESCAPE '/'", "%"+security.EscapeLike(q.Name)+"%")
+	}
+	if q.Code != "" {
+		tx = tx.Where("code LIKE ? ESCAPE '/'", "%"+security.EscapeLike(q.Code)+"%")
+	}
+	if q.AppKey != "" {
+		tx = tx.Where("app_key LIKE ? ESCAPE '/'", "%"+security.EscapeLike(q.AppKey)+"%")
 	}
 	if q.Status != nil {
 		tx = tx.Where("status = ?", *q.Status)

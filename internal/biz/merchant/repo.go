@@ -18,9 +18,11 @@ var ErrMerchantDisabled = errors.New("商户已被禁用")
 // ErrInvalidSign 签名校验失败
 var ErrInvalidSign = errors.New("签名校验失败")
 
-// Query 商户列表查询条件
+// Query 商户列表查询条件（名称/编码/AppKey 按字段拆分，各自独立全模糊匹配，可叠加）
 type Query struct {
-	Kw     string // 关键词（name/code/app_key 前缀模糊匹配）
+	Name   string
+	Code   string
+	AppKey string
 	Status *int
 }
 

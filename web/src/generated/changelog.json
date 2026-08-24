@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-08-24T12:49:12.752Z",
+  "generatedAt": "2026-08-24T14:32:23.745Z",
   "commits": [
+    {
+      "hash": "9515292",
+      "date": "2026-08-24",
+      "type": "feat",
+      "scope": "",
+      "message": "新增开放API商户管理与验签能力"
+    },
     {
       "hash": "bf91b57",
       "date": "2026-08-24",

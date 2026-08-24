@@ -963,7 +963,11 @@ func (s *HTTPServer) deleteIPBlacklist(c *gin.Context) {
 
 func (s *HTTPServer) listMerchants(c *gin.Context) {
 	page, size := pageParams(c)
-	q := bizmerchant.Query{Kw: strings.TrimSpace(c.Query("kw"))}
+	q := bizmerchant.Query{
+		Name:   strings.TrimSpace(c.Query("name")),
+		Code:   strings.TrimSpace(c.Query("code")),
+		AppKey: strings.TrimSpace(c.Query("app_key")),
+	}
 	if v := c.Query("status"); v != "" {
 		if st, err := strconv.Atoi(v); err == nil {
 			q.Status = &st

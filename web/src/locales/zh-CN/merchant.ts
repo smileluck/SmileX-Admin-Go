@@ -1,6 +1,5 @@
 // merchant 模块文案（商户管理 + 商户 API 日志）
 export default {
-  keywordPlaceholder: '名称 / 编码 / AppKey',
   statusPlaceholder: '状态',
   name: '商户名称',
   namePlaceholder: '必填',
