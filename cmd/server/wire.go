@@ -5,6 +5,7 @@ package main
 
 import (
 	"github.com/google/wire"
+	base64Captcha "github.com/mojocn/base64Captcha"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
@@ -17,6 +18,7 @@ import (
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	datablacklist "github.com/smilex/smilex-admin-gin/internal/data/blacklist"
+	datacaptcha "github.com/smilex/smilex-admin-gin/internal/data/captcha"
 	dataexport "github.com/smilex/smilex-admin-gin/internal/data/export"
 	datafile "github.com/smilex/smilex-admin-gin/internal/data/file"
 	datalog "github.com/smilex/smilex-admin-gin/internal/data/log"
@@ -69,9 +71,11 @@ var dataRepoSet = wire.NewSet(
 	datafile.NewRepo,
 	datafile.NewStorageManager,
 	datablacklist.NewRepo,
+	datacaptcha.NewStore,
 	dataexport.NewRepo,
 	dataexport.NewWorker,
 	// 跨上下文最小依赖接口绑定
+	wire.Bind(new(base64Captcha.Store), new(*datacaptcha.Store)),
 	wire.Bind(new(auth.UserStore), new(bizuser.Repo)),
 	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
 	wire.Bind(new(auth.PermissionReader), new(bizperm.Repo)),

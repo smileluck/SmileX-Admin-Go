@@ -29,6 +29,9 @@ return 0
 
 func sessionKey(sid string) string { return "sess:" + sid }
 
+// touchKey 会话最近活跃节流水位键
+func touchKey(sid string) string { return "sess:touch:" + sid }
+
 func deviceKey(uid uint, device string) string {
 	return "udx:" + strconv.FormatUint(uint64(uid), 10) + ":" + device
 }
@@ -128,6 +131,19 @@ func (r *repo) Touch(ctx context.Context, sid string) error {
 	return r.client.HSet(ctx, sessionKey(sid), "last_active", time.Now().Unix()).Err()
 }
 
+// TouchIfDue 节流刷新：SET NX 占住节流位（TTL=interval），占住才真正刷新最近活跃；
+// 节流状态存 Redis，多实例共享同一节流窗口
+func (r *repo) TouchIfDue(ctx context.Context, sid string, interval time.Duration) error {
+	due, err := r.client.SetNX(ctx, touchKey(sid), 1, interval).Result()
+	if err != nil {
+		return err
+	}
+	if !due {
+		return nil
+	}
+	return r.Touch(ctx, sid)
+}
+
 func (r *repo) Revoke(ctx context.Context, sid string) error {
 	s, err := r.Find(ctx, sid)
 	if err != nil {
@@ -138,6 +154,7 @@ func (r *repo) Revoke(ctx context.Context, sid string) error {
 	}
 	pipe := r.client.TxPipeline()
 	pipe.Del(ctx, sessionKey(sid))
+	pipe.Del(ctx, touchKey(sid))
 	pipe.SRem(ctx, keySessionIndex, sid)
 	pipe.SRem(ctx, userIndexKey(s.UserID), sid)
 	if _, err := pipe.Exec(ctx); err != nil {

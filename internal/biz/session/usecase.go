@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/smilex/smilex-admin-gin/internal/conf"
@@ -19,8 +18,6 @@ const touchInterval = time.Minute
 type Usecase struct {
 	repo Repo
 	ttl  time.Duration // 会话生命周期，与 refresh token 有效期一致
-	// 最近活跃节流表（单机版；多实例部署时各实例独立节流，仅多写不致错）
-	lastTouch sync.Map // sid -> time.Time
 }
 
 func NewUsecase(repo Repo, c *conf.Bootstrap) *Usecase {
@@ -45,7 +42,7 @@ func (uc *Usecase) Create(ctx context.Context, userID uint, username, nickname, 
 	return s, nil
 }
 
-// Validate 会话是否存活；存活时间发久时顺带节流刷新最近活跃
+// Validate 会话是否存活；存活时顺带节流刷新最近活跃（节流状态存 Redis，多实例共享）
 func (uc *Usecase) Validate(ctx context.Context, sid string) bool {
 	if sid == "" {
 		return false
@@ -53,11 +50,7 @@ func (uc *Usecase) Validate(ctx context.Context, sid string) bool {
 	if _, err := uc.repo.Find(ctx, sid); err != nil {
 		return false
 	}
-	if t, ok := uc.lastTouch.Load(sid); ok && time.Since(t.(time.Time)) < touchInterval {
-		return true
-	}
-	uc.lastTouch.Store(sid, time.Now())
-	_ = uc.repo.Touch(ctx, sid)
+	_ = uc.repo.TouchIfDue(ctx, sid, touchInterval)
 	return true
 }
 
@@ -73,7 +66,6 @@ func (uc *Usecase) Extend(ctx context.Context, sid string) error {
 
 // Revoke 吊销单个会话（登出 / 踢单端下线）
 func (uc *Usecase) Revoke(ctx context.Context, sid string) error {
-	uc.lastTouch.Delete(sid)
 	return uc.repo.Revoke(ctx, sid)
 }
 

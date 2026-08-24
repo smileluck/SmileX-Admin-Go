@@ -13,6 +13,7 @@ type Bootstrap struct {
 	Redis  Redis  `mapstructure:"redis"`
 	Auth    Auth    `mapstructure:"auth"`
 	Log     Log     `mapstructure:"log"`
+	Cache   Cache   `mapstructure:"cache"`
 	Storage Storage `mapstructure:"storage"`
 	Export  Export  `mapstructure:"export"`
 }
@@ -73,6 +74,12 @@ type Redis struct {
 type Auth struct {
 	// CaptchaEnabled 登录图形验证码开关（本地调试可临时关闭，生产必须开启）
 	CaptchaEnabled bool `mapstructure:"captchaEnabled"`
+}
+
+// Cache 二级缓存配置（L1 进程内存 + L2 Redis）
+type Cache struct {
+	// L2Enabled 二级缓存（Redis）开关；false 时 RBAC 等读缓存仅用进程内 L1，多实例间不共享
+	L2Enabled bool `mapstructure:"l2Enabled"`
 }
 
 type Log struct {
@@ -161,6 +168,8 @@ func Load(path string) (*Bootstrap, error) {
 	v.SetConfigFile(path)
 	// 默认值：验证码默认开启，未配置时行为不变
 	v.SetDefault("auth.captchaEnabled", true)
+	// 默认值：二级缓存（Redis）默认开启
+	v.SetDefault("cache.l2Enabled", true)
 	// 默认值：日志默认保留 90 天
 	v.SetDefault("log.retentionDays", 90)
 	// 默认值：运行日志按日滚动落盘 ./logs，保留 30 天

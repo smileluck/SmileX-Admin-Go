@@ -4,12 +4,11 @@ package middleware
 import (
 	"fmt"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
+	"github.com/smilex/smilex-admin-gin/pkg/cache"
 	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
 )
@@ -79,19 +78,8 @@ func Subject(c *gin.Context) *auth.Subject {
 	return nil
 }
 
-// permEntry 权限缓存条目
-type permEntry struct {
-	allow    bool
-	expireAt time.Time
-}
-
-// RBAC 接口鉴权（带 30s 内存缓存，减少查库）
-func RBAC(authSvc *authsvc.Service) gin.HandlerFunc {
-	var (
-		mu    sync.RWMutex
-		cache = map[string]permEntry{}
-		ttl   = 30 * time.Second
-	)
+// RBAC 接口鉴权（二级缓存：L1 进程内存 + L2 Redis，减少查库；一致性由短 TTL 兜底）
+func RBAC(authSvc *authsvc.Service, cache *cache.TwoLevel) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		s := Subject(c)
 		if s == nil {
@@ -100,29 +88,19 @@ func RBAC(authSvc *authsvc.Service) gin.HandlerFunc {
 			return
 		}
 		key := fmt.Sprintf("%d|%s|%s", s.UserID, c.Request.Method, c.Request.URL.Path)
-		mu.RLock()
-		e, ok := cache[key]
-		mu.RUnlock()
-		if ok && time.Now().Before(e.expireAt) {
-			if !e.allow {
+		if v, ok := cache.Get(c.Request.Context(), key); ok {
+			if v != "1" {
 				response.Forbidden(c, "permission denied")
 				c.Abort()
 			}
 			return
 		}
 		allow := authSvc.Authorize(c.Request.Context(), s.UserID, c.Request.Method, c.Request.URL.Path)
-		mu.Lock()
-		// 超阈值时清理过期条目，避免长期运行下缓存 map 无限增长
-		if len(cache) > 4096 {
-			now := time.Now()
-			for k, e := range cache {
-				if now.After(e.expireAt) {
-					delete(cache, k)
-				}
-			}
+		val := "0"
+		if allow {
+			val = "1"
 		}
-		cache[key] = permEntry{allow: allow, expireAt: time.Now().Add(ttl)}
-		mu.Unlock()
+		cache.Set(c.Request.Context(), key, val)
 		if !allow {
 			response.Forbidden(c, "permission denied")
 			c.Abort()

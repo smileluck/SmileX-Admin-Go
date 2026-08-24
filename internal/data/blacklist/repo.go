@@ -18,7 +18,9 @@ import (
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	"github.com/smilex/smilex-admin-gin/internal/data/model"
+	"github.com/smilex/smilex-admin-gin/pkg/logger"
 	"github.com/smilex/smilex-admin-gin/pkg/security"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -65,7 +67,23 @@ func (r *Repo) Get(ctx context.Context, id uint) (*bizblacklist.IPBlacklist, err
 	return model.IPBlacklistFromPO(&po), nil
 }
 
+// purgeExpired 惰性清理：物理删除已过期的封禁记录（Redis 封禁键已随 TTL 消失，DB 记录同步清除）；
+// 随 List 调用触发（管理页低频），失败仅告警不影响查询
+func (r *Repo) purgeExpired(ctx context.Context) {
+	res := r.data.DB.WithContext(ctx).Unscoped().
+		Where("expire_at IS NOT NULL AND expire_at < ?", time.Now()).
+		Delete(&model.IPBlacklistPO{})
+	if res.Error != nil {
+		logger.Warn("blacklist purge expired failed", zap.Error(res.Error))
+		return
+	}
+	if res.RowsAffected > 0 {
+		logger.Info("blacklist expired records purged", zap.Int64("deleted", res.RowsAffected))
+	}
+}
+
 func (r *Repo) List(ctx context.Context, q bizblacklist.Query, page, pageSize int) ([]*bizblacklist.IPBlacklist, int64, error) {
+	r.purgeExpired(ctx)
 	tx := r.data.DB.WithContext(ctx).Model(&model.IPBlacklistPO{})
 	if q.IP != "" {
 		tx = tx.Where("ip LIKE ? ESCAPE '/'", security.EscapeLike(q.IP)+"%")

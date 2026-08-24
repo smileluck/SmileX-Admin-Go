@@ -1,19 +1,13 @@
 // Package captcha 图形验证码限界上下文 —— 领域层。
-// 单实例部署，答案存进程内存（库自带 TTL 回收），多实例时需换共享存储。
+// 答案存储由外部注入（base64Captcha.Store，生产为 Redis 实现，多实例共享）。
 package captcha
 
 import (
-	"time"
-
 	base64Captcha "github.com/mojocn/base64Captcha"
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 )
 
 const (
-	// captchaTTL 验证码有效期
-	captchaTTL = 3 * time.Minute
-	// collectNum 存量达到该阈值时触发一次过期回收
-	collectNum = 200
 	// 图片尺寸与登录页 large 输入框（40px 高）视觉对齐
 	imgHeight = 40
 	imgWidth  = 132
@@ -31,13 +25,13 @@ type Usecase struct {
 }
 
 // NewUsecase 构造图形验证码用例；conf.auth.captchaEnabled=false 时整体停用（本地调试用）
-func NewUsecase(c *conf.Bootstrap) *Usecase {
+func NewUsecase(c *conf.Bootstrap, store base64Captcha.Store) *Usecase {
 	driver := base64Captcha.NewDriverString(
 		imgHeight, imgWidth, 20,
 		base64Captcha.OptionShowHollowLine|base64Captcha.OptionShowSlimeLine,
 		textLength, sourceChars, nil, nil, nil)
 	return &Usecase{
-		captcha: base64Captcha.NewCaptcha(driver, base64Captcha.NewMemoryStore(collectNum, captchaTTL)),
+		captcha: base64Captcha.NewCaptcha(driver, store),
 		enabled: c.Auth.CaptchaEnabled,
 	}
 }

@@ -40,6 +40,9 @@ redis:
 auth:
   captchaEnabled: false # 登录验证码开关；本地调试暂时关闭，生产必须改回 true
 
+cache:
+  l2Enabled: true # 二级缓存（Redis）开关；false 时 RBAC 等读缓存仅用进程内一级缓存（多实例间不共享）
+
 log:
   retentionDays: 90 # 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
   # 应用运行日志：按日期滚动落盘（dir/filename-2006-01-02.log）

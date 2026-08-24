@@ -18,6 +18,8 @@ type Repo interface {
 	Extend(ctx context.Context, sid string, ttl time.Duration) error
 	// Touch 仅刷新最近活跃时间
 	Touch(ctx context.Context, sid string) error
+	// TouchIfDue 节流刷新：距上次 touch 未超过 interval 则跳过（节流状态存 Redis，多实例共享）
+	TouchIfDue(ctx context.Context, sid string, interval time.Duration) error
 	// Revoke 吊销单个会话（清理主体键与全部索引）
 	Revoke(ctx context.Context, sid string) error
 	// FindSidsByUser 用户全部会话 ID（已过期条目由调用方过滤）

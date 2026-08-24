@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
@@ -37,6 +38,7 @@ import (
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
 	usersvc "github.com/smilex/smilex-admin-gin/internal/service/user"
+	"github.com/smilex/smilex-admin-gin/pkg/cache"
 	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 	"github.com/smilex/smilex-admin-gin/pkg/logger"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
@@ -45,24 +47,25 @@ import (
 
 // HTTPServer 聚合全部应用服务
 type HTTPServer struct {
-	cfg     *conf.Bootstrap
-	auth    *authsvc.Service
-	user    *usersvc.Service
-	role    *rolesvc.Service
-	perm    *permsvc.Service
-	session *sessionsvc.Service
-	log     *logsvc.Service
-	file    *filesvc.Service
-	export  *exportsvc.Service
+	cfg       *conf.Bootstrap
+	auth      *authsvc.Service
+	user      *usersvc.Service
+	role      *rolesvc.Service
+	perm      *permsvc.Service
+	session   *sessionsvc.Service
+	log       *logsvc.Service
+	file      *filesvc.Service
+	export    *exportsvc.Service
 	blacklist *blacklistsvc.Service
-	engine  *gin.Engine
-	srv     *http.Server
+	rbacCache *cache.TwoLevel
+	engine    *gin.Engine
+	srv       *http.Server
 }
 
 // NewHTTPServer 构造并注册路由
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
 	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service,
-	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service) *HTTPServer {
+	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -75,7 +78,10 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 		middleware.SQLInjectionGuard(),
 	)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, engine: e}
+	// RBAC 权限判定缓存：L1 30s 进程内存 + L2 60s Redis（cache.l2Enabled 可关）
+	rbacCache := cache.NewTwoLevel(rdb, "rbac:", 30*time.Second, 60*time.Second, cfg.Cache.L2Enabled)
+
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, rbacCache: rbacCache, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -250,7 +256,7 @@ func (s *HTTPServer) registerRoutes() {
 	}
 
 	// ---- 受保护接口：JWT -> 操作日志（RBAC 拒绝的尝试也记录）-> RBAC ----
-	protected := v1.Group("", middleware.JWT(s.auth), middleware.OpLog(s.log), middleware.RBAC(s.auth))
+	protected := v1.Group("", middleware.JWT(s.auth), middleware.OpLog(s.log), middleware.RBAC(s.auth, s.rbacCache))
 
 	users := protected.Group("/users")
 	{
