@@ -5,6 +5,7 @@ package model
 import (
 	"time"
 
+	"github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	"github.com/smilex/smilex-admin-gin/internal/biz/export"
 	"github.com/smilex/smilex-admin-gin/internal/biz/file"
@@ -12,6 +13,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	"github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
+	"github.com/smilex/smilex-admin-gin/internal/biz/tenant"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"gorm.io/gorm"
 )
@@ -200,6 +202,49 @@ type MerchantAPILogPO struct {
 
 func (MerchantAPILogPO) TableName() string { return "merchant_api_logs" }
 
+// TenantPO 租户表（code 唯一，软删留痕；存在关联应用用户时禁止删除）
+type TenantPO struct {
+	ID           uint   `gorm:"primaryKey"`
+	Name         string `gorm:"size:64"`
+	Code         string `gorm:"size:64;uniqueIndex"`
+	ContactName  string `gorm:"size:64"`
+	ContactPhone string `gorm:"size:32"`
+	Remark       string `gorm:"size:255"`
+	Status       int    // 1 启用 0 禁用
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
+}
+
+func (TenantPO) TableName() string { return "tenants" }
+
+// AppUserPO 应用用户表（多租户终端用户；username 唯一，软删留痕；密码只存 bcrypt 哈希）
+type AppUserPO struct {
+	ID           uint   `gorm:"primaryKey"`
+	Username     string `gorm:"size:64;uniqueIndex"`
+	PasswordHash string `gorm:"size:128"` // bcrypt 哈希，列表/详情查询不输出
+	Nickname     string `gorm:"size:64"`
+	Phone        string `gorm:"size:32"`
+	Email        string `gorm:"size:128"`
+	Status       int    // 1 启用 0 禁用
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
+}
+
+func (AppUserPO) TableName() string { return "app_users" }
+
+// AppUserTenantPO 应用用户-租户关联表（复合唯一索引；替换关联时物理删除避免软删残留阻碍重绑）
+type AppUserTenantPO struct {
+	ID        uint `gorm:"primaryKey"`
+	AppUserID uint `gorm:"uniqueIndex:uk_app_user_tenant"`
+	TenantID  uint `gorm:"uniqueIndex:uk_app_user_tenant"`
+	CreatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+func (AppUserTenantPO) TableName() string { return "app_user_tenants" }
+
 // ---- 转换器 ----
 
 func UserToPO(u *user.User) *UserPO {
@@ -356,5 +401,37 @@ func MerchantAPILogFromPO(p *MerchantAPILogPO) *merchant.APILog {
 		ID: p.ID, MerchantID: p.MerchantID, AppKey: p.AppKey, Method: p.Method,
 		Path: p.Path, IP: p.IP, StatusCode: p.StatusCode, LatencyMs: p.LatencyMs,
 		Msg: p.Msg, CreatedAt: p.CreatedAt,
+	}
+}
+
+func TenantToPO(t *tenant.Tenant) *TenantPO {
+	return &TenantPO{
+		ID: t.ID, Name: t.Name, Code: t.Code,
+		ContactName: t.ContactName, ContactPhone: t.ContactPhone,
+		Remark: t.Remark, Status: int(t.Status),
+	}
+}
+
+func TenantFromPO(p *TenantPO) *tenant.Tenant {
+	return &tenant.Tenant{
+		ID: p.ID, Name: p.Name, Code: p.Code,
+		ContactName: p.ContactName, ContactPhone: p.ContactPhone,
+		Remark: p.Remark, Status: tenant.Status(p.Status),
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
+func AppUserToPO(u *appuser.AppUser) *AppUserPO {
+	return &AppUserPO{
+		ID: u.ID, Username: u.Username, PasswordHash: u.PasswordHash,
+		Nickname: u.Nickname, Phone: u.Phone, Email: u.Email, Status: int(u.Status),
+	}
+}
+
+func AppUserFromPO(p *AppUserPO) *appuser.AppUser {
+	return &appuser.AppUser{
+		ID: p.ID, Username: p.Username, PasswordHash: p.PasswordHash,
+		Nickname: p.Nickname, Phone: p.Phone, Email: p.Email, Status: appuser.Status(p.Status),
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 	}
 }

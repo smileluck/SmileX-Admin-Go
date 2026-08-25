@@ -18,6 +18,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	bizappuser "github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
@@ -27,9 +28,11 @@ import (
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
+	biztenant "github.com/smilex/smilex-admin-gin/internal/biz/tenant"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/internal/server/middleware"
+	appusersvc "github.com/smilex/smilex-admin-gin/internal/service/appuser"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	blacklistsvc "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
 	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
@@ -39,6 +42,7 @@ import (
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
+	tenantsvc "github.com/smilex/smilex-admin-gin/internal/service/tenant"
 	usersvc "github.com/smilex/smilex-admin-gin/internal/service/user"
 	"github.com/smilex/smilex-admin-gin/pkg/cache"
 	"github.com/smilex/smilex-admin-gin/pkg/i18n"
@@ -61,6 +65,10 @@ type HTTPServer struct {
 	blacklist  *blacklistsvc.Service
 	merchant   *merchantsvc.Service
 	merchantUC *bizmerchant.Usecase // 开放 API 验签中间件直连领域用例
+	tenant     *tenantsvc.Service
+	appuser    *appusersvc.Service
+	appuserUC  *bizappuser.Usecase    // AppJWT 中间件直连领域用例（校验用户启用状态）
+	appIssuer  bizappuser.TokenIssuer // AppJWT 中间件解析 app-access token
 	rbacCache  *cache.TwoLevel
 	rdb        *redis.Client // nonce 防重放（开放 API 验签）
 	engine     *gin.Engine
@@ -71,7 +79,9 @@ type HTTPServer struct {
 func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Service,
 	role *rolesvc.Service, perm *permsvc.Service, session *sessionsvc.Service, log *logsvc.Service,
 	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service,
-	merchant *merchantsvc.Service, merchantUC *bizmerchant.Usecase, rdb *redis.Client) *HTTPServer {
+	merchant *merchantsvc.Service, merchantUC *bizmerchant.Usecase,
+	tenant *tenantsvc.Service, appuser *appusersvc.Service, appuserUC *bizappuser.Usecase,
+	appIssuer bizappuser.TokenIssuer, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -87,7 +97,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	// RBAC 权限判定缓存：L1 30s 进程内存 + L2 60s Redis（cache.l2Enabled 可关）
 	rbacCache := cache.NewTwoLevel(rdb, "rbac:", 30*time.Second, 60*time.Second, cfg.Cache.L2Enabled)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, rbacCache: rbacCache, rdb: rdb, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, rbacCache: rbacCache, rdb: rdb, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -161,6 +171,21 @@ func (s *HTTPServer) registerRoutes() {
 			}
 			response.OK(c, tp)
 		})
+	}
+
+	// ---- 应用用户认证（与后台账号体系 typ 隔离；无验证码、无服务端会话） ----
+	// 登录接口挂与后台登录同款的 IP 临时封禁 + 频率限制防护，防口令爆破
+	appauthg := v1.Group("/app-auth")
+	{
+		appauthg.POST("/login", middleware.LoginIPGuard(s.log, s.blacklist.LoginGuard()), middleware.LoginRateLimit(s.blacklist.LoginGuard()), s.appLogin)
+		appauthg.POST("/refresh", s.appRefresh)
+	}
+
+	// 应用用户自身数据接口：仅 AppJWT 认证（查库校验启用状态），不做 RBAC
+	appAuth := v1.Group("/app-auth", middleware.AppJWT(s.appIssuer, s.appuserUC))
+	{
+		appAuth.GET("/profile", s.appProfile)
+		appAuth.PUT("/password", s.appChangePassword)
 	}
 
 	// ---- 自身数据接口：仅 JWT 认证，不做 RBAC ----
@@ -350,6 +375,27 @@ func (s *HTTPServer) registerRoutes() {
 	mapiLogs := protected.Group("/merchant-api-logs")
 	{
 		mapiLogs.GET("", s.listMerchantAPILogs)
+	}
+
+	tenants := protected.Group("/tenants")
+	{
+		tenants.GET("", s.listTenants)
+		tenants.POST("", s.createTenant)
+		tenants.GET("/:id", s.getTenant)
+		tenants.PUT("/:id", s.updateTenant)
+		tenants.DELETE("/:id", s.deleteTenant)
+		tenants.PUT("/:id/status", s.setTenantStatus)
+	}
+
+	appUsers := protected.Group("/app-users")
+	{
+		appUsers.GET("", s.listAppUsers)
+		appUsers.POST("", s.createAppUser)
+		appUsers.GET("/:id", s.getAppUser)
+		appUsers.PUT("/:id", s.updateAppUser)
+		appUsers.DELETE("/:id", s.deleteAppUser)
+		// 重置密码（新密码由管理员指定，旧密码立即失效）
+		appUsers.PUT("/:id/password", s.resetAppUserPassword)
 	}
 
 	// ---- 开放 API：IP 黑名单 → 商户 HMAC 验签（时间戳偏差 + nonce 防重放） ----
@@ -1096,6 +1142,281 @@ func (s *HTTPServer) merchantErr(c *gin.Context, err error) {
 		return
 	}
 	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
+}
+
+// ---- 租户 ----
+
+func (s *HTTPServer) listTenants(c *gin.Context) {
+	page, size := pageParams(c)
+	q := biztenant.Query{
+		Name: strings.TrimSpace(c.Query("name")),
+		Code: strings.TrimSpace(c.Query("code")),
+	}
+	if v := c.Query("status"); v != "" {
+		if st, err := strconv.Atoi(v); err == nil {
+			q.Status = &st
+		}
+	}
+	list, pg, err := s.tenant.List(c.Request.Context(), q, page, size)
+	if err != nil {
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, listResult{List: list, Page: pg})
+}
+
+func (s *HTTPServer) createTenant(c *gin.Context) {
+	var req tenantsvc.CreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	vo, err := s.tenant.Create(c.Request.Context(), req)
+	if err != nil {
+		s.tenantErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) getTenant(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	vo, err := s.tenant.Get(c.Request.Context(), id)
+	if err != nil {
+		s.tenantErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) updateTenant(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req tenantsvc.UpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	if err := s.tenant.Update(c.Request.Context(), id, req); err != nil {
+		s.tenantErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) deleteTenant(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	if err := s.tenant.Delete(c.Request.Context(), id); err != nil {
+		s.tenantErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) setTenantStatus(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req tenantsvc.SetStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	if err := s.tenant.SetStatus(c.Request.Context(), id, req); err != nil {
+		s.tenantErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// tenantErr 租户操作错误映射：不存在 404，存在关联应用用户 409，其余 400
+func (s *HTTPServer) tenantErr(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, biztenant.ErrTenantNotFound):
+		response.FailI18n(c, http.StatusNotFound, response.CodeErr, err)
+	case errors.Is(err, biztenant.ErrTenantInUse):
+		response.FailI18n(c, http.StatusConflict, response.CodeErr, err)
+	default:
+		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
+	}
+}
+
+// ---- 应用用户（管理端） ----
+
+func (s *HTTPServer) listAppUsers(c *gin.Context) {
+	page, size := pageParams(c)
+	q := bizappuser.Query{
+		Keyword: strings.TrimSpace(c.Query("kw")),
+		Phone:   strings.TrimSpace(c.Query("phone")),
+	}
+	if v := c.Query("status"); v != "" {
+		if st, err := strconv.Atoi(v); err == nil {
+			q.Status = &st
+		}
+	}
+	if v := c.Query("tenant_id"); v != "" {
+		if tid, err := strconv.ParseUint(v, 10, 64); err == nil && tid > 0 {
+			t := uint(tid)
+			q.TenantID = &t
+		}
+	}
+	list, pg, err := s.appuser.List(c.Request.Context(), q, page, size)
+	if err != nil {
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, listResult{List: list, Page: pg})
+}
+
+func (s *HTTPServer) createAppUser(c *gin.Context) {
+	var req appusersvc.CreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	vo, err := s.appuser.Create(c.Request.Context(), req)
+	if err != nil {
+		s.appuserErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) getAppUser(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	vo, err := s.appuser.Get(c.Request.Context(), id)
+	if err != nil {
+		s.appuserErr(c, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) updateAppUser(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req appusersvc.UpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	if err := s.appuser.Update(c.Request.Context(), id, req); err != nil {
+		s.appuserErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) deleteAppUser(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	if err := s.appuser.Delete(c.Request.Context(), id); err != nil {
+		s.appuserErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (s *HTTPServer) resetAppUserPassword(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req appusersvc.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	if err := s.appuser.ResetPassword(c.Request.Context(), id, req); err != nil {
+		s.appuserErr(c, err)
+		return
+	}
+	response.OK(c, nil)
+}
+
+// appuserErr 应用用户操作错误映射：不存在 404，其余 400
+func (s *HTTPServer) appuserErr(c *gin.Context, err error) {
+	if errors.Is(err, bizappuser.ErrAppUserNotFound) {
+		response.FailI18n(c, http.StatusNotFound, response.CodeErr, err)
+		return
+	}
+	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
+}
+
+// ---- 应用用户独立认证（app-auth） ----
+
+// appLogin 应用用户登录：成功返回令牌对 + 用户信息；失败统一 401（防爆破计数由 LoginIPGuard 负责）
+func (s *HTTPServer) appLogin(c *gin.Context) {
+	var req appusersvc.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	vo, err := s.appuser.Login(c.Request.Context(), req)
+	if err != nil {
+		response.FailI18n(c, http.StatusUnauthorized, response.CodeUnauthorized, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+func (s *HTTPServer) appRefresh(c *gin.Context) {
+	var req appusersvc.RefreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	tp, err := s.appuser.Refresh(c.Request.Context(), req)
+	if err != nil {
+		response.FailI18n(c, http.StatusUnauthorized, response.CodeUnauthorized, err)
+		return
+	}
+	response.OK(c, tp)
+}
+
+func (s *HTTPServer) appProfile(c *gin.Context) {
+	sub := middleware.AppSubject(c)
+	vo, err := s.appuser.Profile(c.Request.Context(), sub.UserID)
+	if err != nil {
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, vo)
+}
+
+// appChangePassword 本人修改密码（校验旧密码）
+func (s *HTTPServer) appChangePassword(c *gin.Context) {
+	sub := middleware.AppSubject(c)
+	var req appusersvc.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
+		return
+	}
+	if err := s.appuser.ChangePassword(c.Request.Context(), sub.Username, req); err != nil {
+		if errors.Is(err, bizappuser.ErrBadCredentials) {
+			response.BadRequest(c, i18n.T(c.Request.Context(), "profile.wrong_old_password"))
+			return
+		}
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, nil)
 }
 
 // ---- 异步导出 ----

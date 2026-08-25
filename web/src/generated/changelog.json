@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-08-24T14:32:23.745Z",
+  "generatedAt": "2026-08-24T16:03:16.604Z",
   "commits": [
+    {
+      "hash": "2984c2b",
+      "date": "2026-08-24",
+      "type": "refactor",
+      "scope": "merchant",
+      "message": "拆分商户搜索关键词为多字段独立匹配"
+    },
     {
       "hash": "9515292",
       "date": "2026-08-24",

@@ -180,6 +180,33 @@ export interface MerchantAPILog {
   created_at: string
 }
 
+// 租户（status: 1 启用 0 禁用；code 创建后不可修改）
+export interface Tenant {
+  id: number
+  name: string
+  code: string
+  contact_name: string
+  contact_phone: string
+  remark: string
+  status: number
+  created_at: string
+  updated_at: string
+}
+
+// 应用用户（含租户关联，不含密码；status: 1 启用 0 禁用）
+export interface AppUser {
+  id: number
+  username: string
+  nickname: string
+  phone: string
+  email: string
+  status: number
+  tenant_ids: number[]
+  tenant_names: string[]
+  created_at: string
+  updated_at: string
+}
+
 // 文件元数据（后端 files 表；object_key 不下发）
 export interface FileInfo {
   id: number

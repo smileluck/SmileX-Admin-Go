@@ -126,6 +126,7 @@ func (d *Data) migrateAndSeed() error {
 		&model.LoginLogPO{}, &model.OperationLogPO{},
 		&model.FilePO{}, &model.ExportRecordPO{}, &model.IPBlacklistPO{},
 		&model.MerchantPO{}, &model.MerchantAPILogPO{},
+		&model.TenantPO{}, &model.AppUserPO{}, &model.AppUserTenantPO{},
 	); err != nil {
 		return err
 	}
@@ -224,6 +225,10 @@ var systemMenus = []systemMenuDef{
 	{Name: "开放API", Code: "menu:openapi", Type: "dir", Icon: "KeyOutline", Sort: 5},
 	{Name: "商户管理", Code: "menu:merchant", Path: "/openapi/merchants", Icon: "StorefrontOutline", Sort: 1, ParentCode: "menu:openapi"},
 	{Name: "API调用日志", Code: "menu:merchantLog", Path: "/openapi/api-logs", Icon: "DocumentTextOutline", Sort: 2, ParentCode: "menu:openapi"},
+	// 租户中心（顶级目录分组，父级先于子菜单声明以解析 ParentCode）
+	{Name: "租户中心", Code: "menu:tenantCenter", Type: "dir", Icon: "BusinessOutline", Sort: 2},
+	{Name: "租户管理", Code: "menu:tenant", Path: "/tenant/tenants", Icon: "BusinessOutline", Sort: 1, ParentCode: "menu:tenantCenter"},
+	{Name: "应用用户", Code: "menu:appUser", Path: "/tenant/app-users", Icon: "PeopleOutline", Sort: 2, ParentCode: "menu:tenantCenter"},
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
@@ -338,6 +343,19 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "修改状态", Code: "merchant:status", Menu: "menu:merchant", Method: "PUT", Path: "/api/v1/merchants/*/status", Sort: 7},
 	// API 调用日志
 	{Name: "查询调用日志", Code: "merchantLog:list", Menu: "menu:merchantLog", Method: "GET", Path: "/api/v1/merchant-api-logs", Sort: 1},
+	// 租户管理
+	{Name: "查询租户", Code: "tenant:list", Menu: "menu:tenant", Method: "GET", Path: "/api/v1/tenants", Sort: 1},
+	{Name: "租户详情", Code: "tenant:view", Menu: "menu:tenant", Method: "GET", Path: "/api/v1/tenants/*", Sort: 2},
+	{Name: "新增租户", Code: "tenant:create", Menu: "menu:tenant", Method: "POST", Path: "/api/v1/tenants", Sort: 3},
+	{Name: "编辑租户", Code: "tenant:update", Menu: "menu:tenant", Method: "PUT", Path: "/api/v1/tenants/*", Sort: 4},
+	{Name: "删除租户", Code: "tenant:delete", Menu: "menu:tenant", Method: "DELETE", Path: "/api/v1/tenants/*", Sort: 5},
+	// 应用用户
+	{Name: "查询应用用户", Code: "appUser:list", Menu: "menu:appUser", Method: "GET", Path: "/api/v1/app-users", Sort: 1},
+	{Name: "应用用户详情", Code: "appUser:view", Menu: "menu:appUser", Method: "GET", Path: "/api/v1/app-users/*", Sort: 2},
+	{Name: "新增应用用户", Code: "appUser:create", Menu: "menu:appUser", Method: "POST", Path: "/api/v1/app-users", Sort: 3},
+	{Name: "编辑应用用户", Code: "appUser:update", Menu: "menu:appUser", Method: "PUT", Path: "/api/v1/app-users/*", Sort: 4},
+	{Name: "删除应用用户", Code: "appUser:delete", Menu: "menu:appUser", Method: "DELETE", Path: "/api/v1/app-users/*", Sort: 5},
+	{Name: "重置密码", Code: "appUser:resetPwd", Menu: "menu:appUser", Method: "PUT", Path: "/api/v1/app-users/*/password", Sort: 6},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -347,7 +365,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID

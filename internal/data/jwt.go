@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/smilex/smilex-admin-gin/pkg/logger"
@@ -13,9 +14,12 @@ import (
 
 // 令牌类型声明：access 与 refresh 结构一致但 typ 不同，
 // 防止 refresh token 被直接当作 access token 调用受保护接口。
+// app-access/app-refresh 为应用用户体系专用，与后台账号 token 相互隔离（typ 不匹配即拒绝）。
 const (
-	tokenTypeAccess  = "access"
-	tokenTypeRefresh = "refresh"
+	tokenTypeAccess     = "access"
+	tokenTypeRefresh    = "refresh"
+	tokenTypeAppAccess  = "app-access"
+	tokenTypeAppRefresh = "app-refresh"
 )
 
 type claims struct {
@@ -33,8 +37,17 @@ type jwtIssuer struct {
 	refreshHours int
 }
 
-// NewJWTIssuer JWT 令牌签发实现
+// NewJWTIssuer JWT 令牌签发实现（后台账号体系）
 func NewJWTIssuer(c *conf.Bootstrap) auth.TokenIssuer {
+	return newJWTIssuer(c)
+}
+
+// NewAppTokenIssuer 应用用户令牌签发实现（复用同一 secret/issuer/过期配置，typ 隔离）
+func NewAppTokenIssuer(c *conf.Bootstrap) appuser.TokenIssuer {
+	return newJWTIssuer(c)
+}
+
+func newJWTIssuer(c *conf.Bootstrap) *jwtIssuer {
 	// 弱密钥告警：默认值或过短的 secret 可被离线爆破伪造令牌
 	if len(c.JWT.Secret) < 32 {
 		logger.Warn("jwt secret 长度不足 32 位，存在被爆破风险，请尽快修改 configs/config.yaml",
@@ -101,4 +114,31 @@ func (j *jwtIssuer) ParseAccessToken(token string) (*auth.Subject, error) {
 }
 func (j *jwtIssuer) ParseRefreshToken(token string) (*auth.Subject, error) {
 	return j.parse(token, tokenTypeRefresh)
+}
+
+// ---- 应用用户令牌（typ 为 app-access/app-refresh，sid 留空：应用用户无服务端会话状态） ----
+
+func (j *jwtIssuer) IssueAppAccessToken(uid uint, username string) (string, time.Time, error) {
+	return j.sign(j.newClaims(auth.Subject{UserID: uid, Username: username}, tokenTypeAppAccess, time.Duration(j.expireHours)*time.Hour))
+}
+
+func (j *jwtIssuer) IssueAppRefreshToken(uid uint, username string) (string, error) {
+	token, _, err := j.sign(j.newClaims(auth.Subject{UserID: uid, Username: username}, tokenTypeAppRefresh, time.Duration(j.refreshHours)*time.Hour))
+	return token, err
+}
+
+// parseApp 解析应用用户令牌并校验 typ（与后台 token 隔离，混用即拒绝）
+func (j *jwtIssuer) parseApp(token, wantType string) (uint, string, error) {
+	s, err := j.parse(token, wantType)
+	if err != nil {
+		return 0, "", err
+	}
+	return s.UserID, s.Username, nil
+}
+
+func (j *jwtIssuer) ParseAppAccessToken(token string) (uint, string, error) {
+	return j.parseApp(token, tokenTypeAppAccess)
+}
+func (j *jwtIssuer) ParseAppRefreshToken(token string) (uint, string, error) {
+	return j.parseApp(token, tokenTypeAppRefresh)
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 
+	bizappuser "github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	bizauth "github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
@@ -11,6 +12,7 @@ import (
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
+	biztenant "github.com/smilex/smilex-admin-gin/internal/biz/tenant"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
 )
@@ -68,6 +70,15 @@ var errKeys = []struct {
 	{bizmerchant.ErrDuplicateCode, "merchant.code_exists"},
 	{bizmerchant.ErrMerchantDisabled, "merchant.disabled"},
 	{bizmerchant.ErrInvalidSign, "merchant.sign_invalid"},
+	// 租户
+	{biztenant.ErrTenantNotFound, "tenant.not_found"},
+	{biztenant.ErrDuplicateTenantCode, "tenant.code_exists"},
+	{biztenant.ErrTenantInUse, "tenant.in_use"},
+	// 应用用户（凭证/禁用语义与后台认证一致，复用其文案）
+	{bizappuser.ErrAppUserNotFound, "appuser.not_found"},
+	{bizappuser.ErrDuplicateUsername, "appuser.name_exists"},
+	{bizappuser.ErrAppUserDisabled, "auth.account_disabled"},
+	{bizappuser.ErrBadCredentials, "auth.invalid_credentials"},
 }
 
 // init 将错误 -> i18n key 匹配函数注册到 response 包（response 不便反向依赖 server，走钩子）

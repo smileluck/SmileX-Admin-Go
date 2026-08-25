@@ -157,3 +157,47 @@ CREATE TABLE IF NOT EXISTS merchant_api_logs (
   KEY idx_app_key (app_key),
   KEY idx_created_at (created_at)
 );
+
+-- 租户表（code 唯一，软删留痕；存在关联应用用户时禁止删除）
+CREATE TABLE IF NOT EXISTS tenants (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(64) NOT NULL,
+  code VARCHAR(64) NOT NULL,            -- 租户编码（创建后不可改）
+  contact_name VARCHAR(64) DEFAULT '',
+  contact_phone VARCHAR(32) DEFAULT '',
+  remark VARCHAR(255) DEFAULT '',
+  status INT DEFAULT 1,                 -- 1 启用 0 禁用
+  created_at DATETIME,
+  updated_at DATETIME,
+  deleted_at DATETIME,
+  UNIQUE KEY uk_code (code),
+  KEY idx_deleted (deleted_at)
+);
+
+-- 应用用户表（多租户终端用户；username 唯一，密码只存 bcrypt 哈希，软删留痕）
+CREATE TABLE IF NOT EXISTS app_users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(64) NOT NULL,
+  password_hash VARCHAR(128) NOT NULL,  -- bcrypt 哈希，永不输出
+  nickname VARCHAR(64) DEFAULT '',
+  phone VARCHAR(32) DEFAULT '',
+  email VARCHAR(128) DEFAULT '',
+  status INT DEFAULT 1,                 -- 1 启用 0 禁用
+  created_at DATETIME,
+  updated_at DATETIME,
+  deleted_at DATETIME,
+  UNIQUE KEY uk_username (username),
+  KEY idx_deleted (deleted_at)
+);
+
+-- 应用用户-租户关联表（复合唯一索引；替换关联时物理删除）
+CREATE TABLE IF NOT EXISTS app_user_tenants (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  app_user_id BIGINT UNSIGNED NOT NULL,
+  tenant_id BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME,
+  deleted_at DATETIME,
+  UNIQUE KEY uk_app_user_tenant (app_user_id, tenant_id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_deleted (deleted_at)
+);

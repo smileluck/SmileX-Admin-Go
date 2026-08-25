@@ -1,5 +1,5 @@
 import request from './request'
-import type { BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, TokenPair, UserInfo, LogPageResult } from './types'
+import type { AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, Tenant, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -93,6 +93,36 @@ export const setMerchantStatus = (id: number, status: number) =>
 // start/end 为 unix 秒级时间戳
 export const listMerchantAPILogs = (params: { page: number; page_size: number; app_key?: string; path?: string; status_code?: number; start?: number; end?: number }) =>
   request.get<R<PageResult<MerchantAPILog>>>('/merchant-api-logs', { params })
+
+// ---- 租户 ----
+export const listTenants = (params: { page: number; page_size: number; name?: string; code?: string; status?: number }) =>
+  request.get<R<PageResult<Tenant>>>('/tenants', { params })
+export const createTenant = (data: { name: string; code: string; contact_name?: string; contact_phone?: string; remark?: string }) =>
+  request.post<R<Tenant>>('/tenants', data)
+export const getTenant = (id: number) => request.get<R<Tenant>>(`/tenants/${id}`)
+// code 创建后不可修改，更新入参不含 code
+export const updateTenant = (id: number, data: { name: string; contact_name?: string; contact_phone?: string; remark?: string }) =>
+  request.put<R<null>>(`/tenants/${id}`, data)
+export const deleteTenant = (id: number) => request.delete<R<null>>(`/tenants/${id}`)
+export const setTenantStatus = (id: number, status: number) =>
+  request.put<R<null>>(`/tenants/${id}/status`, { status })
+
+// ---- 应用用户 ----
+// kw 模糊匹配用户名/昵称，phone 精确匹配，tenant_id 按租户筛选
+export const listAppUsers = (params: { page: number; page_size: number; kw?: string; phone?: string; status?: number; tenant_id?: number }) =>
+  request.get<R<PageResult<AppUser>>>('/app-users', { params })
+export const createAppUser = (data: { username: string; password: string; nickname?: string; phone?: string; email?: string; tenant_ids?: number[] }) =>
+  request.post<R<AppUser>>('/app-users', data)
+export const getAppUser = (id: number) => request.get<R<AppUser>>(`/app-users/${id}`)
+// username 创建后不可修改；tenant_ids 全量替换；status 可选（状态切换也走此接口）
+export const updateAppUser = (id: number, data: { nickname?: string; phone?: string; email?: string; status?: number; tenant_ids?: number[] }) =>
+  request.put<R<null>>(`/app-users/${id}`, data)
+export const deleteAppUser = (id: number) => request.delete<R<null>>(`/app-users/${id}`)
+export const setAppUserStatus = (id: number, status: number) =>
+  request.put<R<null>>(`/app-users/${id}`, { status })
+// 重置密码（新密码由管理员指定，旧密码立即失效）
+export const resetAppUserPassword = (id: number, password: string) =>
+  request.put<R<null>>(`/app-users/${id}/password`, { password })
 
 // ---- IP 黑名单 ----
 export const listBlacklist = (params: { page: number; page_size: number; ip?: string }) =>
