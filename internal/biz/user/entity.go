@@ -43,6 +43,7 @@ type User struct {
 	Username  string    `json:"username"`
 	Password  Password  `json:"-"`
 	Nickname  string    `json:"nickname"`
+	Phone     string    `json:"phone"`
 	Email     string    `json:"email"`
 	Status    Status    `json:"status"`
 	RoleIDs   []uint    `json:"role_ids"` // 聚合内的角色关联

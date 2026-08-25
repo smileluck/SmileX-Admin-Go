@@ -6,6 +6,8 @@ export default {
   passwordPlaceholder: '6-20 characters',
   nickname: 'Nickname',
   nicknamePlaceholder: 'Up to 20 characters',
+  phone: 'Phone',
+  phonePlaceholder: 'Optional',
   email: 'Email',
   emailPlaceholder: 'Optional',
   role: 'Role',
@@ -31,6 +33,7 @@ export default {
     passwordRequired: 'Please enter a password',
     passwordLength: 'Password must be 6-20 characters',
     nicknameLength: 'Nickname cannot exceed 20 characters',
+    phoneInvalid: 'Invalid phone number format',
     emailInvalid: 'Invalid email format',
   },
 }

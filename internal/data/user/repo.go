@@ -66,7 +66,7 @@ func (r *repo) Update(ctx context.Context, u *user.User) error {
 	// 只更新基础资料字段；密码一律走 UpdatePassword，避免无哈希查询后被意外清空
 	return r.data.DB.WithContext(ctx).Model(&model.UserPO{}).Where("id = ?", u.ID).
 		Updates(map[string]interface{}{
-			"nickname": po.Nickname, "email": po.Email, "status": po.Status,
+			"nickname": po.Nickname, "phone": po.Phone, "email": po.Email, "status": po.Status,
 		}).Error
 }
 

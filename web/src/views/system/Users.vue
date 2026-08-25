@@ -27,6 +27,9 @@
       <n-form-item :label="t('user.nickname')" path="nickname">
         <n-input v-model:value="form.nickname" :maxlength="20" show-word-limit :placeholder="t('user.nicknamePlaceholder')" />
       </n-form-item>
+      <n-form-item :label="t('user.phone')" path="phone">
+        <n-input v-model:value="form.phone" :maxlength="32" :placeholder="t('user.phonePlaceholder')" />
+      </n-form-item>
       <n-form-item :label="t('user.email')" path="email"><n-input v-model:value="form.email" :placeholder="t('user.emailPlaceholder')" /></n-form-item>
       <n-form-item :label="t('user.role')">
         <n-select v-model:value="form.role_ids" multiple :options="roleOptions" :disabled="editing && !userStore.has('user:setRoles')" />
@@ -81,10 +84,10 @@ const showPwd = ref(false)
 const editing = ref(false)
 const editId = ref(0)
 const newPassword = ref('')
-const form = reactive({ username: '', password: '', nickname: '', email: '', role_ids: [] as number[], statusOn: 1 })
+const form = reactive({ username: '', password: '', nickname: '', phone: '', email: '', role_ids: [] as number[], statusOn: 1 })
 const formRef = ref<FormInst | null>(null)
 
-// 与后端 binding 规则保持一致：用户名 3-64、密码 6-20、昵称最长 20、邮箱格式（选填）
+// 与后端 binding 规则保持一致：用户名 3-64、密码 6-20、昵称最长 20、手机号选填最长 32、邮箱格式（选填）
 const rules = computed<FormRules>(() => ({
   username: [
     { required: true, message: t('user.form.usernameRequired'), trigger: ['blur', 'input'] },
@@ -96,6 +99,13 @@ const rules = computed<FormRules>(() => ({
   ],
   nickname: [
     { max: 20, message: t('user.form.nicknameLength'), trigger: ['blur', 'input'] },
+  ],
+  phone: [
+    {
+      trigger: ['blur', 'input'],
+      validator: (_rule, value: string) => !value || /^1[3-9]\d{9}$/.test(value),
+      message: t('user.form.phoneInvalid'),
+    },
   ],
   email: [
     {
@@ -152,14 +162,14 @@ async function loadRoles() {
 
 function openCreate() {
   editing.value = false
-  Object.assign(form, { username: '', password: '', nickname: '', email: '', role_ids: [], statusOn: 1 })
+  Object.assign(form, { username: '', password: '', nickname: '', phone: '', email: '', role_ids: [], statusOn: 1 })
   showModal.value = true
 }
 
 function openEdit(row: UserInfo) {
   editing.value = true
   editId.value = row.id
-  Object.assign(form, { username: row.username, password: '', nickname: row.nickname, email: row.email, role_ids: row.role_ids ?? [], statusOn: row.status })
+  Object.assign(form, { username: row.username, password: '', nickname: row.nickname, phone: row.phone, email: row.email, role_ids: row.role_ids ?? [], statusOn: row.status })
   showModal.value = true
 }
 
@@ -172,13 +182,13 @@ async function save() {
   saving.value = true
   try {
     if (editing.value) {
-      await updateUser(editId.value, { nickname: form.nickname, email: form.email, status: form.statusOn })
+      await updateUser(editId.value, { nickname: form.nickname, phone: form.phone.trim(), email: form.email, status: form.statusOn })
       // 分配角色是独立接口权限，未授权时不发起该调用（角色保持不变）
       if (userStore.has('user:setRoles')) {
         await setUserRoles(editId.value, form.role_ids)
       }
     } else {
-      await createUser({ username: form.username.trim(), password: form.password, nickname: form.nickname.trim(), email: form.email.trim(), role_ids: form.role_ids })
+      await createUser({ username: form.username.trim(), password: form.password, nickname: form.nickname.trim(), phone: form.phone.trim(), email: form.email.trim(), role_ids: form.role_ids })
     }
     message.success(t('common.saveSuccess'))
     showModal.value = false
@@ -225,6 +235,7 @@ const columns = computed<DataTableColumns<UserInfo>>(() => [
   { title: 'ID', key: 'id', width: 60 },
   { title: t('user.username'), key: 'username' },
   { title: t('user.nickname'), key: 'nickname' },
+  { title: t('user.phone'), key: 'phone', width: 130 },
   { title: t('user.email'), key: 'email' },
   {
     title: t('common.status'), key: 'status', width: 80,

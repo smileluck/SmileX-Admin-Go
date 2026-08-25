@@ -22,6 +22,7 @@ export interface UserInfo {
   id: number
   username: string
   nickname: string
+  phone: string
   email: string
   status: number
   role_ids: number[] | null

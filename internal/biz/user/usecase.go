@@ -73,14 +73,14 @@ func (uc *Usecase) revokeSessions(ctx context.Context, userID uint, reason strin
 	}
 }
 
-func (uc *Usecase) Create(ctx context.Context, username, password, nickname, email string, roleIDs []uint) (*User, error) {
+func (uc *Usecase) Create(ctx context.Context, username, password, nickname, phone, email string, roleIDs []uint) (*User, error) {
 	if _, err := uc.repo.FindByUsername(ctx, username); err == nil {
 		return nil, ErrDuplicateUsername
 	}
 	if strings.TrimSpace(nickname) == "" {
 		nickname = username
 	}
-	u := &User{Username: username, Nickname: nickname, Email: email, Status: StatusEnabled, RoleIDs: roleIDs}
+	u := &User{Username: username, Nickname: nickname, Phone: phone, Email: email, Status: StatusEnabled, RoleIDs: roleIDs}
 	if err := u.SetPassword(password); err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (uc *Usecase) Create(ctx context.Context, username, password, nickname, ema
 	return u, nil
 }
 
-func (uc *Usecase) Update(ctx context.Context, id uint, nickname, email string, status *Status) error {
+func (uc *Usecase) Update(ctx context.Context, id uint, nickname, phone, email string, status *Status) error {
 	if err := guardSuperAdmin(ctx, id); err != nil {
 		return err
 	}
@@ -101,6 +101,9 @@ func (uc *Usecase) Update(ctx context.Context, id uint, nickname, email string, 
 	}
 	if nickname != "" {
 		u.Nickname = nickname
+	}
+	if phone != "" {
+		u.Phone = phone
 	}
 	if email != "" {
 		u.Email = email

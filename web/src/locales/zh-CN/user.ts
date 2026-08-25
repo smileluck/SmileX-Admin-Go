@@ -6,6 +6,8 @@ export default {
   passwordPlaceholder: '6-20 位',
   nickname: '昵称',
   nicknamePlaceholder: '最多 20 个字符',
+  phone: '手机号',
+  phonePlaceholder: '选填',
   email: '邮箱',
   emailPlaceholder: '选填',
   role: '角色',
@@ -31,6 +33,7 @@ export default {
     passwordRequired: '请输入密码',
     passwordLength: '密码长度 6-20 个字符',
     nicknameLength: '昵称不能超过 20 个字符',
+    phoneInvalid: '手机号格式不正确',
     emailInvalid: '邮箱格式不正确',
   },
 }

@@ -18,6 +18,7 @@ type CreateRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=64"`
 	Password string `json:"password" binding:"required,min=6,max=20"`
 	Nickname string `json:"nickname" binding:"max=20"`
+	Phone    string `json:"phone" binding:"omitempty,max=32"`
 	Email    string `json:"email" binding:"omitempty,max=128,email"`
 	RoleIDs  []uint `json:"role_ids"`
 }
@@ -25,6 +26,7 @@ type CreateRequest struct {
 // UpdateRequest 更新用户入参
 type UpdateRequest struct {
 	Nickname string `json:"nickname" binding:"max=20"`
+	Phone    string `json:"phone" binding:"omitempty,max=32"`
 	Email    string `json:"email" binding:"omitempty,max=128,email"`
 	Status   *int   `json:"status" binding:"omitempty,oneof=0 1"`
 }
@@ -42,6 +44,7 @@ type ListVO struct {
 	ID        uint   `json:"id"`
 	Username  string `json:"username"`
 	Nickname  string `json:"nickname"`
+	Phone     string `json:"phone"`
 	Email     string `json:"email"`
 	Status    int    `json:"status"`
 	RoleIDs   []uint `json:"role_ids"`
@@ -50,13 +53,13 @@ type ListVO struct {
 
 func toVO(u *bizuser.User) *ListVO {
 	return &ListVO{
-		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Email: u.Email,
+		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Phone: u.Phone, Email: u.Email,
 		Status: int(u.Status), RoleIDs: u.RoleIDs, CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 }
 
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*ListVO, error) {
-	u, err := s.uc.Create(ctx, req.Username, req.Password, req.Nickname, req.Email, req.RoleIDs)
+	u, err := s.uc.Create(ctx, req.Username, req.Password, req.Nickname, req.Phone, req.Email, req.RoleIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +72,7 @@ func (s *Service) Update(ctx context.Context, id uint, req UpdateRequest) error 
 		sv := bizuser.Status(*req.Status)
 		st = &sv
 	}
-	return s.uc.Update(ctx, id, req.Nickname, req.Email, st)
+	return s.uc.Update(ctx, id, req.Nickname, req.Phone, req.Email, st)
 }
 
 func (s *Service) Delete(ctx context.Context, id uint) error { return s.uc.Delete(ctx, id) }

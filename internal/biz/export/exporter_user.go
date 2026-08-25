@@ -27,7 +27,6 @@ func (e *UserExporter) Columns() []Column {
 		{Key: "id", Title: "ID"},
 		{Key: "username", Title: "用户名"},
 		{Key: "nickname", Title: "昵称"},
-		// 用户模型暂无手机号字段，列预留（恒为空，配置上 phone 脱敏规则后接入字段即生效）
 		{Key: "phone", Title: "手机号"},
 		{Key: "email", Title: "邮箱"},
 		{Key: "status", Title: "状态"},
@@ -57,7 +56,7 @@ func (e *UserExporter) Fetch(ctx context.Context, params url.Values, offset, lim
 			strconv.FormatUint(uint64(u.ID), 10),
 			u.Username,
 			u.Nickname,
-			"",
+			u.Phone,
 			u.Email,
 			status,
 			u.CreatedAt.Format("2006-01-02 15:04:05"),

@@ -24,6 +24,7 @@ type UserPO struct {
 	Username  string `gorm:"size:64;uniqueIndex"`
 	Password  string `gorm:"size:128"`
 	Nickname  string `gorm:"size:64"`
+	Phone     string `gorm:"size:32"`
 	Email     string `gorm:"size:128"`
 	Status    int
 	CreatedAt time.Time
@@ -250,14 +251,14 @@ func (AppUserTenantPO) TableName() string { return "app_user_tenants" }
 func UserToPO(u *user.User) *UserPO {
 	return &UserPO{
 		ID: u.ID, Username: u.Username, Password: string(u.Password),
-		Nickname: u.Nickname, Email: u.Email, Status: int(u.Status),
+		Nickname: u.Nickname, Phone: u.Phone, Email: u.Email, Status: int(u.Status),
 	}
 }
 
 func UserFromPO(p *UserPO) *user.User {
 	return &user.User{
 		ID: p.ID, Username: p.Username, Password: user.Password(p.Password),
-		Nickname: p.Nickname, Email: p.Email, Status: user.Status(p.Status),
+		Nickname: p.Nickname, Phone: p.Phone, Email: p.Email, Status: user.Status(p.Status),
 		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 	}
 }

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(64) UNIQUE NOT NULL,
   password VARCHAR(128) NOT NULL,
   nickname VARCHAR(64) DEFAULT '',
+  phone VARCHAR(32) DEFAULT '',
   email VARCHAR(128) DEFAULT '',
   status INT DEFAULT 1,
   created_at TIMESTAMPTZ,

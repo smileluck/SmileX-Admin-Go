@@ -1,88 +1,61 @@
 <template>
   <div class="profile-page">
-    <n-grid :cols="24" responsive="screen" :x-gap="12" :y-gap="12">
-      <!-- 左：身份摘要 -->
-      <n-gi span="24 s:8">
-        <n-card class="sum-card">
-          <div class="sum">
-            <div class="sum-avatar">{{ avatarChar }}</div>
-            <div class="sum-name">{{ user?.nickname || user?.username }}</div>
-            <div class="sum-username mono">@{{ user?.username }}</div>
-            <div class="sum-roles">
-              <n-tag v-for="r in user?.role_names || []" :key="r" size="small" round>{{ r }}</n-tag>
-              <span v-if="!user?.role_names?.length" class="sum-empty">{{ t('profile.noRole') }}</span>
-            </div>
-            <div class="sum-meta">
-              <div class="sum-meta-row">
-                <span class="muted">{{ t('profile.email') }}</span>
-                <span class="mono">{{ user?.email || '—' }}</span>
-              </div>
-              <div class="sum-meta-row">
-                <span class="muted">{{ t('common.status') }}</span>
-                <n-tag :type="user?.status === 1 ? 'success' : 'error'" size="small" round>
-                  {{ user?.status === 1 ? t('common.enabled') : t('common.disabled') }}
-                </n-tag>
-              </div>
-              <div class="sum-meta-row">
-                <span class="muted">{{ t('profile.joinTime') }}</span>
-                <span class="mono">{{ user?.created_at || '—' }}</span>
-              </div>
-            </div>
+    <!-- 左：身份摘要 -->
+    <n-card class="sum-card">
+      <div class="sum">
+        <div class="sum-avatar">{{ avatarChar }}</div>
+        <div class="sum-name">{{ user?.nickname || user?.username }}</div>
+        <div class="sum-username mono">@{{ user?.username }}</div>
+        <div class="sum-roles">
+          <n-tag v-for="r in user?.role_names || []" :key="r" size="small" round>{{ r }}</n-tag>
+          <span v-if="!user?.role_names?.length" class="sum-empty">{{ t('profile.noRole') }}</span>
+        </div>
+        <div class="sum-meta">
+          <div class="sum-meta-row">
+            <span class="muted">{{ t('profile.email') }}</span>
+            <span class="mono">{{ user?.email || '—' }}</span>
           </div>
-        </n-card>
-      </n-gi>
+          <div class="sum-meta-row">
+            <span class="muted">{{ t('common.status') }}</span>
+            <n-tag :type="user?.status === 1 ? 'success' : 'error'" size="small" round>
+              {{ user?.status === 1 ? t('common.enabled') : t('common.disabled') }}
+            </n-tag>
+          </div>
+          <div class="sum-meta-row">
+            <span class="muted">{{ t('profile.joinTime') }}</span>
+            <span class="mono">{{ user?.created_at || '—' }}</span>
+          </div>
+        </div>
+      </div>
+    </n-card>
 
-      <!-- 右：资料编辑 + 修改密码 -->
-      <n-gi span="24 s:16">
-        <n-space vertical :size="12">
-          <n-card :title="t('profile.basicInfo')">
-            <n-form ref="infoFormRef" :model="infoForm" :rules="infoRules" label-placement="left" label-width="80" class="form">
-              <n-form-item :label="t('profile.nickname')" path="nickname">
-                <n-input v-model:value="infoForm.nickname" :maxlength="20" show-word-limit :placeholder="t('profile.nicknamePlaceholder')" />
-              </n-form-item>
-              <n-form-item :label="t('profile.email')" path="email">
-                <n-input v-model:value="infoForm.email" :placeholder="t('profile.emailPlaceholder')" />
-              </n-form-item>
-              <div class="form-actions">
-                <n-button type="primary" :loading="infoSaving" @click="saveInfo">{{ t('common.save') }}</n-button>
-              </div>
-            </n-form>
-          </n-card>
-
-          <n-card :title="t('profile.changePassword')">
-            <n-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-placement="left" label-width="80" class="form">
-              <n-form-item :label="t('profile.oldPassword')" path="oldPassword">
-                <n-input v-model:value="pwdForm.oldPassword" type="password" show-password-on="click" :placeholder="t('profile.oldPasswordPlaceholder')" />
-              </n-form-item>
-              <n-form-item :label="t('profile.newPassword')" path="newPassword">
-                <n-input v-model:value="pwdForm.newPassword" type="password" show-password-on="click" :maxlength="20" :placeholder="t('profile.newPasswordPlaceholder')" />
-              </n-form-item>
-              <n-form-item :label="t('profile.confirmPassword')" path="confirmPassword">
-                <n-input v-model:value="pwdForm.confirmPassword" type="password" show-password-on="click" :maxlength="20" :placeholder="t('profile.confirmPasswordPlaceholder')" />
-              </n-form-item>
-              <div class="form-actions">
-                <n-button type="primary" :loading="pwdSaving" @click="savePwd">{{ t('profile.changePassword') }}</n-button>
-              </div>
-            </n-form>
-          </n-card>
-        </n-space>
-      </n-gi>
-    </n-grid>
+    <!-- 右：资料编辑 -->
+    <n-card class="info-card" :title="t('profile.basicInfo')">
+      <n-form ref="infoFormRef" :model="infoForm" :rules="infoRules" label-placement="left" label-width="80" class="form">
+        <n-form-item :label="t('profile.nickname')" path="nickname">
+          <n-input v-model:value="infoForm.nickname" :maxlength="20" show-word-limit :placeholder="t('profile.nicknamePlaceholder')" />
+        </n-form-item>
+        <n-form-item :label="t('profile.email')" path="email">
+          <n-input v-model:value="infoForm.email" :placeholder="t('profile.emailPlaceholder')" />
+        </n-form-item>
+        <div class="form-actions">
+          <n-button type="primary" :loading="infoSaving" @click="saveInfo">{{ t('common.save') }}</n-button>
+        </div>
+      </n-form>
+    </n-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  NGrid, NGi, NCard, NSpace, NForm, NFormItem, NInput, NButton, NTag, useMessage,
+  NCard, NForm, NFormItem, NInput, NButton, NTag, useMessage,
   type FormInst, type FormRules,
 } from 'naive-ui'
-import { changePassword, getProfile, updateProfile } from '../../api'
+import { getProfile, updateProfile } from '../../api'
 import { useUserStore } from '../../stores/user'
 
-const router = useRouter()
 const message = useMessage()
 const userStore = useUserStore()
 const { t } = useI18n()
@@ -136,46 +109,30 @@ async function saveInfo() {
     infoSaving.value = false
   }
 }
-
-// ---- 修改密码（成功后强制重新登录） ----
-const pwdFormRef = ref<FormInst | null>(null)
-const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
-const pwdSaving = ref(false)
-const pwdRules = computed<FormRules>(() => ({
-  oldPassword: [{ required: true, message: t('profile.rules.oldPasswordRequired'), trigger: ['blur', 'input'] }],
-  newPassword: [
-    { required: true, message: t('profile.rules.newPasswordRequired'), trigger: ['blur', 'input'] },
-    { min: 6, max: 20, message: t('profile.rules.passwordLength'), trigger: ['blur', 'input'] },
-  ],
-  confirmPassword: [
-    { required: true, message: t('profile.rules.confirmPasswordRequired'), trigger: ['blur', 'input'] },
-    { validator: (_rule, v: string) => v === pwdForm.newPassword, message: t('profile.rules.passwordMismatch'), trigger: ['blur', 'input'] },
-  ],
-}))
-
-async function savePwd() {
-  try {
-    await pwdFormRef.value?.validate()
-  } catch {
-    return
-  }
-  pwdSaving.value = true
-  try {
-    await changePassword({ old_password: pwdForm.oldPassword, new_password: pwdForm.newPassword })
-    message.success(t('profile.passwordChanged'))
-    await userStore.logout()
-    router.push('/login')
-  } catch (e: any) {
-    message.error(e?.response?.data?.msg || t('profile.changeFailed'))
-  } finally {
-    pwdSaving.value = false
-  }
-}
 </script>
 
 <style scoped>
+/* 撑满一屏：100vh - 顶栏 64px - 内容区上下 padding 8px×2（height:100% 链在
+   naive 嵌套滚动容器下不精确，会导致整页滚动；改用视口确定性高度） */
 .profile-page {
-  min-height: 100%;
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  height: calc(100vh - 64px - 16px);
+}
+/* 左右 4:6 固定比例布局，任何窗口宽度都并排 */
+.sum-card {
+  flex: 4 1 0;
+  min-width: 0;
+}
+.info-card {
+  flex: 6 1 0;
+  min-width: 0;
+}
+/* 卡片内容在极小高度下兜底滚动，避免溢出（naive 卡片内容类为 n-card-content） */
+.sum-card :deep(.n-card-content),
+.info-card :deep(.n-card-content) {
+  overflow: auto;
 }
 .sum {
   display: flex;
