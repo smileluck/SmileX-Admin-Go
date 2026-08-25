@@ -202,10 +202,10 @@ type MerchantAPILogPO struct {
 
 func (MerchantAPILogPO) TableName() string { return "merchant_api_logs" }
 
-// TenantPO 租户表（code 唯一，软删留痕；存在关联应用用户时禁止删除）
+// TenantPO 租户表（name/code 均唯一，软删留痕；存在关联应用用户时禁止删除）
 type TenantPO struct {
 	ID           uint   `gorm:"primaryKey"`
-	Name         string `gorm:"size:64"`
+	Name         string `gorm:"size:64;uniqueIndex"`
 	Code         string `gorm:"size:64;uniqueIndex"`
 	ContactName  string `gorm:"size:64"`
 	ContactPhone string `gorm:"size:32"`

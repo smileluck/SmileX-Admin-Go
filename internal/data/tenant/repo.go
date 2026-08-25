@@ -13,12 +13,16 @@ import (
 	"gorm.io/gorm"
 )
 
-// mapErr 哨兵错误映射：记录不存在 / 唯一索引冲突（sqlite/mysql/postgres 文案判断）
+// mapErr 哨兵错误映射：记录不存在 / 唯一索引冲突（sqlite/mysql/postgres 文案判断）；
+// name 与 code 均有唯一索引，按报错信息中的索引/列名区分（idx_tenants_name 或 tenants.name）
 func mapErr(err error) error {
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return biztenant.ErrTenantNotFound
 	case isUniqueViolation(err):
+		if msg := err.Error(); strings.Contains(msg, "tenants_name") || strings.Contains(msg, "tenants.name") {
+			return biztenant.ErrDuplicateTenantName
+		}
 		return biztenant.ErrDuplicateTenantCode
 	}
 	return err

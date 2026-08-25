@@ -60,6 +60,7 @@ var messagesZh = map[string]string{
 	"merchant.sign_invalid": "签名校验失败",
 	// 租户
 	"tenant.not_found":   "租户不存在",
+	"tenant.name_exists": "租户名称已存在，请更换",
 	"tenant.code_exists": "租户编码已存在，请更换",
 	"tenant.in_use":      "该租户下存在应用用户，请先移除关联",
 	// 应用用户

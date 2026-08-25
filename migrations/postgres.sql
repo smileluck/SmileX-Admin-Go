@@ -137,10 +137,10 @@ CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_merchant_id ON merchant_api_log
 CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_app_key ON merchant_api_logs (app_key);
 CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_created_at ON merchant_api_logs (created_at);
 
--- 租户表（code 唯一，软删留痕；存在关联应用用户时禁止删除）
+-- 租户表（name/code 唯一，软删留痕；存在关联应用用户时禁止删除）
 CREATE TABLE IF NOT EXISTS tenants (
   id BIGSERIAL PRIMARY KEY,
-  name VARCHAR(64) NOT NULL,
+  name VARCHAR(64) UNIQUE NOT NULL,
   code VARCHAR(64) UNIQUE NOT NULL,     -- 租户编码（创建后不可改）
   contact_name VARCHAR(64) DEFAULT '',
   contact_phone VARCHAR(32) DEFAULT '',

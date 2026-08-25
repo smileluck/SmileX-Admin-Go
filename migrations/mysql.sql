@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS merchant_api_logs (
   KEY idx_created_at (created_at)
 );
 
--- 租户表（code 唯一，软删留痕；存在关联应用用户时禁止删除）
+-- 租户表（name/code 唯一，软删留痕；存在关联应用用户时禁止删除）
 CREATE TABLE IF NOT EXISTS tenants (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(64) NOT NULL,
@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   created_at DATETIME,
   updated_at DATETIME,
   deleted_at DATETIME,
+  UNIQUE KEY uk_name (name),
   UNIQUE KEY uk_code (code),
   KEY idx_deleted (deleted_at)
 );

@@ -72,6 +72,7 @@ var errKeys = []struct {
 	{bizmerchant.ErrInvalidSign, "merchant.sign_invalid"},
 	// 租户
 	{biztenant.ErrTenantNotFound, "tenant.not_found"},
+	{biztenant.ErrDuplicateTenantName, "tenant.name_exists"},
 	{biztenant.ErrDuplicateTenantCode, "tenant.code_exists"},
 	{biztenant.ErrTenantInUse, "tenant.in_use"},
 	// 应用用户（凭证/禁用语义与后台认证一致，复用其文案）

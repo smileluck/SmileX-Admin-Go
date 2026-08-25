@@ -139,7 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_merchant_id ON merchant_api_log
 CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_app_key ON merchant_api_logs (app_key);
 CREATE INDEX IF NOT EXISTS idx_merchant_api_logs_created_at ON merchant_api_logs (created_at);
 
--- 租户表（code 唯一，软删留痕；存在关联应用用户时禁止删除）
+-- 租户表（name/code 唯一，软删留痕；存在关联应用用户时禁止删除）
 CREATE TABLE IF NOT EXISTS tenants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -152,6 +152,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   updated_at DATETIME,
   deleted_at DATETIME
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uk_tenants_name ON tenants (name);
 CREATE UNIQUE INDEX IF NOT EXISTS uk_tenants_code ON tenants (code);
 CREATE INDEX IF NOT EXISTS idx_tenants_deleted_at ON tenants (deleted_at);
 

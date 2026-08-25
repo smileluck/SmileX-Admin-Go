@@ -8,6 +8,9 @@ import (
 // ErrTenantNotFound 租户不存在
 var ErrTenantNotFound = errors.New("租户不存在")
 
+// ErrDuplicateTenantName 租户名称重复
+var ErrDuplicateTenantName = errors.New("租户名称已存在，请更换")
+
 // ErrDuplicateTenantCode 租户编码重复
 var ErrDuplicateTenantCode = errors.New("租户编码已存在，请更换")
 

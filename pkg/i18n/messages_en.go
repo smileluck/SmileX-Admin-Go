@@ -60,6 +60,7 @@ var messagesEn = map[string]string{
 	"merchant.sign_invalid": "Signature verification failed",
 	// Tenant
 	"tenant.not_found":   "Tenant not found",
+	"tenant.name_exists": "Tenant name already exists, please choose another one",
 	"tenant.code_exists": "Tenant code already exists, please choose another one",
 	"tenant.in_use":      "App users are still assigned to this tenant; remove the associations first",
 	// App user

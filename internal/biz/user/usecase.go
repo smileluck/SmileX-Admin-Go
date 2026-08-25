@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/smilex/smilex-admin-gin/pkg/eventbus"
 	"github.com/smilex/smilex-admin-gin/pkg/logger"
@@ -75,6 +76,9 @@ func (uc *Usecase) revokeSessions(ctx context.Context, userID uint, reason strin
 func (uc *Usecase) Create(ctx context.Context, username, password, nickname, email string, roleIDs []uint) (*User, error) {
 	if _, err := uc.repo.FindByUsername(ctx, username); err == nil {
 		return nil, ErrDuplicateUsername
+	}
+	if strings.TrimSpace(nickname) == "" {
+		nickname = username
 	}
 	u := &User{Username: username, Nickname: nickname, Email: email, Status: StatusEnabled, RoleIDs: roleIDs}
 	if err := u.SetPassword(password); err != nil {

@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-08-24T16:03:16.604Z",
+  "generatedAt": "2026-08-25T02:19:32.830Z",
   "commits": [
+    {
+      "hash": "c3c574d",
+      "date": "2026-08-25",
+      "type": "feat",
+      "scope": "",
+      "message": "add tenant and app user management modules"
+    },
     {
       "hash": "2984c2b",
       "date": "2026-08-24",
