@@ -234,9 +234,9 @@ async function savePwd() {
 const columns = computed<DataTableColumns<UserInfo>>(() => [
   { title: 'ID', key: 'id', width: 60 },
   { title: t('user.username'), key: 'username' },
-  { title: t('user.nickname'), key: 'nickname' },
-  { title: t('user.phone'), key: 'phone', width: 130 },
-  { title: t('user.email'), key: 'email' },
+  { title: t('user.nickname'), key: 'nickname', render: (row) => row.nickname || '—' },
+  { title: t('user.phone'), key: 'phone', width: 130, render: (row) => row.phone || '—' },
+  { title: t('user.email'), key: 'email', render: (row) => row.email || '—' },
   {
     title: t('common.status'), key: 'status', width: 80,
     render: (row) => h(NTag, { type: row.status === 1 ? 'success' : 'error', size: 'small' }, { default: () => (row.status === 1 ? t('common.enabled') : t('common.disabled')) }),

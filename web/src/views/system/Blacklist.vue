@@ -143,7 +143,7 @@ const columns = computed<DataTableColumns<BlacklistItem>>(() => [
       { default: () => row.source === 'auto' ? t('blacklist.sourceAuto') : t('blacklist.sourceManual') }),
   },
   { title: t('blacklist.expireAt'), key: 'expire_at', width: 170, render: (row) => row.expire_at || t('blacklist.permanent') },
-  { title: t('blacklist.creator'), key: 'creator_name', width: 120 },
+  { title: t('blacklist.creator'), key: 'creator_name', width: 120, render: (row) => row.creator_name || '—' },
   { title: t('common.createTime'), key: 'created_at', width: 170 },
   {
     title: t('common.operation'), key: 'actions', fixed: 'right', width: 100,

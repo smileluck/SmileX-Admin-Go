@@ -210,7 +210,7 @@ async function savePerms() {
 const columns = computed<DataTableColumns<Role>>(() => [
   { title: 'ID', key: 'id', width: 60 },
   { title: t('role.name'), key: 'name' },
-  { title: t('common.remark'), key: 'remark' },
+  { title: t('common.remark'), key: 'remark', render: (row) => row.remark || '—' },
   {
     title: t('common.operation'), key: 'actions', width: 170,
     render(row) {
