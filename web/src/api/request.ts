@@ -2,16 +2,24 @@ import axios from 'axios'
 import { useUserStore } from '../stores/user'
 import router from '../router'
 import { getLocale } from '../locales'
+import { deepTrim } from '../utils/trim'
 
 const request = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 
-// 请求拦截：附带 token 与当前语言（后端按 Accept-Language 返回本地化 msg/菜单名）
+// 请求拦截：附带 token 与当前语言（后端按 Accept-Language 返回本地化 msg/菜单名）；
+// 提交文本统一深度去首尾空格（密码类字段与文件除外，见 utils/trim）
 request.interceptors.request.use((config) => {
   const userStore = useUserStore()
   if (userStore.accessToken) {
     config.headers.Authorization = `Bearer ${userStore.accessToken}`
   }
   config.headers['Accept-Language'] = getLocale()
+  if (config.data && typeof config.data === 'object') {
+    config.data = deepTrim(config.data)
+  }
+  if (config.params) {
+    config.params = deepTrim(config.params)
+  }
   return config
 })
 
