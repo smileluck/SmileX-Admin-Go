@@ -577,8 +577,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden auto;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
 /* 折叠过渡与 naive-ui sider 的宽度动画同步：.3s cubic-bezier(.4, 0, .2, 1) */
 .logo {
@@ -628,6 +627,9 @@ onUnmounted(() => {
 
 .sider-menu {
   flex: 1;
+  min-height: 0; /* 允许收缩，菜单区独立滚动，避免撑破容器 */
+  overflow-y: auto;
+  scrollbar-width: thin;
   background: transparent !important;
   padding: 4px 8px;
   transition: padding .3s cubic-bezier(.4, 0, .2, 1);
