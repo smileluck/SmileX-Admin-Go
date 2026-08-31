@@ -11,7 +11,7 @@
       </div>
     </template>
 
-    <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
+    <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
 
   <n-modal v-model:show="showModal" :title="t('blacklist.addTitle')" preset="card" style="width: 420px" :bordered="false" @after-leave="resetForm">

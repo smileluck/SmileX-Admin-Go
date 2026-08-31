@@ -8,7 +8,7 @@
   </SearchCard>
 
   <n-card>
-    <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
+    <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
 </template>
 
