@@ -122,12 +122,12 @@ CREATE TABLE IF NOT EXISTS ip_blacklist (
   KEY idx_deleted (deleted_at)
 );
 
--- 商户表（开放 API 授权；app_secret 只存哈希 SHA-256(AppKey + ":" + secret)，软删留痕）
+-- 商户表（商户接入 授权；app_secret 只存哈希 SHA-256(AppKey + ":" + secret)，软删留痕）
 CREATE TABLE IF NOT EXISTS merchants (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(64) NOT NULL,
   code VARCHAR(64) NOT NULL,            -- 商户编码（创建后不可改）
-  app_key VARCHAR(64) NOT NULL,         -- 开放 API 调用凭证 key（mk_ 前缀）
+  app_key VARCHAR(64) NOT NULL,         -- 商户接入 调用凭证 key（mk_ 前缀）
   app_secret_hash VARCHAR(128) NOT NULL, -- secret 哈希，明文仅创建/重置时返回一次
   contact_name VARCHAR(64) DEFAULT '',
   contact_phone VARCHAR(32) DEFAULT '',
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS merchants (
   KEY idx_deleted (deleted_at)
 );
 
--- 开放 API 调用日志表（无软删，保留期清理为物理删除）
+-- 商户接入 调用日志表（无软删，保留期清理为物理删除）
 CREATE TABLE IF NOT EXISTS merchant_api_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   merchant_id BIGINT UNSIGNED DEFAULT 0, -- 商户（鉴权失败且商户未知时为 0）

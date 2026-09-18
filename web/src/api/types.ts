@@ -152,7 +152,7 @@ export interface BlacklistItem {
   created_at: string
 }
 
-// 商户（开放平台接入方；app_secret 不下发，仅创建/重置时明文返回一次）
+// 商户（商户接入方；app_secret 不下发，仅创建/重置时明文返回一次）
 export interface Merchant {
   id: number
   name: string

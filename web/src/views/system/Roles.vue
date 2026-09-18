@@ -32,9 +32,13 @@
 
   <!-- 分配权限 -->
   <n-modal v-model:show="showPerm" preset="dialog" :title="t('role.assignPermissions')" style="width: 520px">
+    <div class="perm-toolbar">
+      <n-button size="small" @click="selectAllPerms">{{ t('role.selectAllPerms') }}</n-button>
+      <n-button size="small" @click="clearAllPerms">{{ t('role.clearAllPerms') }}</n-button>
+    </div>
     <n-tree
       :data="permTree"
-      checkable cascade :checked-keys="checkedKeys" :default-expanded-keys="expandedKeys"
+      checkable :cascade="false" :checked-keys="checkedKeys" :default-expanded-keys="expandedKeys"
       key-field="key" label-field="label" children-field="children"
       @update:checked-keys="(keys: any) => (checkedKeys = keys)"
     />
@@ -85,6 +89,15 @@ const rules = computed<FormRules>(() => ({
 const permTree = ref<any[]>([])
 const expandedKeys = ref<number[]>([])
 const checkedKeys = ref<number[]>([])
+const allPermIds = ref<number[]>([])
+
+function selectAllPerms() {
+  checkedKeys.value = [...allPermIds.value]
+}
+
+function clearAllPerms() {
+  checkedKeys.value = []
+}
 
 const { pagination, setTotal } = usePagination(query, load)
 
@@ -175,6 +188,7 @@ async function openPerms(row: Role) {
     ])
     const all = allResp.data.list
     permTree.value = buildTree(all)
+    allPermIds.value = all.map((p) => p.id)
     expandedKeys.value = all.filter((p) => p.parent_id === 0).map((p) => p.id)
     checkedKeys.value = roleResp.data.permission_ids ?? []
     showPerm.value = true
@@ -191,13 +205,14 @@ function buildTree(items: Permission[], parentID = 0): any[] {
       const children = buildTree(items, p.id)
       const typeTag = p.type === 'dir' ? t('role.dirTag') : p.type === 'button' ? t('role.buttonTag') : ''
       const n: any = { key: p.id, label: `${p.name}（${p.code}）${typeTag}` }
+      // 目录仅作分组，勾选无实际权限意义，不渲染 checkbox（避免“看似全选实则无权限”）
+      if (p.type === 'dir') n.checkable = false
       if (children.length) n.children = children
       return n
     })
 }
 
-async function savePerms() {
-  try {
+async function savePerms() {  try {
     await setRolePermissions(editId.value, checkedKeys.value as number[])
     message.success(t('role.permsUpdated'))
     showPerm.value = false
@@ -242,5 +257,12 @@ onMounted(load)
   width: 100%;
   display: flex;
   justify-content: flex-end;
+}
+
+/* 权限树上方快捷操作 */
+.perm-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 </style>

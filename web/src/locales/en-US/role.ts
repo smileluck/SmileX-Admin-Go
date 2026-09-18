@@ -7,6 +7,8 @@ export default {
   newRole: 'New Role',
   editRole: 'Edit Role',
   assignPermissions: 'Assign Permissions',
+  selectAllPerms: 'Select All',
+  clearAllPerms: 'Deselect All',
   builtin: 'Built-in',
   superRoleProtected: 'The super administrator role is built-in and cannot be modified or operated on',
   deleteConfirmTitle: 'Delete Confirmation',

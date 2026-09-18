@@ -221,8 +221,8 @@ var systemMenus = []systemMenuDef{
 	{Name: "文件管理", Code: "menu:file", Path: "/file", Icon: "FolderOpenOutline", Sort: 4},
 	// IP 黑名单（挂在系统管理目录下）
 	{Name: "IP黑名单", Code: "menu:blacklist", Path: "/system/blacklist", Icon: "BanOutline", Sort: 6, ParentCode: "menu:system"},
-	// 开放API（顶级目录分组，父级先于子菜单声明以解析 ParentCode）
-	{Name: "开放API", Code: "menu:openapi", Type: "dir", Icon: "KeyOutline", Sort: 5},
+	// 商户接入（顶级目录分组，父级先于子菜单声明以解析 ParentCode）
+	{Name: "商户接入", Code: "menu:openapi", Type: "dir", Icon: "KeyOutline", Sort: 5},
 	{Name: "商户管理", Code: "menu:merchant", Path: "/openapi/merchants", Icon: "StorefrontOutline", Sort: 1, ParentCode: "menu:openapi"},
 	{Name: "API调用日志", Code: "menu:merchantLog", Path: "/openapi/api-logs", Icon: "DocumentTextOutline", Sort: 2, ParentCode: "menu:openapi"},
 	// 租户中心（顶级目录分组，父级先于子菜单声明以解析 ParentCode）
@@ -232,7 +232,7 @@ var systemMenus = []systemMenuDef{
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
-// 按 code 查找（type 兼容 menu/dir，存量迁移会翻转类型），缺失则插入（父级按 code 解析，缺失时落为顶级菜单），并绑定超管角色 ID=1
+// 按 code 查找（type 兼容 menu/dir，存量迁移会翻转类型），缺失则插入（父级按 code 解析，缺失时落为顶级菜单），名称变化时同步更新，并绑定超管角色 ID=1
 func (d *Data) ensureSystemMenus() error {
 	for _, m := range systemMenus {
 		var po model.PermissionPO
@@ -257,6 +257,12 @@ func (d *Data) ensureSystemMenus() error {
 				return err
 			}
 			logger.Info("ensured system menu", zap.String("code", m.Code))
+		} else if po.Name != m.Name {
+			// seed 菜单改名时同步存量库（仅按 code 命中的 seed 项，不影响用户自建菜单）
+			if err := d.DB.Model(&model.PermissionPO{}).Where("id = ?", po.ID).Update("name", m.Name).Error; err != nil {
+				return err
+			}
+			logger.Info("synced system menu name", zap.String("code", m.Code), zap.String("name", m.Name))
 		}
 		if err := d.bindSuperRole(po.ID); err != nil {
 			return err

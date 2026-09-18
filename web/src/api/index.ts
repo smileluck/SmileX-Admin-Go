@@ -74,7 +74,7 @@ export const listOperationLogs = (params: { page: number; page_size: number; use
   request.get<R<LogPageResult<OperationLogInfo>>>('/operation-logs', { params })
 export const clearOperationLogs = () => request.delete<R<{ deleted: number }>>('/operation-logs')
 
-// ---- 商户（开放平台）----
+// ---- 商户（商户接入）----
 export const listMerchants = (params: { page: number; page_size: number; name?: string; code?: string; app_key?: string; status?: number }) =>
   request.get<R<PageResult<Merchant>>>('/merchants', { params })
 // 创建成功时 app_secret 仅此一次明文返回，前端需弹窗展示并提示保存

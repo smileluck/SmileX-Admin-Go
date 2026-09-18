@@ -85,7 +85,7 @@ var messagesEn = map[string]string{
 	"menu.menu:opLog":        "Operation Logs",
 	"menu.menu:file":         "Files",
 	"menu.menu:blacklist":    "IP Blacklist",
-	"menu.menu:openapi":      "Open API",
+	"menu.menu:openapi":      "Merchant Access",
 	"menu.menu:merchant":     "Merchants",
 	"menu.menu:merchantLog":  "API Logs",
 	"menu.menu:tenantCenter": "Tenant Center",

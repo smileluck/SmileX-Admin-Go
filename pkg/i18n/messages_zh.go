@@ -85,7 +85,7 @@ var messagesZh = map[string]string{
 	"menu.menu:opLog":        "操作日志",
 	"menu.menu:file":         "文件管理",
 	"menu.menu:blacklist":    "IP黑名单",
-	"menu.menu:openapi":      "开放API",
+	"menu.menu:openapi":      "商户接入",
 	"menu.menu:merchant":     "商户管理",
 	"menu.menu:merchantLog":  "API调用日志",
 	"menu.menu:tenantCenter": "租户中心",
