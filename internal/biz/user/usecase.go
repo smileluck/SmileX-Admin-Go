@@ -53,6 +53,31 @@ func guardSuperAdmin(ctx context.Context, targetID uint) error {
 	return nil
 }
 
+// superAdminRoleID 与 biz/role 的超管角色固定 ID 一致
+const superAdminRoleID uint = 1
+
+// ErrAssignSuperRole 超管角色只能由超管本人分配
+var ErrAssignSuperRole = errors.New("只有超级管理员才能分配超级管理员角色")
+
+// guardSuperRoleAssign 分配超管角色（role_id=1）仅限超管角色成员操作，
+// 防止持有 user:create/user:setRoles 的普通用户借此一步提权（创建与改角色两条路径都拦）
+func (uc *Usecase) guardSuperRoleAssign(ctx context.Context, roleIDs []uint) error {
+	for _, rid := range roleIDs {
+		if rid != superAdminRoleID {
+			continue
+		}
+		ok, err := uc.repo.HasRole(ctx, operatorFrom(ctx), superAdminRoleID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrAssignSuperRole
+		}
+		return nil
+	}
+	return nil
+}
+
 // Usecase 用户领域用例
 type Usecase struct {
 	repo     Repo
@@ -74,6 +99,9 @@ func (uc *Usecase) revokeSessions(ctx context.Context, userID uint, reason strin
 }
 
 func (uc *Usecase) Create(ctx context.Context, username, password, nickname, phone, email string, roleIDs []uint) (*User, error) {
+	if err := uc.guardSuperRoleAssign(ctx, roleIDs); err != nil {
+		return nil, err
+	}
 	if _, err := uc.repo.FindByUsername(ctx, username); err == nil {
 		return nil, ErrDuplicateUsername
 	}
@@ -144,6 +172,9 @@ func (uc *Usecase) List(ctx context.Context, q Query, page, pageSize int) ([]*Us
 // SetRoles 分配角色
 func (uc *Usecase) SetRoles(ctx context.Context, userID uint, roleIDs []uint) error {
 	if err := guardSuperAdmin(ctx, userID); err != nil {
+		return err
+	}
+	if err := uc.guardSuperRoleAssign(ctx, roleIDs); err != nil {
 		return err
 	}
 	return uc.repo.SetRoles(ctx, userID, roleIDs)

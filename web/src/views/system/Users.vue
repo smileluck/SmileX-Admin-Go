@@ -85,7 +85,7 @@ const loading = ref(false)
 const saving = ref(false)
 const rows = ref<UserInfo[]>([])
 const query = reactive({ username: '', page: 1, page_size: 10 })
-const roleOptions = ref<{ label: string; value: number }[]>([])
+const roleOptions = ref<{ label: string; value: number; disabled?: boolean }[]>([])
 
 const showModal = ref(false)
 const showPwd = ref(false)
@@ -185,7 +185,12 @@ async function doExportSubmit() {
 
 async function loadRoles() {
   const { data } = await listRoles({ page: 1, page_size: 100 })
-  roleOptions.value = data.data.list.map((r) => ({ label: r.name, value: r.id }))
+  // 超管角色（id=1）只能由超管本人分配，其他用户置灰不可选（与后端校验一致）
+  roleOptions.value = data.data.list.map((r) => ({
+    label: r.name,
+    value: r.id,
+    disabled: r.id === 1 && !userStore.isSuper,
+  }))
 }
 
 function openCreate() {

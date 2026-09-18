@@ -17,6 +17,8 @@ export const useUserStore = defineStore('user', {
       // 超管角色成员的 permissions 由后端返回全量，无需前端通配码
       return (code: string) => state.permissions.some((p) => p.code === code)
     },
+    // 超管角色（id=1）成员：唯一能分配超管角色的人
+    isSuper: (s) => !!s.user?.role_ids?.includes(1),
   },
   actions: {
     async login(username: string, password: string, captchaId: string, captchaCode: string) {

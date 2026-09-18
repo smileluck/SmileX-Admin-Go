@@ -473,9 +473,9 @@ func (s *HTTPServer) createUser(c *gin.Context) {
 		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
-	vo, err := s.user.Create(c.Request.Context(), req)
+	vo, err := s.user.Create(user.WithOperator(c.Request.Context(), middleware.Subject(c).UserID), req)
 	if err != nil {
-		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
+		s.userErr(c, err)
 		return
 	}
 	response.OK(c, vo)
@@ -783,7 +783,8 @@ func (s *HTTPServer) sessionErr(c *gin.Context, err error) {
 
 // userErr 用户操作错误映射：超管保护类返回 403，其余返回 400
 func (s *HTTPServer) userErr(c *gin.Context, err error) {
-	if errors.Is(err, user.ErrSuperAdminProtected) || errors.Is(err, user.ErrDeleteSuperAdmin) {
+	if errors.Is(err, user.ErrSuperAdminProtected) || errors.Is(err, user.ErrDeleteSuperAdmin) ||
+		errors.Is(err, user.ErrAssignSuperRole) {
 		response.FailI18n(c, http.StatusForbidden, response.CodeForbidden, err)
 		return
 	}

@@ -152,3 +152,14 @@ func (r *repo) SetRoles(ctx context.Context, userID uint, roleIDs []uint) error 
 		return r.replaceRoles(tx, userID, roleIDs)
 	})
 }
+
+func (r *repo) HasRole(ctx context.Context, userID, roleID uint) (bool, error) {
+	var cnt int64
+	if err := r.data.DB.WithContext(ctx).
+		Model(&model.UserRolePO{}).
+		Where("user_id = ? AND role_id = ?", userID, roleID).
+		Count(&cnt).Error; err != nil {
+		return false, err
+	}
+	return cnt > 0, nil
+}

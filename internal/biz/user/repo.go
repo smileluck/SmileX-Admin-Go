@@ -33,4 +33,6 @@ type Repo interface {
 	FindByUsername(ctx context.Context, username string) (*User, error)
 	List(ctx context.Context, q Query, page, pageSize int) ([]*User, int64, error)
 	SetRoles(ctx context.Context, userID uint, roleIDs []uint) error
+	// HasRole 用户是否挂有指定角色（超管角色分配保护用）
+	HasRole(ctx context.Context, userID, roleID uint) (bool, error)
 }

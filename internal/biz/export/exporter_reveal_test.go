@@ -27,6 +27,7 @@ func (r *fakeUserRepo) FindByIDWithPassword(context.Context, uint) (*bizuser.Use
 func (r *fakeUserRepo) FindByUsername(context.Context, string) (*bizuser.User, error) {
 	return nil, bizuser.ErrUserNotFound
 }
+func (r *fakeUserRepo) HasRole(context.Context, uint, uint) (bool, error) { return false, nil }
 func (r *fakeUserRepo) List(_ context.Context, _ bizuser.Query, _ int, _ int) ([]*bizuser.User, int64, error) {
 	out := make([]*bizuser.User, 0, len(r.users))
 	for _, u := range r.users {

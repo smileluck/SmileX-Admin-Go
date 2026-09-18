@@ -75,6 +75,7 @@ type ProfileUserVO struct {
 	Nickname  string   `json:"nickname"`
 	Email     string   `json:"email"`
 	Status    int      `json:"status"`
+	RoleIDs   []uint   `json:"role_ids"` // 前端超管判定（如分配超管角色入口显隐）用
 	RoleNames []string `json:"role_names"`
 	CreatedAt string   `json:"created_at"`
 }
@@ -96,7 +97,10 @@ func (s *Service) Profile(ctx context.Context, userID uint) (*ProfileVO, error) 
 	u := p.User
 	vo := &ProfileUserVO{
 		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Email: u.Email,
-		Status: int(u.Status), RoleNames: p.RoleNames, CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
+		Status:    int(u.Status), RoleIDs: u.RoleIDs, RoleNames: p.RoleNames, CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+	if vo.RoleIDs == nil {
+		vo.RoleIDs = []uint{}
 	}
 	if vo.RoleNames == nil {
 		vo.RoleNames = []string{}
