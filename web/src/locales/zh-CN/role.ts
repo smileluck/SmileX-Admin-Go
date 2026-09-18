@@ -8,7 +8,7 @@ export default {
   editRole: '编辑角色',
   assignPermissions: '分配权限',
   selectAllPerms: '全选',
-  clearAllPerms: '全部取消',
+  clearAllPerms: '取消全选',
   builtin: '内置',
   superRoleProtected: '超级管理员角色为系统内置，禁止修改和操作',
   deleteConfirmTitle: '删除确认',

@@ -38,7 +38,7 @@
     </div>
     <n-tree
       :data="permTree"
-      checkable :cascade="false" :checked-keys="checkedKeys" :default-expanded-keys="expandedKeys"
+      checkable cascade :checked-keys="checkedKeys" :default-expanded-keys="expandedKeys"
       key-field="key" label-field="label" children-field="children"
       @update:checked-keys="(keys: any) => (checkedKeys = keys)"
     />
@@ -205,8 +205,6 @@ function buildTree(items: Permission[], parentID = 0): any[] {
       const children = buildTree(items, p.id)
       const typeTag = p.type === 'dir' ? t('role.dirTag') : p.type === 'button' ? t('role.buttonTag') : ''
       const n: any = { key: p.id, label: `${p.name}（${p.code}）${typeTag}` }
-      // 目录仅作分组，勾选无实际权限意义，不渲染 checkbox（避免“看似全选实则无权限”）
-      if (p.type === 'dir') n.checkable = false
       if (children.length) n.children = children
       return n
     })
