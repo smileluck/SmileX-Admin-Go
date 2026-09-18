@@ -635,7 +635,8 @@ func (s *HTTPServer) setRolePermissions(c *gin.Context) {
 		response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
 		return
 	}
-	if err := s.role.SetPermissions(c.Request.Context(), id, req); err != nil {
+	sub := middleware.Subject(c)
+	if err := s.role.SetPermissions(c.Request.Context(), sub.UserID, id, req); err != nil {
 		s.roleErr(c, err)
 		return
 	}
@@ -789,9 +790,9 @@ func (s *HTTPServer) userErr(c *gin.Context, err error) {
 	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 }
 
-// roleErr 角色操作错误映射：超管角色保护类返回 403，其余返回 400
+// roleErr 角色操作错误映射：超管角色保护/越权分配返回 403，其余返回 400
 func (s *HTTPServer) roleErr(c *gin.Context, err error) {
-	if errors.Is(err, role.ErrSuperRoleLocked) {
+	if errors.Is(err, role.ErrSuperRoleLocked) || errors.Is(err, role.ErrPermExceedsOperator) {
 		response.FailI18n(c, http.StatusForbidden, response.CodeForbidden, err)
 		return
 	}

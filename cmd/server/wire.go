@@ -96,6 +96,7 @@ var dataRepoSet = wire.NewSet(
 	wire.Bind(new(auth.UserStore), new(bizuser.Repo)),
 	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
 	wire.Bind(new(auth.PermissionReader), new(bizperm.Repo)),
+	wire.Bind(new(bizrole.PermissionReader), new(bizperm.Repo)),
 	wire.Bind(new(bizlog.Repo), new(*datalog.Repo)),
 	wire.Bind(new(bizblacklist.Repo), new(*datablacklist.Repo)),
 	wire.Bind(new(bizblacklist.LoginProtector), new(*datablacklist.Repo)),

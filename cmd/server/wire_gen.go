@@ -79,7 +79,7 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	service := auth2.NewService(authUsecase, usecase)
 	userUsecase := user2.NewUsecase(repo, sessionUsecase)
 	userService := user3.NewService(userUsecase)
-	roleUsecase := role2.NewUsecase(roleRepo)
+	roleUsecase := role2.NewUsecase(roleRepo, permissionRepo)
 	roleService := role3.NewService(roleUsecase)
 	permissionUsecase := permission2.NewUsecase(permissionRepo)
 	permissionService := permission3.NewService(permissionUsecase)

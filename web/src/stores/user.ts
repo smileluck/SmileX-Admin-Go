@@ -14,8 +14,8 @@ export const useUserStore = defineStore('user', {
   getters: {
     codes: (s) => s.permissions.map((p) => p.code),
     has(state) {
-      // 'all' 为超管通配权限点，与后端 RBAC 的 */* 语义一致
-      return (code: string) => state.permissions.some((p) => p.code === 'all' || p.code === code)
+      // 超管角色成员的 permissions 由后端返回全量，无需前端通配码
+      return (code: string) => state.permissions.some((p) => p.code === code)
     },
   },
   actions: {

@@ -43,6 +43,7 @@ func (s *Service) List(ctx context.Context, q bizrole.Query, page, pageSize int)
 	return s.uc.List(ctx, q, page, pageSize)
 }
 
-func (s *Service) SetPermissions(ctx context.Context, id uint, req SetPermissionsRequest) error {
-	return s.uc.SetPermissions(ctx, id, req.PermissionIDs)
+// SetPermissions operatorID 为当前操作者：只能分配自己拥有的权限（超管除外，见 biz 层）
+func (s *Service) SetPermissions(ctx context.Context, operatorID, id uint, req SetPermissionsRequest) error {
+	return s.uc.SetPermissions(ctx, operatorID, id, req.PermissionIDs)
 }

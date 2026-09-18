@@ -47,7 +47,7 @@ func TestMigrateAndSeed_FreshAndIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 首次播种：超管/角色/通配权限/固定 ID 菜单 + ensure 补齐的清单菜单与按钮权限
+	// 首次播种：超管/角色/固定 ID 菜单 + ensure 补齐的清单菜单与按钮权限（无 all 通配权限点）
 	var admin model.UserPO
 	if err := d.DB.Where("id = ? AND username = ?", 1, "admin").First(&admin).Error; err != nil {
 		t.Fatalf("admin not seeded: %v", err)
@@ -55,10 +55,13 @@ func TestMigrateAndSeed_FreshAndIdempotent(t *testing.T) {
 	if n := countBy(t, d.DB, &model.RolePO{}, "id = ?", 1); n != 1 {
 		t.Fatalf("super role not seeded: %d", n)
 	}
-	for _, code := range []string{"all", "menu:dashboard", "menu:openapi", "tenant:status", "user:viewSensitive"} {
+	for _, code := range []string{"menu:dashboard", "menu:openapi", "tenant:status", "user:viewSensitive"} {
 		if n := countBy(t, d.DB, &model.PermissionPO{}, "code = ?", code); n != 1 {
 			t.Fatalf("permission %s: want 1, got %d", code, n)
 		}
+	}
+	if n := countBy(t, d.DB, &model.PermissionPO{}, "code = ?", "all"); n != 0 {
+		t.Fatalf("wildcard permission 'all' should not exist, got %d", n)
 	}
 
 	// 幂等：再跑一遍，权限/绑定/用户行数均不变

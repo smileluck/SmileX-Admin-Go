@@ -90,9 +90,11 @@ const permTree = ref<any[]>([])
 const expandedKeys = ref<number[]>([])
 const checkedKeys = ref<number[]>([])
 const allPermIds = ref<number[]>([])
+// 当前操作者可分配的权限 ID 集合：超管为全量，普通用户只能分配自己拥有的权限（与后端校验一致）
+const ownPermIds = ref<Set<number>>(new Set())
 
 function selectAllPerms() {
-  checkedKeys.value = [...allPermIds.value]
+  checkedKeys.value = [...ownPermIds.value]
 }
 
 function clearAllPerms() {
@@ -187,8 +189,11 @@ async function openPerms(row: Role) {
       getRole(row.id),
     ])
     const all = allResp.data.list
-    permTree.value = buildTree(all)
     allPermIds.value = all.map((p) => p.id)
+    // 操作者可分配范围：自己拥有的权限（超管的 permissions 为全量，等同不受限）
+    const ownCodes = new Set(userStore.permissions.map((p) => p.code))
+    ownPermIds.value = new Set(all.filter((p) => ownCodes.has(p.code)).map((p) => p.id))
+    permTree.value = buildTree(all, ownPermIds.value)
     expandedKeys.value = all.filter((p) => p.parent_id === 0).map((p) => p.id)
     checkedKeys.value = roleResp.data.permission_ids ?? []
     showPerm.value = true
@@ -197,21 +202,25 @@ async function openPerms(row: Role) {
   }
 }
 
-function buildTree(items: Permission[], parentID = 0): any[] {
+// ownPermIds：操作者可分配的权限集合，之外的节点置灰不可勾选（只能分配自己拥有的权限）
+function buildTree(items: Permission[], ownPermIds: Set<number>, parentID = 0): any[] {
   return items
     .filter((p) => p.parent_id === parentID)
     .sort((a, b) => a.sort - b.sort)
     .map((p) => {
-      const children = buildTree(items, p.id)
+      const children = buildTree(items, ownPermIds, p.id)
       const typeTag = p.type === 'dir' ? t('role.dirTag') : p.type === 'button' ? t('role.buttonTag') : ''
       const n: any = { key: p.id, label: `${p.name}（${p.code}）${typeTag}` }
+      if (!ownPermIds.has(p.id)) n.disabled = true
       if (children.length) n.children = children
       return n
     })
 }
 
-async function savePerms() {  try {
-    await setRolePermissions(editId.value, checkedKeys.value as number[])
+async function savePerms() {
+  try {
+    // 仅提交操作者可分配的权限（disabled 节点可能因级联被带入 checkedKeys）
+    await setRolePermissions(editId.value, checkedKeys.value.filter((id) => ownPermIds.value.has(id)))
     message.success(t('role.permsUpdated'))
     showPerm.value = false
   } catch (e: any) {

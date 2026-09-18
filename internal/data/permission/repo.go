@@ -102,8 +102,20 @@ func (r *repo) List(ctx context.Context, q bizperm.Query, page, pageSize int) ([
 	return out, total, nil
 }
 
-// FindByUserID users -> user_roles -> role_permissions -> permissions 联查
+// FindByUserID users -> user_roles -> role_permissions -> permissions 联查。
+// 超管角色（role_id=1）成员直接返回全部权限：超管不再依赖 any 通配权限点，
+// 自定义新增的菜单/权限点也无需逐一绑定即对超管生效
 func (r *repo) FindByUserID(ctx context.Context, userID uint) ([]*bizperm.Permission, error) {
+	var superCnt int64
+	if err := r.data.DB.WithContext(ctx).
+		Model(&model.UserRolePO{}).
+		Where("user_id = ? AND role_id = ?", userID, superAdminRoleID).
+		Count(&superCnt).Error; err != nil {
+		return nil, err
+	}
+	if superCnt > 0 {
+		return r.findAll(ctx)
+	}
 	var pos []model.PermissionPO
 	err := r.data.DB.WithContext(ctx).
 		Joins("JOIN role_permissions rp ON rp.permission_id = permissions.id").
@@ -111,6 +123,21 @@ func (r *repo) FindByUserID(ctx context.Context, userID uint) ([]*bizperm.Permis
 		Where("ur.user_id = ?", userID).
 		Find(&pos).Error
 	if err != nil {
+		return nil, err
+	}
+	out := make([]*bizperm.Permission, 0, len(pos))
+	for i := range pos {
+		out = append(out, model.PermissionFromPO(&pos[i]))
+	}
+	return out, nil
+}
+
+// superAdminRoleID 与 biz/role 的超管角色固定 ID 保持一致
+const superAdminRoleID = 1
+
+func (r *repo) findAll(ctx context.Context) ([]*bizperm.Permission, error) {
+	var pos []model.PermissionPO
+	if err := r.data.DB.WithContext(ctx).Order("id").Find(&pos).Error; err != nil {
 		return nil, err
 	}
 	out := make([]*bizperm.Permission, 0, len(pos))

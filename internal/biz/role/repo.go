@@ -14,6 +14,9 @@ var ErrRoleHasUsers = errors.New("该角色下存在用户，请先移除用户�
 // ErrSuperRoleLocked 超管角色为系统内置，禁止修改/删除
 var ErrSuperRoleLocked = errors.New("超级管理员角色为系统内置，禁止修改和操作")
 
+// ErrPermExceedsOperator 提交的权限超出操作者本人拥有范围（只能分配自己拥有的权限）
+var ErrPermExceedsOperator = errors.New("不能分配自己没有的权限")
+
 // Query 角色列表查询条件
 type Query struct {
 	Name string

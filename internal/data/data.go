@@ -144,9 +144,8 @@ func (d *Data) migrateAndSeed() error {
 		return err
 	}
 	if userCount == 0 {
-		// 超管角色 + 通配权限（button 绑定 */*，参与 RBAC 匹配）
+		// 超管角色：成员在权限联查中直接命中全量权限（见 data/permission FindByUserID），无需通配权限点
 		rolePO := model.RolePO{ID: 1, Name: "超级管理员", Remark: "拥有全部权限"}
-		permPO := model.PermissionPO{ID: 1, Name: "全部权限", Code: "all", Type: string(permission.TypeButton), Method: "*", Path: "*"}
 
 		// 菜单种子数据（接口按钮权限点由 ensureSystemButtonPerms 统一补齐）
 		perms := []model.PermissionPO{
@@ -164,9 +163,6 @@ func (d *Data) migrateAndSeed() error {
 		adminPO := model.UserPO{ID: 1, Username: "admin", Password: string(adminPwd), Nickname: "超级管理员", Email: "admin@smilex.local", Status: int(user.StatusEnabled)}
 
 		if err := d.DB.Transaction(func(tx *gorm.DB) error {
-			if err := tx.Create(&permPO).Error; err != nil {
-				return err
-			}
 			if err := tx.Create(&rolePO).Error; err != nil {
 				return err
 			}
@@ -174,9 +170,6 @@ func (d *Data) migrateAndSeed() error {
 				return err
 			}
 			if err := tx.Create(&model.UserRolePO{UserID: 1, RoleID: 1}).Error; err != nil {
-				return err
-			}
-			if err := tx.Create(&model.RolePermissionPO{RoleID: 1, PermissionID: 1}).Error; err != nil {
 				return err
 			}
 			for i := range perms {
@@ -483,10 +476,29 @@ func (d *Data) ensureSystemButtonPerms() error {
 //  2. 移除已并入「菜单管理」页的旧「权限管理」菜单入口（含角色关联）；
 //  3. 「菜单与权限」更名「菜单管理」；
 //  4. 目录类型显式化：含菜单/目录子级的 menu 转为 dir（仅按钮子级的不算，避免页面菜单被误判为分组）；
-//  5. 删除已废弃的 roles.code 列（AutoMigrate 不会删列，删列时唯一索引随之删除）
+//  5. 删除已废弃的 roles.code 列（AutoMigrate 不会删列，删列时唯一索引随之删除）；
+//  6. 删除 code=all 的通配权限点（含角色关联）：超管改由角色成员身份直接命中全量权限，
+//     该权限点会让任何能分配权限的人一步自提权为超管，已废弃
 func (d *Data) migrateLegacy() error {
 	if err := d.DB.Model(&model.PermissionPO{}).Where("type = ?", "api").
 		Update("type", "button").Error; err != nil {
+		return err
+	}
+	// 删除通配权限点 all 及其角色关联（超管能力不受影响，见函数注释）
+	var allPerm model.PermissionPO
+	err := d.DB.Unscoped().Where("code = ?", "all").First(&allPerm).Error
+	switch {
+	case err == nil:
+		if err := d.DB.Unscoped().Delete(&model.RolePermissionPO{}, "permission_id = ?", allPerm.ID).Error; err != nil {
+			return err
+		}
+		if err := d.DB.Unscoped().Delete(&allPerm).Error; err != nil {
+			return err
+		}
+		logger.Info("removed legacy wildcard permission 'all'")
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		// 不存在，零副作用
+	default:
 		return err
 	}
 	// MySQL 禁止在 UPDATE 子查询中直接引用目标表（Error 1093），包一层派生表绕过；PG/SQLite 同样兼容
@@ -494,7 +506,7 @@ func (d *Data) migrateLegacy() error {
 		return err
 	}
 	var legacyMenu model.PermissionPO
-	err := d.DB.Where("code = ?", "menu:permission").First(&legacyMenu).Error
+	err = d.DB.Where("code = ?", "menu:permission").First(&legacyMenu).Error
 	switch {
 	case err == nil:
 		if err := d.DB.Delete(&model.RolePermissionPO{}, "permission_id = ?", legacyMenu.ID).Error; err != nil {
