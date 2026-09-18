@@ -61,13 +61,20 @@ type SecretVO struct {
 	AppSecret string `json:"app_secret"`
 }
 
-// ToVO 商户实体转视图（联系方式脱敏；开放 API ping 与管理端共用）
-func ToVO(m *bizmerchant.Merchant) *VO {
+// ToVO 商户实体转视图（联系方式脱敏；开放 API ping 与管理端共用，恒脱敏）
+func ToVO(m *bizmerchant.Merchant) *VO { return toVO(m, false) }
+
+// toVO 商户实体转视图：reveal 为 true 时联系方式输出明文（须由 handler 层校验权限后传入）
+func toVO(m *bizmerchant.Merchant, reveal bool) *VO {
+	contactName, contactPhone, contactEmail := security.MaskName(m.ContactName), security.MaskPhone(m.ContactPhone), security.MaskEmail(m.ContactEmail)
+	if reveal {
+		contactName, contactPhone, contactEmail = m.ContactName, m.ContactPhone, m.ContactEmail
+	}
 	return &VO{
 		ID: m.ID, Name: m.Name, Code: m.Code, AppKey: m.AppKey,
-		ContactName:  security.MaskName(m.ContactName),
-		ContactPhone: security.MaskPhone(m.ContactPhone),
-		ContactEmail: security.MaskEmail(m.ContactEmail),
+		ContactName:  contactName,
+		ContactPhone: contactPhone,
+		ContactEmail: contactEmail,
 		Status:       int(m.Status), Remark: m.Remark,
 		CreatedAt: formatTime(m.CreatedAt), UpdatedAt: formatTime(m.UpdatedAt),
 	}
@@ -101,22 +108,22 @@ func (s *Service) Update(ctx context.Context, id uint, req UpdateRequest) error 
 
 func (s *Service) Delete(ctx context.Context, id uint) error { return s.uc.Delete(ctx, id) }
 
-func (s *Service) Get(ctx context.Context, id uint) (*VO, error) {
+func (s *Service) Get(ctx context.Context, id uint, reveal bool) (*VO, error) {
 	m, err := s.uc.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return ToVO(m), nil
+	return toVO(m, reveal), nil
 }
 
-func (s *Service) List(ctx context.Context, q bizmerchant.Query, page, pageSize int) ([]*VO, interface{}, error) {
+func (s *Service) List(ctx context.Context, q bizmerchant.Query, page, pageSize int, reveal bool) ([]*VO, interface{}, error) {
 	merchants, pg, err := s.uc.List(ctx, q, page, pageSize)
 	if err != nil {
 		return nil, nil, err
 	}
 	out := make([]*VO, 0, len(merchants))
 	for _, m := range merchants {
-		out = append(out, ToVO(m))
+		out = append(out, toVO(m, reveal))
 	}
 	return out, pg, nil
 }
@@ -138,17 +145,21 @@ func (s *Service) SetStatus(ctx context.Context, id uint, req SetStatusRequest) 
 	return s.uc.SetStatus(ctx, id, bizmerchant.Status(req.Status))
 }
 
-// ListAPILogs API 调用日志分页查询（IP 脱敏输出）
-func (s *Service) ListAPILogs(ctx context.Context, q bizmerchant.APILogQuery, page, pageSize int) ([]*APILogVO, pagination.Page, error) {
+// ListAPILogs API 调用日志分页查询（IP 脱敏输出；reveal 为 true 时输出明文，须由 handler 层校验权限后传入）
+func (s *Service) ListAPILogs(ctx context.Context, q bizmerchant.APILogQuery, page, pageSize int, reveal bool) ([]*APILogVO, pagination.Page, error) {
 	logs, pg, err := s.uc.ListAPILogs(ctx, q, page, pageSize)
 	if err != nil {
 		return nil, pg, err
 	}
 	out := make([]*APILogVO, 0, len(logs))
 	for _, l := range logs {
+		ip := security.MaskIP(l.IP)
+		if reveal {
+			ip = l.IP
+		}
 		out = append(out, &APILogVO{
 			ID: l.ID, MerchantID: l.MerchantID, AppKey: l.AppKey, Method: l.Method,
-			Path: l.Path, IP: security.MaskIP(l.IP), StatusCode: l.StatusCode,
+			Path: l.Path, IP: ip, StatusCode: l.StatusCode,
 			LatencyMs: l.LatencyMs, Msg: l.Msg, CreatedAt: formatTime(l.CreatedAt),
 		})
 	}

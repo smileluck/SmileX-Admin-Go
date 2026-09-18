@@ -107,7 +107,7 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	loginLogExporter := export2.NewLoginLogExporter(logRepo, bootstrap)
 	opLogExporter := export2.NewOpLogExporter(logRepo, bootstrap)
 	registry := export2.NewRegistry(userExporter, loginLogExporter, opLogExporter)
-	worker, cleanup4, err := export.NewWorker(dataData, bootstrap, registry, storageManager, exportRepo)
+	worker, cleanup4, err := export.NewWorker(dataData, bootstrap, registry, storageManager, exportRepo, authUsecase)
 	if err != nil {
 		cleanup3()
 		cleanup2()

@@ -459,7 +459,7 @@ func (s *HTTPServer) listUsers(c *gin.Context) {
 			q.Status = &st
 		}
 	}
-	users, pg, err := s.user.List(c.Request.Context(), q, page, size)
+	users, pg, err := s.user.List(c.Request.Context(), q, page, size, s.revealParam(c, "user:viewSensitive"))
 	if err != nil {
 		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
@@ -486,7 +486,7 @@ func (s *HTTPServer) getUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	vo, err := s.user.Get(c.Request.Context(), id)
+	vo, err := s.user.Get(c.Request.Context(), id, s.revealParam(c, "user:viewSensitive"))
 	if err != nil {
 		response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
 		return
@@ -1019,7 +1019,7 @@ func (s *HTTPServer) listMerchants(c *gin.Context) {
 			q.Status = &st
 		}
 	}
-	list, pg, err := s.merchant.List(c.Request.Context(), q, page, size)
+	list, pg, err := s.merchant.List(c.Request.Context(), q, page, size, s.revealParam(c, "merchant:viewSensitive"))
 	if err != nil {
 		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
@@ -1046,7 +1046,7 @@ func (s *HTTPServer) getMerchant(c *gin.Context) {
 	if !ok {
 		return
 	}
-	vo, err := s.merchant.Get(c.Request.Context(), id)
+	vo, err := s.merchant.Get(c.Request.Context(), id, s.revealParam(c, "merchant:viewSensitive"))
 	if err != nil {
 		s.merchantErr(c, err)
 		return
@@ -1127,7 +1127,7 @@ func (s *HTTPServer) listMerchantAPILogs(c *gin.Context) {
 	if t, ok := parseUnixParam(c.Query("end")); ok {
 		q.End = t
 	}
-	logs, pg, err := s.merchant.ListAPILogs(c.Request.Context(), q, page, size)
+	logs, pg, err := s.merchant.ListAPILogs(c.Request.Context(), q, page, size, s.revealParam(c, "merchantLog:viewSensitive"))
 	if err != nil {
 		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
 		return
@@ -1428,6 +1428,13 @@ func (s *HTTPServer) submitExport(c *gin.Context, biz string) {
 	params := c.Request.URL.Query()
 	params.Del("page")
 	params.Del("page_size")
+	// 敏感明文导出 fail-closed：无对应权限码时剔除 reveal，导出仍按 export.mask 脱敏
+	if params.Get("reveal") == "1" {
+		if permCode, ok := bizexport.SensitivePermByBiz[biz]; !ok ||
+			!s.auth.HasPermissionCode(c.Request.Context(), sub.UserID, permCode) {
+			params.Del("reveal")
+		}
+	}
 	vo, err := s.export.Submit(c.Request.Context(), biz, params, sub.UserID, sub.Username)
 	if err != nil {
 		switch {
@@ -1543,6 +1550,16 @@ func parseUnixParam(s string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return time.Unix(n, 0), true
+}
+
+// revealParam 敏感数据明文查看开关：?reveal=1 且当前用户持有对应权限码时为 true；
+// 无权限时静默忽略（仍脱敏返回，不暴露功能存在性）
+func (s *HTTPServer) revealParam(c *gin.Context, permCode string) bool {
+	if c.Query("reveal") != "1" {
+		return false
+	}
+	sub := middleware.Subject(c)
+	return s.auth.HasPermissionCode(c.Request.Context(), sub.UserID, permCode)
 }
 
 func pageParams(c *gin.Context) (int, int) {

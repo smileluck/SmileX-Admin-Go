@@ -5,6 +5,7 @@ import (
 	"context"
 
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
+	"github.com/smilex/smilex-admin-gin/pkg/security"
 )
 
 type Service struct {
@@ -51,9 +52,15 @@ type ListVO struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func toVO(u *bizuser.User) *ListVO {
+// toVO 用户实体转视图：手机号/邮箱默认脱敏，reveal 为 true 时输出明文
+// （须由 handler 层按 user:viewSensitive 校验后传入）
+func toVO(u *bizuser.User, reveal bool) *ListVO {
+	phone, email := security.MaskPhone(u.Phone), security.MaskEmail(u.Email)
+	if reveal {
+		phone, email = u.Phone, u.Email
+	}
 	return &ListVO{
-		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Phone: u.Phone, Email: u.Email,
+		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Phone: phone, Email: email,
 		Status: int(u.Status), RoleIDs: u.RoleIDs, CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 }
@@ -63,7 +70,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*ListVO, error
 	if err != nil {
 		return nil, err
 	}
-	return toVO(u), nil
+	return toVO(u, false), nil
 }
 
 func (s *Service) Update(ctx context.Context, id uint, req UpdateRequest) error {
@@ -77,22 +84,22 @@ func (s *Service) Update(ctx context.Context, id uint, req UpdateRequest) error 
 
 func (s *Service) Delete(ctx context.Context, id uint) error { return s.uc.Delete(ctx, id) }
 
-func (s *Service) Get(ctx context.Context, id uint) (*ListVO, error) {
+func (s *Service) Get(ctx context.Context, id uint, reveal bool) (*ListVO, error) {
 	u, err := s.uc.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return toVO(u), nil
+	return toVO(u, reveal), nil
 }
 
-func (s *Service) List(ctx context.Context, q bizuser.Query, page, pageSize int) ([]*ListVO, interface{}, error) {
+func (s *Service) List(ctx context.Context, q bizuser.Query, page, pageSize int, reveal bool) ([]*ListVO, interface{}, error) {
 	users, pg, err := s.uc.List(ctx, q, page, pageSize)
 	if err != nil {
 		return nil, nil, err
 	}
 	out := make([]*ListVO, 0, len(users))
 	for _, u := range users {
-		out = append(out, toVO(u))
+		out = append(out, toVO(u, reveal))
 	}
 	return out, pg, nil
 }

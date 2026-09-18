@@ -8,21 +8,34 @@
   </SearchCard>
 
   <n-card>
+    <template #header>
+      <div class="page-actions">
+        <!-- 显示敏感数据开关：开启后列表携带 reveal=1 重查 IP 明文（须持 merchantLog:viewSensitive，后端剔除参数仍脱敏） -->
+        <div v-if="canViewSensitive" class="reveal-toggle">
+          <n-icon :component="reveal ? EyeOutline : EyeOffOutline" />
+          <span>{{ t('common.sensitiveData') }}</span>
+          <n-switch v-model:value="reveal" size="small" @update:value="load" />
+        </div>
+      </div>
+    </template>
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
 </template>
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NCard, NDataTable, NDatePicker, NEllipsis, NInput, NInputNumber, NTag, useMessage, type DataTableColumns } from 'naive-ui'
+import { NCard, NDataTable, NDatePicker, NEllipsis, NIcon, NInput, NInputNumber, NSwitch, NTag, useMessage, type DataTableColumns } from 'naive-ui'
+import { EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { useI18n } from 'vue-i18n'
 import SearchCard from '../../components/SearchCard.vue'
 import { listMerchantAPILogs } from '../../api'
 import { usePagination } from '../../utils/pagination'
+import { useUserStore } from '../../stores/user'
 import type { MerchantAPILog } from '../../api/types'
 
 const { t } = useI18n()
 const message = useMessage()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const rows = ref<MerchantAPILog[]>([])
@@ -31,6 +44,10 @@ const query = reactive({ app_key: '', path: '', status_code: null as number | nu
 const range = ref<[number, number] | null>(null)
 
 const { pagination, setTotal } = usePagination(query, load)
+
+// reveal=1 请求 IP 明文（须持 merchantLog:viewSensitive；无权限时后端剔除参数仍脱敏）
+const canViewSensitive = computed(() => userStore.has('merchantLog:viewSensitive'))
+const reveal = ref(false)
 
 async function load() {
   loading.value = true
@@ -43,6 +60,7 @@ async function load() {
       status_code: query.status_code ?? undefined,
       start: range.value ? Math.floor(range.value[0] / 1000) : undefined,
       end: range.value ? Math.floor(range.value[1] / 1000) : undefined,
+      reveal: reveal.value && canViewSensitive.value ? 1 : undefined,
     })
     rows.value = data.data.list
     pagination.page = query.page
@@ -87,3 +105,22 @@ const columns = computed<DataTableColumns<MerchantAPILog>>(() => [
 
 onMounted(load)
 </script>
+
+<style scoped>
+/* 卡头只放操作按钮（页面标题由顶栏展示） */
+.page-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+/* 显示敏感数据开关 */
+.reveal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--sx-muted);
+}
+</style>

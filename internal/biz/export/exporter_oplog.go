@@ -50,6 +50,7 @@ func (e *OpLogExporter) Fetch(ctx context.Context, params url.Values, offset, li
 	if err != nil {
 		return nil, 0, err
 	}
+	reveal := revealParam(params)
 	cols := e.Columns()
 	rows := make([][]string, 0, len(logs))
 	for _, o := range logs {
@@ -66,7 +67,9 @@ func (e *OpLogExporter) Fetch(ctx context.Context, params url.Values, offset, li
 			strconv.Itoa(o.LatencyMs),
 			o.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
-		maskRow(cols, e.mask, row)
+		if !reveal {
+			maskRow(cols, e.mask, row)
+		}
 		rows = append(rows, row)
 	}
 	return rows, total, nil

@@ -10,6 +10,12 @@
   <n-card>
     <template #header>
       <div class="page-actions">
+        <!-- 显示敏感数据开关：开启后列表携带 reveal=1 重查联系人明文（须持 merchant:viewSensitive，后端剔除参数仍脱敏） -->
+        <div v-if="canViewSensitive" class="reveal-toggle">
+          <n-icon :component="reveal ? EyeOutline : EyeOffOutline" />
+          <span>{{ t('common.sensitiveData') }}</span>
+          <n-switch v-model:value="reveal" size="small" @update:value="load" />
+        </div>
         <n-button type="primary" ghost @click="openCreate" v-permission="['merchant:create']">{{ t('merchant.newMerchant') }}</n-button>
       </div>
     </template>
@@ -66,7 +72,8 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NAlert, NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { NAlert, NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NIcon, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { useI18n } from 'vue-i18n'
@@ -112,6 +119,10 @@ const rules = computed<FormRules>(() => ({
 
 const { pagination, setTotal } = usePagination(query, load)
 
+// reveal=1 请求联系人明文（须持 merchant:viewSensitive；无权限时后端剔除参数仍脱敏）
+const canViewSensitive = computed(() => userStore.has('merchant:viewSensitive'))
+const reveal = ref(false)
+
 async function load() {
   loading.value = true
   try {
@@ -122,6 +133,7 @@ async function load() {
       code: query.code || undefined,
       app_key: query.app_key || undefined,
       status: query.status ?? undefined,
+      reveal: reveal.value && canViewSensitive.value ? 1 : undefined,
     })
     rows.value = data.data.list
     pagination.page = query.page
@@ -147,11 +159,18 @@ function openCreate() {
   showModal.value = true
 }
 
-// 联系人字段后端已脱敏，编辑态留空表示不修改（不可将脱敏值原样回传）
+// 联系人字段默认脱敏，编辑态留空表示不修改（不可将脱敏值原样回传）；明文态（reveal 开 + 权限）才回填
 function openEdit(row: Merchant) {
   editing.value = true
   editId.value = row.id
-  Object.assign(form, { name: row.name, code: row.code, contact_name: '', contact_phone: '', contact_email: '', remark: row.remark })
+  const plain = reveal.value && canViewSensitive.value
+  Object.assign(form, {
+    name: row.name, code: row.code,
+    contact_name: plain ? row.contact_name : '',
+    contact_phone: plain ? row.contact_phone : '',
+    contact_email: plain ? row.contact_email : '',
+    remark: row.remark,
+  })
   showModal.value = true
 }
 
@@ -307,7 +326,16 @@ onMounted(load)
   width: 100%;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 10px;
+}
+/* 显示敏感数据开关 */
+.reveal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--sx-muted);
 }
 .secret-row {
   display: flex;

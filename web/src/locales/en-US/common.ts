@@ -42,4 +42,7 @@ export default {
   confirmDelete: 'Delete this item? This cannot be undone.',
   total: '{n} items',
   keyword: 'Keyword',
+  sensitiveData: 'Show sensitive data',
+  exportSensitiveConfirmTitle: 'Export plaintext',
+  exportSensitiveConfirmContent: 'This export will contain unmasked sensitive plaintext (e.g. phone, IP) and will be audited. Continue?',
 }

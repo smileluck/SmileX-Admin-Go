@@ -54,3 +54,8 @@ func maskRow(cols []Column, mask map[string]string, row []string) {
 		}
 	}
 }
+
+// revealParam 导出请求携带 reveal=1 时输出明文。
+// 准入在两层 fail-closed 把关：提交侧 handler 剔除无权限的 reveal，
+// worker 执行前按任务快照二次复核（SensitivePermByBiz）
+func revealParam(params url.Values) bool { return params.Get("reveal") == "1" }

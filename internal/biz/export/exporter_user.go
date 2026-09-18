@@ -45,6 +45,7 @@ func (e *UserExporter) Fetch(ctx context.Context, params url.Values, offset, lim
 	if err != nil {
 		return nil, 0, err
 	}
+	reveal := revealParam(params)
 	cols := e.Columns()
 	rows := make([][]string, 0, len(users))
 	for _, u := range users {
@@ -61,7 +62,9 @@ func (e *UserExporter) Fetch(ctx context.Context, params url.Values, offset, lim
 			status,
 			u.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
-		maskRow(cols, e.mask, row)
+		if !reveal {
+			maskRow(cols, e.mask, row)
+		}
 		rows = append(rows, row)
 	}
 	return rows, total, nil

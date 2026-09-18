@@ -7,6 +7,13 @@
   <n-card>
     <template #header>
       <div class="page-actions">
+        <!-- 显示敏感数据开关：开启后列表携带 reveal=1 重查手机号/邮箱明文
+             （须持 user:viewSensitive，后端剔除参数仍脱敏），导出携带明文（须持 user:exportSensitive）；持任一权限可见 -->
+        <div v-if="canExportSensitive || canViewSensitive" class="reveal-toggle">
+          <n-icon :component="reveal ? EyeOutline : EyeOffOutline" />
+          <span>{{ t('common.sensitiveData') }}</span>
+          <n-switch v-model:value="reveal" size="small" @update:value="load" />
+        </div>
         <n-button ghost :loading="exporting" @click="doExport" v-permission="['user:export']">{{ t('user.export') }}</n-button>
         <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">{{ t('user.newUser') }}</n-button>
       </div>
@@ -56,7 +63,8 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref, type VNode } from 'vue'
-import { NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { NCard, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NSelect, NSwitch, NTag, NIcon, useMessage, useDialog, type DataTableColumns, type FormInst, type FormRules } from 'naive-ui'
+import { EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { useI18n } from 'vue-i18n'
@@ -121,7 +129,8 @@ const { pagination, setTotal } = usePagination(query, load)
 async function load() {
   loading.value = true
   try {
-    const { data } = await listUsers(query)
+    // reveal=1 请求手机号/邮箱明文（须持 user:viewSensitive；无权限时后端剔除参数仍脱敏）
+    const { data } = await listUsers({ ...query, reveal: reveal.value && canViewSensitive.value ? 1 : undefined })
     rows.value = data.data.list
     pagination.page = query.page
     pagination.pageSize = query.page_size
@@ -137,12 +146,31 @@ function resetQuery() {
   load()
 }
 
-// 异步导出：提交当前过滤条件（page/page_size 与空值由 createExport 剔除）
+// 异步导出：提交当前过滤条件（page/page_size 与空值由 createExport 剔除）；
+// 开启"显示敏感数据"时导出携带 reveal=1 跳过 export.mask 脱敏（须持 user:exportSensitive，无权限时后端剔除该参数仍脱敏）
 const exporting = ref(false)
-async function doExport() {
+const canExportSensitive = computed(() => userStore.has('user:exportSensitive'))
+const canViewSensitive = computed(() => userStore.has('user:viewSensitive'))
+const reveal = ref(false)
+function doExport() {
+  // 敏感明文导出需二次确认（提示明文范围与审计）
+  if (reveal.value && canExportSensitive.value) {
+    dialog.warning({
+      title: t('common.exportSensitiveConfirmTitle'),
+      content: t('common.exportSensitiveConfirmContent'),
+      positiveText: t('common.confirm'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: doExportSubmit,
+    })
+    return
+  }
+  doExportSubmit()
+}
+
+async function doExportSubmit() {
   exporting.value = true
   try {
-    await createExport('users', { ...query })
+    await createExport('users', { ...query, reveal: reveal.value && canExportSensitive.value ? 1 : undefined })
     message.success(t('user.exportQueued'))
   } catch (e: any) {
     if (e?.response?.status === 429) {
@@ -169,7 +197,9 @@ function openCreate() {
 function openEdit(row: UserInfo) {
   editing.value = true
   editId.value = row.id
-  Object.assign(form, { username: row.username, password: '', nickname: row.nickname, phone: row.phone, email: row.email, role_ids: row.role_ids ?? [], statusOn: row.status })
+  // 脱敏态下列表带出的是掩码值，直接回填保存会把掩码写库：仅明文态回填手机号/邮箱，否则留空=不修改（后端空值跳过）
+  const plain = reveal.value && canViewSensitive.value
+  Object.assign(form, { username: row.username, password: '', nickname: row.nickname, phone: plain ? row.phone : '', email: plain ? row.email : '', role_ids: row.role_ids ?? [], statusOn: row.status })
   showModal.value = true
 }
 
@@ -273,6 +303,15 @@ onMounted(() => { load(); loadRoles() })
   width: 100%;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 10px;
+}
+/* 显示敏感数据开关 */
+.reveal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--sx-muted);
 }
 </style>

@@ -42,4 +42,7 @@ export default {
   confirmDelete: '确定删除吗？此操作不可恢复',
   total: '共 {n} 条',
   keyword: '关键词',
+  sensitiveData: '显示敏感数据',
+  exportSensitiveConfirmTitle: '导出敏感明文',
+  exportSensitiveConfirmContent: '本次导出将包含未脱敏的敏感明文（如手机号、IP 等），并计入审计日志。确认继续？',
 }

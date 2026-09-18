@@ -12,6 +12,13 @@
       <div class="page-header">
         <span class="retention-hint">{{ retentionHint }}</span>
         <div class="page-actions">
+          <!-- 显示敏感数据开关（导出明文）：仅作用于导出参数（管理面列表本就明文，无需重查）。
+               仅持 log:login:exportSensitive 权限可见（提交入口后端二次校验） -->
+          <div v-if="canExportSensitive" class="reveal-toggle">
+            <n-icon :component="exportReveal ? EyeOutline : EyeOffOutline" />
+            <span>{{ t('common.sensitiveData') }}</span>
+            <n-switch v-model:value="exportReveal" size="small" />
+          </div>
           <n-button ghost :loading="exporting" v-permission="['log:login:export']" @click="doExport">{{ t('loginLog.export') }}</n-button>
           <n-button type="error" ghost v-permission="['log:login:clear']" @click="confirmClear">{{ t('loginLog.clear') }}</n-button>
         </div>
@@ -24,12 +31,16 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
-import { NButton, NCard, NDataTable, NDatePicker, NEllipsis, NInput, NSelect, NTag, useDialog, useMessage, type DataTableColumns } from 'naive-ui'
+import { NButton, NCard, NDataTable, NDatePicker, NEllipsis, NIcon, NInput, NSelect, NSwitch, NTag, useDialog, useMessage, type DataTableColumns } from 'naive-ui'
+import { EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { useI18n } from 'vue-i18n'
 import SearchCard from '../../components/SearchCard.vue'
 import { clearLoginLogs, createExport, listLoginLogs } from '../../api'
 import { usePagination } from '../../utils/pagination'
+import { useUserStore } from '../../stores/user'
 import type { LoginLogInfo } from '../../api/types'
+
+const userStore = useUserStore()
 
 const { t } = useI18n()
 const message = useMessage()
@@ -80,9 +91,27 @@ function resetQuery() {
   load()
 }
 
-// 异步导出：提交当前过滤条件（与列表查询一致，剔除分页参数）
+// 异步导出：提交当前过滤条件（与列表查询一致，剔除分页参数）；
+// 开启"显示敏感数据"时导出携带 reveal=1 跳过 IP 脱敏（须持 log:login:exportSensitive，无权限时后端剔除该参数仍脱敏）
 const exporting = ref(false)
-async function doExport() {
+const canExportSensitive = computed(() => userStore.has('log:login:exportSensitive'))
+const exportReveal = ref(false)
+function doExport() {
+  // 敏感明文导出需二次确认（提示明文范围与审计）
+  if (exportReveal.value && canExportSensitive.value) {
+    dialog.warning({
+      title: t('common.exportSensitiveConfirmTitle'),
+      content: t('common.exportSensitiveConfirmContent'),
+      positiveText: t('common.confirm'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: doExportSubmit,
+    })
+    return
+  }
+  doExportSubmit()
+}
+
+async function doExportSubmit() {
   exporting.value = true
   try {
     await createExport('login-logs', {
@@ -91,6 +120,7 @@ async function doExport() {
       status: query.status,
       start: range.value ? Math.floor(range.value[0] / 1000) : undefined,
       end: range.value ? Math.floor(range.value[1] / 1000) : undefined,
+      reveal: exportReveal.value && canExportSensitive.value ? 1 : undefined,
     })
     message.success(t('loginLog.exportQueued'))
   } catch (e: any) {
@@ -174,6 +204,15 @@ onMounted(load)
 }
 .page-actions {
   display: flex;
+  align-items: center;
   gap: 10px;
+}
+/* 显示敏感数据开关 */
+.reveal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--sx-muted);
 }
 </style>

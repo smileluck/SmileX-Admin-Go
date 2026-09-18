@@ -5,6 +5,19 @@ import (
 	"time"
 )
 
+// SensitivePermByBiz 导出业务 → 敏感明文权限码（?reveal=1 导出明文的准入）。
+// 提交侧与 worker 执行侧共用：worker 执行前按任务快照二次复核，权限已回收则任务失败（fail-closed）
+var SensitivePermByBiz = map[string]string{
+	"user":      "user:exportSensitive",
+	"login_log": "log:login:exportSensitive",
+	"op_log":    "log:op:exportSensitive",
+}
+
+// PermissionChecker 敏感明文导出权限复核接口（auth.Usecase 实现，wire 绑定）
+type PermissionChecker interface {
+	HasPermissionCode(ctx context.Context, userID uint, code string) bool
+}
+
 // Repo 导出记录仓储接口（由 data 层实现，依赖倒置）。
 // 记录无软删：保留期清理与手动删除均为物理删除。
 type Repo interface {

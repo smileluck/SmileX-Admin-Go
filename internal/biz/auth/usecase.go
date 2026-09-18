@@ -223,3 +223,18 @@ func (uc *Usecase) Authorize(ctx context.Context, userID uint, method, path stri
 	}
 	return false
 }
+
+// HasPermissionCode 按权限码判断能力（如敏感数据明文查看）：
+// code 为 "all" 的通配权限直接通过（与前端 user store has() 的超管语义一致）
+func (uc *Usecase) HasPermissionCode(ctx context.Context, userID uint, code string) bool {
+	ps, err := uc.perms.FindByUserID(ctx, userID)
+	if err != nil {
+		return false
+	}
+	for _, p := range ps {
+		if p.Code == "all" || p.Code == code {
+			return true
+		}
+	}
+	return false
+}

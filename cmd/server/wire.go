@@ -100,6 +100,7 @@ var dataRepoSet = wire.NewSet(
 	wire.Bind(new(bizblacklist.Repo), new(*datablacklist.Repo)),
 	wire.Bind(new(bizblacklist.LoginProtector), new(*datablacklist.Repo)),
 	wire.Bind(new(bizexport.Enqueuer), new(*dataexport.Worker)),
+	wire.Bind(new(bizexport.PermissionChecker), new(*auth.Usecase)),
 )
 
 var serviceSet = wire.NewSet(

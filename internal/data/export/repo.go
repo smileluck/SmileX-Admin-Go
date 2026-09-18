@@ -121,6 +121,7 @@ type Worker struct {
 	registry *bizexport.Registry
 	storage  *bizfile.StorageManager
 	repo     bizexport.Repo
+	permCheck bizexport.PermissionChecker
 	queue    chan uint
 	done     chan struct{} // 通知保留期清理循环退出
 	wg       sync.WaitGroup
@@ -129,13 +130,13 @@ type Worker struct {
 // NewWorker 创建导出 worker：启动前把上次运行残留的 pending/running 任务置 failed（进程已死，任务不可能继续），
 // 随后启动消费协程；retentionDays > 0 时启动每日保留期清理循环。
 // cleanup 停止后台协程并等待在途任务写完（关停时先于数据库连接关闭执行）。
-func NewWorker(d *data.Data, c *conf.Bootstrap, registry *bizexport.Registry, storageMgr *bizfile.StorageManager, repo bizexport.Repo) (*Worker, func(), error) {
+func NewWorker(d *data.Data, c *conf.Bootstrap, registry *bizexport.Registry, storageMgr *bizfile.StorageManager, repo bizexport.Repo, permCheck bizexport.PermissionChecker) (*Worker, func(), error) {
 	queueSize := c.Export.QueueSize
 	if queueSize <= 0 {
 		queueSize = 64
 	}
 	w := &Worker{
-		data: d, cfg: c, registry: registry, storage: storageMgr, repo: repo,
+		data: d, cfg: c, registry: registry, storage: storageMgr, repo: repo, permCheck: permCheck,
 		queue: make(chan uint, queueSize),
 		done:  make(chan struct{}),
 	}
@@ -219,6 +220,14 @@ func (w *Worker) run(ctx context.Context, rec *bizexport.ExportRecord) error {
 	var params url.Values
 	if err := json.Unmarshal([]byte(rec.Params), &params); err != nil {
 		return fmt.Errorf("解析查询条件失败: %w", err)
+	}
+	// 敏感明文导出二次校验（fail-closed）：提交时的权限可能在排队期间被回收，
+	// 执行前按任务归属用户复核权限码，未通过则任务失败并写明原因
+	if params.Get("reveal") == "1" {
+		if code, ok := bizexport.SensitivePermByBiz[rec.Biz]; !ok || w.permCheck == nil ||
+			!w.permCheck.HasPermissionCode(ctx, rec.UserID, code) {
+			return errors.New("敏感明文导出权限已回收，任务拒绝执行")
+		}
 	}
 	tmp, err := os.CreateTemp("", "export-*.csv")
 	if err != nil {

@@ -22,7 +22,7 @@ export const changePassword = (data: { old_password: string; new_password: strin
   request.put<R<null>>('/auth/password', data)
 
 // ---- 用户 ----
-export const listUsers = (params: { page: number; page_size: number; username?: string; status?: number }) =>
+export const listUsers = (params: { page: number; page_size: number; username?: string; status?: number; reveal?: number }) =>
   request.get<R<PageResult<UserInfo>>>('/users', { params })
 export const createUser = (data: Partial<UserInfo> & { password: string }) =>
   request.post<R<UserInfo>>('/users', data)
@@ -75,7 +75,7 @@ export const listOperationLogs = (params: { page: number; page_size: number; use
 export const clearOperationLogs = () => request.delete<R<{ deleted: number }>>('/operation-logs')
 
 // ---- 商户（商户接入）----
-export const listMerchants = (params: { page: number; page_size: number; name?: string; code?: string; app_key?: string; status?: number }) =>
+export const listMerchants = (params: { page: number; page_size: number; name?: string; code?: string; app_key?: string; status?: number; reveal?: number }) =>
   request.get<R<PageResult<Merchant>>>('/merchants', { params })
 // 创建成功时 app_secret 仅此一次明文返回，前端需弹窗展示并提示保存
 export const createMerchant = (data: { name: string; code: string; contact_name?: string; contact_phone?: string; contact_email?: string; remark?: string }) =>
@@ -91,7 +91,7 @@ export const resetMerchantSecret = (id: number) =>
 export const setMerchantStatus = (id: number, status: number) =>
   request.put<R<null>>(`/merchants/${id}/status`, { status })
 // start/end 为 unix 秒级时间戳
-export const listMerchantAPILogs = (params: { page: number; page_size: number; app_key?: string; path?: string; status_code?: number; start?: number; end?: number }) =>
+export const listMerchantAPILogs = (params: { page: number; page_size: number; app_key?: string; path?: string; status_code?: number; start?: number; end?: number; reveal?: number }) =>
   request.get<R<PageResult<MerchantAPILog>>>('/merchant-api-logs', { params })
 
 // ---- 租户 ----

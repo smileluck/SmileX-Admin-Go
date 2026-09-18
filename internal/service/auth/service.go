@@ -135,6 +135,11 @@ func (s *Service) Authorize(ctx context.Context, userID uint, method, path strin
 	return s.uc.Authorize(ctx, userID, method, path)
 }
 
+// HasPermissionCode 按权限码判断能力（敏感数据明文查看等），供 handler 层调用
+func (s *Service) HasPermissionCode(ctx context.Context, userID uint, code string) bool {
+	return s.uc.HasPermissionCode(ctx, userID, code)
+}
+
 // ParseSubject 解析 access token
 func (s *Service) ParseSubject(token string) (*bizauth.Subject, error) {
 	return s.uc.ParseSubject(token)
