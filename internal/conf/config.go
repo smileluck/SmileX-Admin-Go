@@ -7,16 +7,17 @@ import (
 
 // Bootstrap 应用根配置
 type Bootstrap struct {
-	Server Server `mapstructure:"server"`
-	DB     DB     `mapstructure:"db"`
-	JWT    JWT    `mapstructure:"jwt"`
-	Redis  Redis  `mapstructure:"redis"`
+	Server  Server  `mapstructure:"server"`
+	DB      DB      `mapstructure:"db"`
+	JWT     JWT     `mapstructure:"jwt"`
+	Redis   Redis   `mapstructure:"redis"`
 	Auth    Auth    `mapstructure:"auth"`
 	Log     Log     `mapstructure:"log"`
 	Cache   Cache   `mapstructure:"cache"`
 	Storage Storage `mapstructure:"storage"`
 	Export  Export  `mapstructure:"export"`
 	OpenAPI OpenAPI `mapstructure:"openapi"`
+	Seed    Seed    `mapstructure:"seed"`
 }
 
 type Server struct {
@@ -115,13 +116,20 @@ type Export struct {
 	Mask          map[string]string `mapstructure:"mask"`          // 导出字段名 -> 脱敏规则（phone/email/idcard/bankcard/name/ip/none）
 }
 
+// Seed 首次播种配置（仅数据库为空时生效一次）
+type Seed struct {
+	// AdminPassword 种子超管初始密码：留空则随机生成（日志打印一次）；
+	// 环境变量 APP_SEED_ADMIN_PASSWORD 优先于此处配置
+	AdminPassword string `mapstructure:"adminPassword"`
+}
+
 // Storage 文件存储配置：driver 决定新上传写入的后端；
 // 读/删按文件记录落库时的 driver 解析对应后端，因此切换 driver 后旧文件仍可访问（旧后端配置需保留）
 type Storage struct {
-	Driver            string   `mapstructure:"driver"` // local | oss | cos | tos | minio
-	MaxSizeMB         int64    `mapstructure:"maxSizeMB"`
-	SignExpireMinutes int      `mapstructure:"signExpireMinutes"` // 云存储预签名下载 URL 有效期
-	DenyExts          []string `mapstructure:"denyExts"`          // 禁止上传的扩展名（空则用内置黑名单）
+	Driver            string       `mapstructure:"driver"` // local | oss | cos | tos | minio
+	MaxSizeMB         int64        `mapstructure:"maxSizeMB"`
+	SignExpireMinutes int          `mapstructure:"signExpireMinutes"` // 云存储预签名下载 URL 有效期
+	DenyExts          []string     `mapstructure:"denyExts"`          // 禁止上传的扩展名（空则用内置黑名单）
 	Local             LocalStorage `mapstructure:"local"`
 	OSS               OSSStorage   `mapstructure:"oss"`
 	COS               COSStorage   `mapstructure:"cos"`

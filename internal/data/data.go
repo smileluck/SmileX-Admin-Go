@@ -2,7 +2,9 @@
 package data
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -23,9 +25,11 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 )
 
-// Data 持久化入口（对应 Kratos 的 Data struct）
+// Data 持久化入口（对应 Kratos 的 Data struct）。
+// cfg 供种子阶段读取 seed.adminPassword 等仅播种期生效的配置
 type Data struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	cfg *conf.Bootstrap
 }
 
 // NewData 按 config.db.driver 创建对应数据库连接
@@ -73,7 +77,7 @@ func NewData(c *conf.Bootstrap) (*Data, func(), error) {
 	sqlDB.SetMaxIdleConns(maxIdle)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	d := &Data{DB: db}
+	d := &Data{DB: db, cfg: c}
 	if c.DB.AutoMigrate {
 		if err := d.migrateAndSeed(); err != nil {
 			return nil, nil, err
@@ -118,7 +122,7 @@ func ensurePostgresDatabase(c conf.Postgres) {
 	}
 }
 
-// migrateAndSeed 自动建表 + 存量迁移 + 种子数据（超管 admin/123456）
+// migrateAndSeed 自动建表 + 存量迁移 + 种子数据（超管密码见 seedAdminPassword）
 func (d *Data) migrateAndSeed() error {
 	if err := d.DB.AutoMigrate(
 		&model.UserPO{}, &model.RolePO{}, &model.PermissionPO{},
@@ -153,7 +157,7 @@ func (d *Data) migrateAndSeed() error {
 			{ID: 114, Name: "菜单管理", Code: "menu:menu", Type: "menu", Path: "/system/menus", ParentID: 110, Icon: "MenuOutline", Sort: 4},
 			{ID: 115, Name: "在线用户", Code: "menu:online", Type: "menu", Path: "/system/online", ParentID: 110, Icon: "PulseOutline", Sort: 5},
 		}
-		adminPwd, err := user.NewPassword("123456")
+		adminPlainPwd, adminPwd, err := seedAdminPassword(d.cfg)
 		if err != nil {
 			return err
 		}
@@ -183,7 +187,7 @@ func (d *Data) migrateAndSeed() error {
 					return err
 				}
 			}
-			logger.Info("seeded super admin: admin/123456 (please change password before production)")
+			logger.Info("seeded super admin", zap.String("username", "admin"), zap.String("password", adminPlainPwd), zap.String("note", "randomly generated, shown once; set APP_SEED_ADMIN_PASSWORD to pin, please change after first login"))
 			return nil
 		}); err != nil {
 			return err
@@ -196,6 +200,24 @@ func (d *Data) migrateAndSeed() error {
 	}
 	// 系统管理接口权限点补齐并绑定超管角色（存量库/全新库统一走此路径，幂等）
 	return d.ensureSystemButtonPerms()
+}
+
+// seedAdminPassword 生成种子超管密码：优先环境变量 APP_SEED_ADMIN_PASSWORD，
+// 其次配置 seed.adminPassword，均未设置则 crypto/rand 随机生成（仅首次播种时日志打印一次明文）
+func seedAdminPassword(c *conf.Bootstrap) (plain string, hashed user.Password, err error) {
+	plain = os.Getenv("APP_SEED_ADMIN_PASSWORD")
+	if plain == "" && c != nil {
+		plain = c.Seed.AdminPassword
+	}
+	if plain == "" {
+		buf := make([]byte, 9)
+		if _, err = rand.Read(buf); err != nil {
+			return "", "", err
+		}
+		plain = base64.RawURLEncoding.EncodeToString(buf) // 12 位随机串
+	}
+	hashed, err = user.NewPassword(plain)
+	return plain, hashed, err
 }
 
 // systemMenuDef 系统菜单幂等定义（ParentCode 为父菜单 code，缺失时落为顶级菜单；Type 缺省为 menu）
@@ -232,7 +254,9 @@ var systemMenus = []systemMenuDef{
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
-// 按 code 查找（type 兼容 menu/dir，存量迁移会翻转类型），缺失则插入（父级按 code 解析，缺失时落为顶级菜单），名称变化时同步更新，并绑定超管角色 ID=1
+// 按 code 查找（type 兼容 menu/dir，存量迁移会翻转类型），缺失则插入（父级按 code 解析，缺失时落为顶级菜单）；
+// 已存在（含软删残留）也同步校正为规范定义（自愈名称/图标/排序等变化，语义与按钮权限点自愈一致——
+// 系统种子是规范形态，菜单管理界面对系统菜单的手工漂移会被启动对齐），并绑定超管角色 ID=1
 func (d *Data) ensureSystemMenus() error {
 	for _, m := range systemMenus {
 		var po model.PermissionPO
@@ -240,29 +264,35 @@ func (d *Data) ensureSystemMenus() error {
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
+		t := m.Type
+		if t == "" {
+			t = string(permission.TypeMenu)
+		}
+		// 父级菜单按 code 解析（存量库菜单 ID 与种子不保证一致；父级为 dir 或 menu 均可匹配）
+		parentID := uint(0)
+		if m.ParentCode != "" {
+			var parent model.PermissionPO
+			if err := d.DB.Where("code = ? AND type IN ?", m.ParentCode, []string{string(permission.TypeDir), string(permission.TypeMenu)}).First(&parent).Error; err == nil {
+				parentID = parent.ID
+			}
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			t := m.Type
-			if t == "" {
-				t = string(permission.TypeMenu)
-			}
-			po = model.PermissionPO{Name: m.Name, Code: m.Code, Type: t, Path: m.Path, Icon: m.Icon, Sort: m.Sort}
-			// 父级菜单按 code 解析（存量库菜单 ID 与种子不保证一致；父级为 dir 或 menu 均可匹配）
-			if m.ParentCode != "" {
-				var parent model.PermissionPO
-				if err := d.DB.Where("code = ? AND type IN ?", m.ParentCode, []string{string(permission.TypeDir), string(permission.TypeMenu)}).First(&parent).Error; err == nil {
-					po.ParentID = parent.ID
-				}
-			}
+			po = model.PermissionPO{Name: m.Name, Code: m.Code, Type: t, Path: m.Path, Icon: m.Icon, Sort: m.Sort, ParentID: parentID}
 			if err := d.DB.Create(&po).Error; err != nil {
 				return err
 			}
 			logger.Info("ensured system menu", zap.String("code", m.Code))
-		} else if po.Name != m.Name {
-			// seed 菜单改名时同步存量库（仅按 code 命中的 seed 项，不影响用户自建菜单）
-			if err := d.DB.Model(&model.PermissionPO{}).Where("id = ?", po.ID).Update("name", m.Name).Error; err != nil {
+		} else {
+			// 已存在：校正为规范定义（自愈改名/图标/排序/父级漂移；软删残留一并恢复）
+			updates := map[string]interface{}{
+				"name": m.Name, "type": t, "path": m.Path, "icon": m.Icon, "sort": m.Sort, "parent_id": parentID,
+			}
+			if po.DeletedAt.Valid {
+				updates["deleted_at"] = nil
+			}
+			if err := d.DB.Unscoped().Model(&po).Updates(updates).Error; err != nil {
 				return err
 			}
-			logger.Info("synced system menu name", zap.String("code", m.Code), zap.String("name", m.Name))
 		}
 		if err := d.bindSuperRole(po.ID); err != nil {
 			return err
@@ -361,6 +391,7 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "新增租户", Code: "tenant:create", Menu: "menu:tenant", Method: "POST", Path: "/api/v1/tenants", Sort: 3},
 	{Name: "编辑租户", Code: "tenant:update", Menu: "menu:tenant", Method: "PUT", Path: "/api/v1/tenants/*", Sort: 4},
 	{Name: "删除租户", Code: "tenant:delete", Menu: "menu:tenant", Method: "DELETE", Path: "/api/v1/tenants/*", Sort: 5},
+	{Name: "启停租户", Code: "tenant:status", Menu: "menu:tenant", Method: "PUT", Path: "/api/v1/tenants/*/status", Sort: 6},
 	// 应用用户
 	{Name: "查询应用用户", Code: "appUser:list", Menu: "menu:appUser", Method: "GET", Path: "/api/v1/app-users", Sort: 1},
 	{Name: "应用用户详情", Code: "appUser:view", Menu: "menu:appUser", Method: "GET", Path: "/api/v1/app-users/*", Sort: 2},

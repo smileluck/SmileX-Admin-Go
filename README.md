@@ -36,7 +36,7 @@ Gin · GORM · Wire · Vue3 · TypeScript · Naive UI
 git clone https://github.com/yourname/SmileX-Admin-Gin.git
 cd SmileX-Admin-Gin
 make web-install web-build run
-# 打开 http://localhost:8080，admin / 123456
+# 打开 http://localhost:8080，admin / 123456（默认配置的种子密码，见下方"安全提醒"）
 ```
 
 MySQL 方式：
@@ -152,7 +152,13 @@ make web-build   # 前端构建（产物 web/dist，由后端静态托管）
 
 ## ⚠️ 安全提醒
 
-默认账号 `admin / 123456`，上线前务必修改密码及 JWT secret。
+默认账号 `admin`，初始密码按以下优先级确定（仅首次播种空库时生效一次）：
+
+1. 环境变量 `APP_SEED_ADMIN_PASSWORD`
+2. 配置 `seed.adminPassword`（configs/config.yaml，默认 `123456`，便于本地体验）
+3. 均未设置时随机生成 12 位密码，仅在启动日志打印一次
+
+上线前务必修改 admin 密码及 JWT secret（生产建议清空 seed.adminPassword 走随机密码）。
 
 ## License
 

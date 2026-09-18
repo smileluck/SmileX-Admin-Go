@@ -1,6 +1,76 @@
 {
-  "generatedAt": "2026-08-25T02:19:32.830Z",
+  "generatedAt": "2026-09-18T07:09:16.045Z",
   "commits": [
+    {
+      "hash": "3002b7d",
+      "date": "2026-09-18",
+      "type": "feat",
+      "scope": "security",
+      "message": "数据脱敏对齐 embodied-platform——默认脱敏 + 权限码 reveal 明文机制"
+    },
+    {
+      "hash": "e2f1495",
+      "date": "2026-09-18",
+      "type": "refactor",
+      "scope": "",
+      "message": "开放API 目录更名为商户接入"
+    },
+    {
+      "hash": "4fb4976",
+      "date": "2026-08-31",
+      "type": "fix",
+      "scope": "naive-ui-table",
+      "message": "为所有数据表格启用单页分页模式"
+    },
+    {
+      "hash": "09eb039",
+      "date": "2026-08-28",
+      "type": "style",
+      "scope": "",
+      "message": "优化加载动画的视觉效果和代码结构"
+    },
+    {
+      "hash": "8869c05",
+      "date": "2026-08-26",
+      "type": "style",
+      "scope": "admin layout",
+      "message": "adjust scroll and layout behavior for sider menu"
+    },
+    {
+      "hash": "01b6c3f",
+      "date": "2026-08-25",
+      "type": "feat",
+      "scope": "web",
+      "message": "新增首次加载全屏动画"
+    },
+    {
+      "hash": "768825d",
+      "date": "2026-08-25",
+      "type": "style",
+      "scope": "",
+      "message": "为表格列添加空值默认显示占位符"
+    },
+    {
+      "hash": "c09f9ae",
+      "date": "2026-08-25",
+      "type": "feat",
+      "scope": "axios",
+      "message": "add global deep trim for request params and data"
+    },
+    {
+      "hash": "ea182fd",
+      "date": "2026-08-25",
+      "type": "feat",
+      "scope": "",
+      "message": "add phone number field for user entity and related functions"
+    },
+    {
+      "hash": "a174630",
+      "date": "2026-08-25",
+      "type": "feat",
+      "scope": "tenant",
+      "message": "新增租户名称重复校验与国际化文案"
+    },
     {
       "hash": "c3c574d",
       "date": "2026-08-25",
