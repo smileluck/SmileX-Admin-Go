@@ -294,7 +294,7 @@ func (d *Data) ensureSystemMenus() error {
 	return nil
 }
 
-// bindSuperRole 将权限绑定到超管角色（ID=1，幂等；超管已有 * 通配，绑定仅为角色权限树回显一致）
+// bindSuperRole 将权限绑定到超管角色（ID=1，幂等；超管在权限联查中直接命中全量权限，绑定仅为角色权限树回显一致）
 func (d *Data) bindSuperRole(permID uint) error {
 	var cnt int64
 	if err := d.DB.Model(&model.RolePermissionPO{}).
@@ -397,7 +397,7 @@ var systemButtonPerms = []systemButtonPermDef{
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
 //   - 按 code 查找，缺失则插入（自增 ID，避免与用户自建记录冲突）；
 //   - 已存在（含软删残留）也同步校正为规范定义，自愈名称/接口归属变化（如菜单被删建后按钮成为孤儿节点）；
-//   - 绑定超管角色（ID=1）：超管已有 * 通配实际全通过，绑定仅为角色权限树回显一致。
+//   - 绑定超管角色（ID=1）：超管在权限联查中直接命中全量权限，绑定仅为角色权限树回显一致。
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
