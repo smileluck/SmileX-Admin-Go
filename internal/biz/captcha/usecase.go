@@ -55,5 +55,10 @@ func (uc *Usecase) Verify(id, answer string) bool {
 	if !uc.enabled {
 		return true
 	}
+	// base64Captcha.Verify 内部用 Store.Get + EqualFold 比较：不存在的 id 取回空串，
+	// 与空答案相等而放行——必须先拒绝空 id/空答案，否则登录请求省略验证码字段即可绕过校验
+	if id == "" || answer == "" {
+		return false
+	}
 	return uc.captcha.Verify(id, answer, true)
 }
