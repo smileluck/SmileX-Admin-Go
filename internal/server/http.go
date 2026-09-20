@@ -22,6 +22,7 @@ import (
 	dictsvc "github.com/smilex/smilex-admin-gin/internal/service/dict"
 	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
+	jobsvc "github.com/smilex/smilex-admin-gin/internal/service/job"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	merchantsvc "github.com/smilex/smilex-admin-gin/internal/service/merchant"
 	monitorsvc "github.com/smilex/smilex-admin-gin/internal/service/monitor"
@@ -59,6 +60,7 @@ type HTTPServer struct {
 	dict       *dictsvc.Service
 	syscfg     *syssvc.Service
 	notice     *noticesvc.Service
+	job        *jobsvc.Service
 	appuserUC  *bizappuser.Usecase    // AppJWT 中间件直连领域用例（校验用户启用状态）
 	appIssuer  bizappuser.TokenIssuer // AppJWT 中间件解析 app-access token
 	rbacCache  *cache.TwoLevel
@@ -74,7 +76,8 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	merchant *merchantsvc.Service, merchantUC *bizmerchant.Usecase,
 	tenant *tenantsvc.Service, appuser *appusersvc.Service, appuserUC *bizappuser.Usecase,
 	appIssuer bizappuser.TokenIssuer, monitor *monitorsvc.Service, agent *agentsvc.Service,
-	dict *dictsvc.Service, syscfg *syssvc.Service, notice *noticesvc.Service, rdb *redis.Client) *HTTPServer {
+	dict *dictsvc.Service, syscfg *syssvc.Service, notice *noticesvc.Service,
+	job *jobsvc.Service, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -90,10 +93,14 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	// RBAC 权限判定缓存：L1 30s 进程内存 + L2 60s Redis（cache.l2Enabled 可关）
 	rbacCache := cache.NewTwoLevel(rdb, "rbac:", 30*time.Second, 60*time.Second, cfg.Cache.L2Enabled)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, monitor: monitor, agent: agent, dict: dict, syscfg: syscfg, notice: notice, rbacCache: rbacCache, rdb: rdb, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, monitor: monitor, agent: agent, dict: dict, syscfg: syscfg, notice: notice, job: job, rbacCache: rbacCache, rdb: rdb, engine: e}
 	// 内置系统参数幂等播种（不覆盖用户修改；失败不阻断启动）
 	if err := syscfg.EnsureBuiltin(); err != nil {
 		logger.Warn("ensure builtin sys-configs failed", zap.Error(err))
+	}
+	// 定时任务：播种内置清理任务并拉起调度器（失败不阻断启动）
+	if err := job.EnsureSeededAndStart(); err != nil {
+		logger.Warn("job scheduler start failed", zap.Error(err))
 	}
 
 	s.registerRoutes()
@@ -135,5 +142,6 @@ func (s *HTTPServer) registerStatic() {
 
 // Stop 优雅关停
 func (s *HTTPServer) Stop(ctx context.Context) error {
+	s.job.Stop() // 停定时调度器（等待在跑任务完成）
 	return s.srv.Shutdown(ctx)
 }

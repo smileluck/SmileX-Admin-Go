@@ -7,56 +7,59 @@ import (
 	"github.com/google/wire"
 	base64Captcha "github.com/mojocn/base64Captcha"
 	bizagent "github.com/smilex/smilex-admin-gin/internal/biz/agent"
-	bizdict "github.com/smilex/smilex-admin-gin/internal/biz/dict"
-	biznotice "github.com/smilex/smilex-admin-gin/internal/biz/notice"
-	bizsys "github.com/smilex/smilex-admin-gin/internal/biz/sysconfig"
 	bizappuser "github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	bizcaptcha "github.com/smilex/smilex-admin-gin/internal/biz/captcha"
+	bizdict "github.com/smilex/smilex-admin-gin/internal/biz/dict"
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
+	bizjob "github.com/smilex/smilex-admin-gin/internal/biz/job"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	bizmerchant "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	bizmonitor "github.com/smilex/smilex-admin-gin/internal/biz/monitor"
+	biznotice "github.com/smilex/smilex-admin-gin/internal/biz/notice"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	bizrole "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
+	bizsys "github.com/smilex/smilex-admin-gin/internal/biz/sysconfig"
 	biztenant "github.com/smilex/smilex-admin-gin/internal/biz/tenant"
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	dataagent "github.com/smilex/smilex-admin-gin/internal/data/agent"
-	datadict "github.com/smilex/smilex-admin-gin/internal/data/dict"
-	datanotice "github.com/smilex/smilex-admin-gin/internal/data/notice"
-	datasys "github.com/smilex/smilex-admin-gin/internal/data/sysconfig"
 	dataappuser "github.com/smilex/smilex-admin-gin/internal/data/appuser"
 	datablacklist "github.com/smilex/smilex-admin-gin/internal/data/blacklist"
 	datacaptcha "github.com/smilex/smilex-admin-gin/internal/data/captcha"
+	datadict "github.com/smilex/smilex-admin-gin/internal/data/dict"
 	dataexport "github.com/smilex/smilex-admin-gin/internal/data/export"
 	datafile "github.com/smilex/smilex-admin-gin/internal/data/file"
+	datajob "github.com/smilex/smilex-admin-gin/internal/data/job"
 	datalog "github.com/smilex/smilex-admin-gin/internal/data/log"
 	datamerchant "github.com/smilex/smilex-admin-gin/internal/data/merchant"
+	datanotice "github.com/smilex/smilex-admin-gin/internal/data/notice"
 	dataperm "github.com/smilex/smilex-admin-gin/internal/data/permission"
 	datarole "github.com/smilex/smilex-admin-gin/internal/data/role"
 	datasession "github.com/smilex/smilex-admin-gin/internal/data/session"
+	datasys "github.com/smilex/smilex-admin-gin/internal/data/sysconfig"
 	datatenant "github.com/smilex/smilex-admin-gin/internal/data/tenant"
 	datauser "github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	agentsvc "github.com/smilex/smilex-admin-gin/internal/service/agent"
-	dictsvc "github.com/smilex/smilex-admin-gin/internal/service/dict"
-	noticesvc "github.com/smilex/smilex-admin-gin/internal/service/notice"
-	syssvc "github.com/smilex/smilex-admin-gin/internal/service/sysconfig"
 	appusersvc "github.com/smilex/smilex-admin-gin/internal/service/appuser"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	blacklistsvc "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
+	dictsvc "github.com/smilex/smilex-admin-gin/internal/service/dict"
 	exportsvc "github.com/smilex/smilex-admin-gin/internal/service/export"
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
+	jobsvc "github.com/smilex/smilex-admin-gin/internal/service/job"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	merchantsvc "github.com/smilex/smilex-admin-gin/internal/service/merchant"
 	monitorsvc "github.com/smilex/smilex-admin-gin/internal/service/monitor"
+	noticesvc "github.com/smilex/smilex-admin-gin/internal/service/notice"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
+	syssvc "github.com/smilex/smilex-admin-gin/internal/service/sysconfig"
 	tenantsvc "github.com/smilex/smilex-admin-gin/internal/service/tenant"
 	usersvc "github.com/smilex/smilex-admin-gin/internal/service/user"
 )
@@ -76,6 +79,7 @@ var bizSet = wire.NewSet(
 	bizdict.NewUsecase,
 	bizsys.NewUsecase,
 	biznotice.NewUsecase,
+	bizjob.NewUsecase,
 	bizmonitor.NewUsecase,
 	bizagent.NewUsecase,
 	bizexport.NewUsecase,
@@ -113,11 +117,18 @@ var dataRepoSet = wire.NewSet(
 	datadict.NewRepo,
 	datasys.NewRepo,
 	datanotice.NewRepo,
+	datajob.NewRepo,
 	datacaptcha.NewStore,
 	dataexport.NewRepo,
 	dataexport.NewWorker,
 	// 跨上下文最小依赖接口绑定
 	wire.Bind(new(base64Captcha.Store), new(*datacaptcha.Store)),
+	wire.Bind(new(bizjob.LogCleaner), new(*datalog.Repo)),
+	wire.Bind(new(bizjob.ExportCleaner), new(*dataexport.Worker)),
+	wire.Bind(new(bizmerchant.APILogRepo), new(*datamerchant.APILogRepo)),
+	wire.Bind(new(bizjob.MerchantLogCleaner), new(*datamerchant.APILogRepo)),
+	wire.Bind(new(bizagent.Repo), new(*dataagent.Repo)),
+	wire.Bind(new(bizjob.UsageCleaner), new(*dataagent.Repo)),
 	wire.Bind(new(auth.UserStore), new(bizuser.Repo)),
 	wire.Bind(new(auth.RoleNameReader), new(bizrole.Repo)),
 	wire.Bind(new(auth.PermissionReader), new(bizperm.Repo)),
@@ -146,6 +157,7 @@ var serviceSet = wire.NewSet(
 	dictsvc.NewService,
 	syssvc.NewService,
 	noticesvc.NewService,
+	jobsvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

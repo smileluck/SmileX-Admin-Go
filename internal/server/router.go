@@ -356,6 +356,20 @@ func (s *HTTPServer) registerRoutes() {
 		agentModels.POST("/:id/test", s.testAgentModel)
 	}
 
+	// ---- 定时任务 ----
+	jobs := protected.Group("/jobs")
+	{
+		jobs.GET("", s.listJobs)
+		jobs.GET("/handlers", s.listJobHandlers)
+		jobs.POST("", s.createJob)
+		jobs.GET("/:id", s.getJob)
+		jobs.PUT("/:id", s.updateJob)
+		jobs.PUT("/:id/status", s.setJobStatus)
+		jobs.DELETE("/:id", s.deleteJob)
+		jobs.POST("/:id/run", s.runJobOnce)
+		jobs.GET("/:id/logs", s.listJobLogs)
+	}
+
 	// ---- 通知公告（管理端） ----
 	notices := protected.Group("/notices")
 	{
