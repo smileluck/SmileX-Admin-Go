@@ -7,6 +7,7 @@ import (
 	"github.com/google/wire"
 	base64Captcha "github.com/mojocn/base64Captcha"
 	bizagent "github.com/smilex/smilex-admin-gin/internal/biz/agent"
+	bizdict "github.com/smilex/smilex-admin-gin/internal/biz/dict"
 	bizappuser "github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
@@ -23,6 +24,7 @@ import (
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	dataagent "github.com/smilex/smilex-admin-gin/internal/data/agent"
+	datadict "github.com/smilex/smilex-admin-gin/internal/data/dict"
 	dataappuser "github.com/smilex/smilex-admin-gin/internal/data/appuser"
 	datablacklist "github.com/smilex/smilex-admin-gin/internal/data/blacklist"
 	datacaptcha "github.com/smilex/smilex-admin-gin/internal/data/captcha"
@@ -37,6 +39,7 @@ import (
 	datauser "github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	agentsvc "github.com/smilex/smilex-admin-gin/internal/service/agent"
+	dictsvc "github.com/smilex/smilex-admin-gin/internal/service/dict"
 	appusersvc "github.com/smilex/smilex-admin-gin/internal/service/appuser"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	blacklistsvc "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
@@ -64,6 +67,7 @@ var bizSet = wire.NewSet(
 	bizmerchant.NewUsecase,
 	biztenant.NewUsecase,
 	bizappuser.NewUsecase,
+	bizdict.NewUsecase,
 	bizmonitor.NewUsecase,
 	bizagent.NewUsecase,
 	bizexport.NewUsecase,
@@ -98,6 +102,7 @@ var dataRepoSet = wire.NewSet(
 	datatenant.NewRepo,
 	dataappuser.NewRepo,
 	dataagent.NewRepo,
+	datadict.NewRepo,
 	datacaptcha.NewStore,
 	dataexport.NewRepo,
 	dataexport.NewWorker,
@@ -128,6 +133,7 @@ var serviceSet = wire.NewSet(
 	appusersvc.NewService,
 	monitorsvc.NewService,
 	agentsvc.NewService,
+	dictsvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

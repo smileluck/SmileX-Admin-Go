@@ -23,6 +23,7 @@ import (
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	merchantsvc "github.com/smilex/smilex-admin-gin/internal/service/merchant"
+	dictsvc "github.com/smilex/smilex-admin-gin/internal/service/dict"
 	monitorsvc "github.com/smilex/smilex-admin-gin/internal/service/monitor"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
@@ -53,6 +54,7 @@ type HTTPServer struct {
 	appuser    *appusersvc.Service
 	monitor    *monitorsvc.Service
 	agent      *agentsvc.Service
+	dict       *dictsvc.Service
 	appuserUC  *bizappuser.Usecase    // AppJWT 中间件直连领域用例（校验用户启用状态）
 	appIssuer  bizappuser.TokenIssuer // AppJWT 中间件解析 app-access token
 	rbacCache  *cache.TwoLevel
@@ -67,7 +69,8 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service,
 	merchant *merchantsvc.Service, merchantUC *bizmerchant.Usecase,
 	tenant *tenantsvc.Service, appuser *appusersvc.Service, appuserUC *bizappuser.Usecase,
-	appIssuer bizappuser.TokenIssuer, monitor *monitorsvc.Service, agent *agentsvc.Service, rdb *redis.Client) *HTTPServer {
+	appIssuer bizappuser.TokenIssuer, monitor *monitorsvc.Service, agent *agentsvc.Service,
+	dict *dictsvc.Service, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -83,7 +86,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	// RBAC 权限判定缓存：L1 30s 进程内存 + L2 60s Redis（cache.l2Enabled 可关）
 	rbacCache := cache.NewTwoLevel(rdb, "rbac:", 30*time.Second, 60*time.Second, cfg.Cache.L2Enabled)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, monitor: monitor, agent: agent, rbacCache: rbacCache, rdb: rdb, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, monitor: monitor, agent: agent, dict: dict, rbacCache: rbacCache, rdb: rdb, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 

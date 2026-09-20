@@ -195,6 +195,9 @@ func (s *HTTPServer) registerRoutes() {
 			response.OK(c, hits)
 		})
 
+		// 数据字典消费入口：按类型编码取启用项（登录即可，无管理权限要求）
+		basic.GET("/dicts/:code/items", s.listDictItemsByCode)
+
 		// 异步导出：记录归属当前用户，列表/下载/删除均强制按 sub.UserID 过滤（biz 层校验），
 		// 与 profile/menus 同属自身数据接口，故仅 JWT 不走 RBAC；导出入口（POST */export）在 protected 组按按钮权限点控制
 		exports := basic.Group("/exports")
@@ -346,6 +349,23 @@ func (s *HTTPServer) registerRoutes() {
 		agentModels.PUT("/:id", s.updateAgentModel)
 		agentModels.DELETE("/:id", s.deleteAgentModel)
 		agentModels.POST("/:id/test", s.testAgentModel)
+	}
+
+	// ---- 数据字典 ----
+	dictTypes := protected.Group("/dict-types")
+	{
+		dictTypes.GET("", s.listDictTypes)
+		dictTypes.POST("", s.createDictType)
+		dictTypes.GET("/:id", s.getDictType)
+		dictTypes.PUT("/:id", s.updateDictType)
+		dictTypes.DELETE("/:id", s.deleteDictType)
+		dictTypes.GET("/:id/items", s.listDictItems)
+		dictTypes.POST("/:id/items", s.createDictItem)
+	}
+	dictItems := protected.Group("/dict-items")
+	{
+		dictItems.PUT("/:id", s.updateDictItem)
+		dictItems.DELETE("/:id", s.deleteDictItem)
 	}
 
 	// 可绑定工具清单（Agent 表单多选）
