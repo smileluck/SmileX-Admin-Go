@@ -116,15 +116,15 @@ func (r *repo) DeleteBefore(ctx context.Context, cutoff time.Time) (int64, error
 // Worker 异步导出执行器：buffered channel + 单 goroutine 串行消费 + WaitGroup 优雅退出，
 // 附保留期每日清理循环（模式与 internal/data/log 的异步写入 worker 一致）
 type Worker struct {
-	data     *data.Data
-	cfg      *conf.Bootstrap
-	registry *bizexport.Registry
-	storage  *bizfile.StorageManager
-	repo     bizexport.Repo
+	data      *data.Data
+	cfg       *conf.Bootstrap
+	registry  *bizexport.Registry
+	storage   *bizfile.StorageManager
+	repo      bizexport.Repo
 	permCheck bizexport.PermissionChecker
-	queue    chan uint
-	done     chan struct{} // 通知保留期清理循环退出
-	wg       sync.WaitGroup
+	queue     chan uint
+	done      chan struct{} // 通知保留期清理循环退出
+	wg        sync.WaitGroup
 }
 
 // NewWorker 创建导出 worker：启动前把上次运行残留的 pending/running 任务置 failed（进程已死，任务不可能继续），

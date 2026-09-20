@@ -6,10 +6,10 @@ import (
 	"net/url"
 	"time"
 
-	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
-	"github.com/smilex/smilex-admin-gin/internal/conf"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
+	"github.com/smilex/smilex-admin-gin/internal/conf"
 )
 
 // minioStorage 自定义 S3 兼容存储（JuiceFS + MinIO 场景：对象经 MinIO 落 JuiceFS 卷）

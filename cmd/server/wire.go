@@ -77,6 +77,7 @@ var bizSet = wire.NewSet(
 	wire.Bind(new(auth.SessionManager), new(*bizsession.Usecase)),
 	wire.Bind(new(bizuser.SessionRevoker), new(*bizsession.Usecase)),
 	wire.Bind(new(bizexport.PermissionChecker), new(*auth.Usecase)),
+	wire.Bind(new(bizagent.ServerStatusReader), new(*bizmonitor.Usecase)),
 )
 
 var dataRepoSet = wire.NewSet(
