@@ -36,7 +36,7 @@ Gin · GORM · Wire · Vue3 · TypeScript · Naive UI
 git clone https://github.com/yourname/SmileX-Admin-Gin.git
 cd SmileX-Admin-Gin
 make web-install web-build run
-# 打开 http://localhost:8080，admin / 123456（默认配置的种子密码，见下方"安全提醒"）
+# 打开 http://localhost:8080；首次播种的 admin 初始密码随机生成，见启动日志打印（见下方"安全提醒"）
 ```
 
 MySQL 方式：
@@ -184,10 +184,17 @@ make docker-down # 停止并移除容器
 默认账号 `admin`，初始密码按以下优先级确定（仅首次播种空库时生效一次）：
 
 1. 环境变量 `APP_SEED_ADMIN_PASSWORD`
-2. 配置 `seed.adminPassword`（configs/config.yaml，默认 `123456`，便于本地体验）
+2. 配置 `seed.adminPassword`（configs/config.yaml）
 3. 均未设置时随机生成 12 位密码，仅在启动日志打印一次
 
-上线前务必修改 admin 密码及 JWT secret（生产建议清空 seed.adminPassword 走随机密码）。
+密钥与敏感配置：
+
+- 仓库不保存任何可用密钥：`jwt.secret` 与 `seed.adminPassword` 默认为空。
+- 本地开发（debug 模式）secret 留空可正常启动（仅告警）；**release 模式下空或长度不足 32 位的
+  jwt secret 会拒绝启动**，须以环境变量 `APP_JWT_SECRET` 注入强随机值（`openssl rand -base64 32`）。
+- 更换 jwt secret 后所有已签发 token 失效需重新登录；若未单独配置 `agent.cryptoKey`，
+  已保存的供应商 API Key 需重新保存一次。
+- 跨域访问 API 需配置 `server.corsOrigins` 白名单（默认同源模式，不下发 CORS 头）。
 
 ## License
 
