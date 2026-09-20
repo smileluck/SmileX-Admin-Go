@@ -105,6 +105,8 @@ type Agent struct {
 	// 为空时从 jwt.secret 派生 —— 更换 jwt.secret 会使已存密钥不可解密（错误表现为 agent.decrypt_failed），
 	// 重新保存一次供应商密钥即可恢复
 	CryptoKey string `mapstructure:"cryptoKey"`
+	// UsageRetentionDays 用量计量流水保留天数，超期每日自动清理；0 表示永久保留
+	UsageRetentionDays int `mapstructure:"usageRetentionDays"`
 }
 
 type Log struct {
@@ -224,6 +226,8 @@ func Load(path string) (*Bootstrap, error) {
 	v.SetDefault("storage.maxSizeMB", 20)
 	v.SetDefault("storage.signExpireMinutes", 15)
 	v.SetDefault("storage.local.dir", "./data/uploads")
+	// 默认值：agent 用量流水保留 90 天
+	v.SetDefault("agent.usageRetentionDays", 90)
 	// 默认值：开放 API 签名时间戳允许偏差 300 秒，nonce 防重放 TTL 600 秒
 	v.SetDefault("openapi.signSkewSeconds", 300)
 	v.SetDefault("openapi.nonceTtlSeconds", 600)

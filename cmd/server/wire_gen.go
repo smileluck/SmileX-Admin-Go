@@ -144,7 +144,7 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	appuserService := appuser3.NewService(appuserUsecase)
 	monitorUsecase, cleanup6 := monitor.NewUsecase()
 	monitorService := monitor2.NewService(monitorUsecase)
-	agentRepo := agent.NewRepo(dataData)
+	agentRepo := agent.NewRepo(dataData, bootstrap)
 	agentUsecase := agent2.NewUsecase(agentRepo, bootstrap)
 	agentService := agent3.NewService(agentUsecase)
 	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService, exportService, blacklistService, merchantService, merchantUsecase, tenantService, appuserService, appuserUsecase, appuserTokenIssuer, monitorService, agentService, client)

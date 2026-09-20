@@ -132,7 +132,7 @@ func (d *Data) migrateAndSeed() error {
 		&model.MerchantPO{}, &model.MerchantAPILogPO{},
 		&model.TenantPO{}, &model.AppUserPO{}, &model.AppUserTenantPO{},
 		&model.AgentProviderPO{}, &model.AgentModelPO{}, &model.AgentPO{},
-		&model.AgentConversationPO{}, &model.AgentConversationMsgPO{},
+		&model.AgentConversationPO{}, &model.AgentConversationMsgPO{}, &model.AgentUsageLogPO{},
 	); err != nil {
 		return err
 	}
@@ -253,6 +253,7 @@ var systemMenus = []systemMenuDef{
 	{Name: "模型供应商", Code: "menu:agentProvider", Path: "/agent/providers", Icon: "ServerOutline", Sort: 1, ParentCode: "menu:agent"},
 	{Name: "Agent 配置", Code: "menu:agentList", Path: "/agent/agents", Icon: "ChatbubblesOutline", Sort: 2, ParentCode: "menu:agent"},
 	{Name: "聊天测试", Code: "menu:agentChat", Path: "/agent/chat", Icon: "ChatboxEllipsesOutline", Sort: 3, ParentCode: "menu:agent"},
+	{Name: "用量统计", Code: "menu:agentUsage", Path: "/agent/usage", Icon: "StatsChartOutline", Sort: 4, ParentCode: "menu:agent"},
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
@@ -430,6 +431,9 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "新建会话", Code: "agent:conversation:create", Menu: "menu:agentChat", Method: "POST", Path: "/api/v1/agent/conversations", Sort: 3},
 	{Name: "重命名会话", Code: "agent:conversation:update", Menu: "menu:agentChat", Method: "PUT", Path: "/api/v1/agent/conversations/*", Sort: 4},
 	{Name: "删除会话", Code: "agent:conversation:delete", Menu: "menu:agentChat", Method: "DELETE", Path: "/api/v1/agent/conversations/*", Sort: 5},
+
+	// 用量统计
+	{Name: "查询用量统计", Code: "agent:usage", Menu: "menu:agentUsage", Method: "GET", Path: "/api/v1/agent/usage", Sort: 1},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -439,7 +443,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser", "menu:monitor", "menu:agentProvider", "menu:agentList", "menu:agentChat"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser", "menu:monitor", "menu:agentProvider", "menu:agentList", "menu:agentChat", "menu:agentUsage"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID
