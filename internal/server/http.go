@@ -119,10 +119,17 @@ func (s *HTTPServer) registerRoutes() {
 	v1 := s.engine.Group("/api/v1", middleware.IPBlacklist(s.blacklist.Checker()))
 
 	// ---- 公开接口 ----
+	// 登录限流（后台与应用用户登录共用）：IP 固定窗口计数，沿用 bl:rl: 前缀，
+	// 黑名单提前解封时联动清零；参数见 biz/blacklist 常量
+	loginRateLimit := middleware.NewRateLimit(s.rdb, middleware.RateLimitConfig{
+		KeyPrefix: "bl:rl:", Max: bizblacklist.LoginRateMax, Window: bizblacklist.LoginRateWindow, MessageKey: "security.login_frequent",
+	})
 	authg := v1.Group("/auth")
 	{
-		// 图形验证码：无需鉴权，登录页拉取
-		authg.GET("/captcha", func(c *gin.Context) {
+		// 图形验证码：无需鉴权，登录页拉取；按 IP 限流防接口刷量（占用 Redis 存储与带宽）
+		authg.GET("/captcha", middleware.NewRateLimit(s.rdb, middleware.RateLimitConfig{
+			KeyPrefix: "rl:captcha:", Max: 30, Window: time.Minute, MessageKey: "security.rate_limited",
+		}), func(c *gin.Context) {
 			vo, err := s.auth.GenerateCaptcha()
 			if err != nil {
 				response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
@@ -131,7 +138,7 @@ func (s *HTTPServer) registerRoutes() {
 			response.OK(c, vo)
 		})
 		// 登录接口：IP 临时封禁（连续失败拉黑）→ 频率限制 → 登录，防口令爆破
-		authg.POST("/login", middleware.LoginIPGuard(s.log, s.blacklist.LoginGuard()), middleware.LoginRateLimit(s.blacklist.LoginGuard()), func(c *gin.Context) {
+		authg.POST("/login", middleware.LoginIPGuard(s.log, s.blacklist.LoginGuard()), loginRateLimit, func(c *gin.Context) {
 			var req authsvc.LoginRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
 				response.BadRequest(c, i18n.T(c.Request.Context(), "common.invalid_params"))
@@ -183,7 +190,7 @@ func (s *HTTPServer) registerRoutes() {
 	// 登录接口挂与后台登录同款的 IP 临时封禁 + 频率限制防护，防口令爆破
 	appauthg := v1.Group("/app-auth")
 	{
-		appauthg.POST("/login", middleware.LoginIPGuard(s.log, s.blacklist.LoginGuard()), middleware.LoginRateLimit(s.blacklist.LoginGuard()), s.appLogin)
+		appauthg.POST("/login", middleware.LoginIPGuard(s.log, s.blacklist.LoginGuard()), loginRateLimit, s.appLogin)
 		appauthg.POST("/refresh", s.appRefresh)
 	}
 
@@ -440,8 +447,11 @@ func (s *HTTPServer) registerRoutes() {
 		agents.GET("/:id", s.getAgent)
 		agents.PUT("/:id", s.updateAgent)
 		agents.DELETE("/:id", s.deleteAgent)
-		// 调试对话（Playground，SSE 流式；无状态，不落库）
-		agents.POST("/:id/chat", s.chatAgent)
+		// 调试对话（Playground，SSE 流式；无状态，不落库）；
+		// 按用户限流：每次调用都产生真实上游 token 费用，防误用/滥用刷量
+		agents.POST("/:id/chat", middleware.NewRateLimit(s.rdb, middleware.RateLimitConfig{
+			KeyPrefix: "rl:agent-chat:", Max: 20, Window: time.Minute, ByUser: true, MessageKey: "security.rate_limited",
+		}), s.chatAgent)
 	}
 
 	// ---- 开放 API：IP 黑名单 → 商户 HMAC 验签（时间戳偏差 + nonce 防重放） ----
