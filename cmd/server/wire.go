@@ -38,6 +38,7 @@ import (
 	datajob "github.com/smilex/smilex-admin-gin/internal/data/job"
 	datalog "github.com/smilex/smilex-admin-gin/internal/data/log"
 	datamerchant "github.com/smilex/smilex-admin-gin/internal/data/merchant"
+	datamonitor "github.com/smilex/smilex-admin-gin/internal/data/monitor"
 	datanotice "github.com/smilex/smilex-admin-gin/internal/data/notice"
 	dataperm "github.com/smilex/smilex-admin-gin/internal/data/permission"
 	datarole "github.com/smilex/smilex-admin-gin/internal/data/role"
@@ -120,6 +121,8 @@ var dataRepoSet = wire.NewSet(
 	dataagent.NewRepo,
 	datadict.NewRepo,
 	datadash.NewRepo,
+	datamonitor.NewSnapshotRepo,
+	wire.Bind(new(bizmonitor.SnapshotRepo), new(*datamonitor.SnapshotRepo)),
 	datasys.NewRepo,
 	datanotice.NewRepo,
 	datajob.NewRepo,
