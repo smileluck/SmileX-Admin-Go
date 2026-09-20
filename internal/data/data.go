@@ -132,7 +132,7 @@ func (d *Data) migrateAndSeed() error {
 		&model.MerchantPO{}, &model.MerchantAPILogPO{},
 		&model.TenantPO{}, &model.AppUserPO{}, &model.AppUserTenantPO{},
 		&model.AgentProviderPO{}, &model.AgentModelPO{}, &model.AgentPO{},
-		&model.AgentConversationPO{}, &model.AgentConversationMsgPO{}, &model.AgentUsageLogPO{}, &model.DictTypePO{}, &model.DictItemPO{}, &model.SysConfigPO{},
+		&model.AgentConversationPO{}, &model.AgentConversationMsgPO{}, &model.AgentUsageLogPO{}, &model.DictTypePO{}, &model.DictItemPO{}, &model.SysConfigPO{}, &model.NoticePO{}, &model.NoticeReadPO{},
 	); err != nil {
 		return err
 	}
@@ -230,6 +230,7 @@ type systemMenuDef struct {
 var systemMenus = []systemMenuDef{
 	{Name: "数据字典", Code: "menu:dict", Path: "/system/dicts", Icon: "BookOutline", Sort: 10, ParentCode: "menu:system"},
 	{Name: "系统参数", Code: "menu:sysConfig", Path: "/system/configs", Icon: "SettingsOutline", Sort: 11, ParentCode: "menu:system"},
+	{Name: "通知公告", Code: "menu:notice", Path: "/system/notices", Icon: "MegaphoneOutline", Sort: 12, ParentCode: "menu:system"},
 	{Name: "在线用户", Code: "menu:online", Path: "/system/online", Icon: "PulseOutline", Sort: 5, ParentCode: "menu:system"},
 	{Name: "关于我们", Code: "menu:about", Path: "/about", Icon: "InformationCircleOutline", Sort: 9},
 	// 日志管理（顶级目录分组，父级先于子菜单声明以解析 ParentCode）
@@ -454,6 +455,13 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "新增参数", Code: "sysconfig:create", Menu: "menu:sysConfig", Method: "POST", Path: "/api/v1/sys-configs", Sort: 2},
 	{Name: "编辑参数", Code: "sysconfig:update", Menu: "menu:sysConfig", Method: "PUT", Path: "/api/v1/sys-configs/*", Sort: 3},
 	{Name: "删除参数", Code: "sysconfig:delete", Menu: "menu:sysConfig", Method: "DELETE", Path: "/api/v1/sys-configs/*", Sort: 4},
+
+	// 通知公告（管理端发布；消费接口挂 basic 组，登录即可见）
+	{Name: "查询公告", Code: "notice:list", Menu: "menu:notice", Method: "GET", Path: "/api/v1/notices", Sort: 1},
+	{Name: "公告详情", Code: "notice:view", Menu: "menu:notice", Method: "GET", Path: "/api/v1/notices/*", Sort: 2},
+	{Name: "发布公告", Code: "notice:create", Menu: "menu:notice", Method: "POST", Path: "/api/v1/notices", Sort: 3},
+	{Name: "编辑公告", Code: "notice:update", Menu: "menu:notice", Method: "PUT", Path: "/api/v1/notices/*", Sort: 4},
+	{Name: "删除公告", Code: "notice:delete", Menu: "menu:notice", Method: "DELETE", Path: "/api/v1/notices/*", Sort: 5},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -463,7 +471,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser", "menu:monitor", "menu:agentProvider", "menu:agentList", "menu:agentChat", "menu:agentUsage", "menu:dict", "menu:sysConfig"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser", "menu:monitor", "menu:agentProvider", "menu:agentList", "menu:agentChat", "menu:agentUsage", "menu:dict", "menu:sysConfig", "menu:notice"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID

@@ -198,6 +198,11 @@ func (s *HTTPServer) registerRoutes() {
 		// 数据字典消费入口：按类型编码取启用项（登录即可，无管理权限要求）
 		basic.GET("/dicts/:code/items", s.listDictItemsByCode)
 
+		// 通知公告消费端：生效列表（带已读标记）/ 未读数 / 已读上报
+		basic.GET("/notices/active", s.listActiveNotices)
+		basic.GET("/notices/unread-count", s.unreadNoticeCount)
+		basic.POST("/notices/:id/read", s.readNotice)
+
 		// 异步导出：记录归属当前用户，列表/下载/删除均强制按 sub.UserID 过滤（biz 层校验），
 		// 与 profile/menus 同属自身数据接口，故仅 JWT 不走 RBAC；导出入口（POST */export）在 protected 组按按钮权限点控制
 		exports := basic.Group("/exports")
@@ -349,6 +354,16 @@ func (s *HTTPServer) registerRoutes() {
 		agentModels.PUT("/:id", s.updateAgentModel)
 		agentModels.DELETE("/:id", s.deleteAgentModel)
 		agentModels.POST("/:id/test", s.testAgentModel)
+	}
+
+	// ---- 通知公告（管理端） ----
+	notices := protected.Group("/notices")
+	{
+		notices.GET("", s.listNotices)
+		notices.POST("", s.createNotice)
+		notices.GET("/:id", s.getNotice)
+		notices.PUT("/:id", s.updateNotice)
+		notices.DELETE("/:id", s.deleteNotice)
 	}
 
 	// ---- 系统参数（运行时可调） ----
