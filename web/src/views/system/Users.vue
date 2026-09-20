@@ -184,7 +184,7 @@ async function doExportSubmit() {
 }
 
 async function loadRoles() {
-  const { data } = await listRoles({ page: 1, page_size: 100 })
+  const { data } = await listRoles({ page: 1, page_size: 0 })
   // 超管角色（id=1）只能由超管本人分配，其他用户置灰不可选（与后端校验一致）
   roleOptions.value = data.data.list.map((r) => ({
     label: r.name,
