@@ -1,6 +1,34 @@
 {
-  "generatedAt": "2026-09-20T09:34:25.223Z",
+  "generatedAt": "2026-09-20T09:45:58.507Z",
   "commits": [
+    {
+      "hash": "48ba7d4",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "数据字典管理页"
+    },
+    {
+      "hash": "78e37a5",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "dict",
+      "message": "数据字典后端——类型/项 CRUD 与按编码查询接口"
+    },
+    {
+      "hash": "832b447",
+      "date": "2026-09-20",
+      "type": "fix",
+      "scope": "agent",
+      "message": "StreamCompletion 请求补传 tools 定义"
+    },
+    {
+      "hash": "978a2ee",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "工具调用过程气泡展示与 Agent 工具多选"
+    },
     {
       "hash": "d2686c7",
       "date": "2026-09-20",
