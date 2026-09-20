@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, MonitorHistoryPoint, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -274,3 +274,8 @@ export const listJobLogs = (id: number, params: { page: number; page_size: numbe
 // ---- 仪表盘 ----
 
 export const getDashboardStats = () => request.get<R<DashboardStats>>('/dashboard/stats')
+
+// ---- 监控历史 ----
+
+export const getMonitorHistory = (hours = 24) =>
+  request.get<R<MonitorHistoryPoint[]>>('/monitor/history', { params: { hours } })
