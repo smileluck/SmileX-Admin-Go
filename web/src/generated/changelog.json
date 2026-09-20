@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-20T05:31:53.058Z",
+  "generatedAt": "2026-09-20T06:11:25.693Z",
   "commits": [
+    {
+      "hash": "16299e5",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "agent",
+      "message": "新增智能体模块——LLM 配置底座与 harness 运行时"
+    },
     {
       "hash": "1e3f4c9",
       "date": "2026-09-20",
