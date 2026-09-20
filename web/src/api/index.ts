@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, UserInfo, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -203,3 +203,16 @@ export const getAgent = (id: number) => request.get<R<AgentInfo>>(`/agents/${id}
 export const updateAgent = (id: number, data: Partial<AgentInfo>) =>
   request.put<R<null>>(`/agents/${id}`, data)
 export const deleteAgent = (id: number) => request.delete<R<null>>(`/agents/${id}`)
+
+// ---- 会话（本人数据） ----
+
+export const listAgentConversations = (params: { page: number; page_size: number; agent_id?: number }) =>
+  request.get<R<PageResult<AgentConversation>>>('/agent/conversations', { params })
+export const createAgentConversation = (agent_id: number) =>
+  request.post<R<AgentConversation>>('/agent/conversations', { agent_id })
+export const renameAgentConversation = (id: number, title: string) =>
+  request.put<R<AgentConversation>>(`/agent/conversations/${id}`, { title })
+export const deleteAgentConversation = (id: number) =>
+  request.delete<R<null>>(`/agent/conversations/${id}`)
+export const listAgentConversationMessages = (id: number, params: { page: number; page_size: number }) =>
+  request.get<R<PageResult<AgentConversationMessage>>>(`/agent/conversations/${id}/messages`, { params })
