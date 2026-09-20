@@ -1,6 +1,20 @@
 {
-  "generatedAt": "2026-09-20T09:16:15.432Z",
+  "generatedAt": "2026-09-20T09:23:42.756Z",
   "commits": [
+    {
+      "hash": "01f2d03",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "agent",
+      "message": "用量计量落库与模型单价"
+    },
+    {
+      "hash": "d4eacf1",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "对话消息 markdown 渲染与代码高亮"
+    },
     {
       "hash": "74dd008",
       "date": "2026-09-20",

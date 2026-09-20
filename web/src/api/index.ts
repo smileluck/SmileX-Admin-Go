@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, UserInfo, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, UserInfo, UsageStats, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -216,3 +216,5 @@ export const deleteAgentConversation = (id: number) =>
   request.delete<R<null>>(`/agent/conversations/${id}`)
 export const listAgentConversationMessages = (id: number, params: { page: number; page_size: number }) =>
   request.get<R<PageResult<AgentConversationMessage>>>(`/agent/conversations/${id}/messages`, { params })
+
+export const getAgentUsage = (days = 7) => request.get<R<UsageStats>>('/agent/usage', { params: { days } })
