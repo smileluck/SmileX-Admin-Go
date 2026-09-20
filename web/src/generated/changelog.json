@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-20T10:20:20.143Z",
+  "generatedAt": "2026-09-20T10:21:35.637Z",
   "commits": [
+    {
+      "hash": "ddccd1f",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "主题收敛单一来源与暗色模式"
+    },
     {
       "hash": "fa74162",
       "date": "2026-09-20",
