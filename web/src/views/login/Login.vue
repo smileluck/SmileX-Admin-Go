@@ -228,7 +228,7 @@ onMounted(() => {
   flex-direction: column;
   justify-content: space-between;
   padding: 40px 48px;
-  background: var(--sx-ink);
+  background: var(--sx-panel);
   color: #EDF2F8;
   overflow: hidden;
 }

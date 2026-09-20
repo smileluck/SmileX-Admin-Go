@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-20T10:16:56.845Z",
+  "generatedAt": "2026-09-20T10:20:20.143Z",
   "commits": [
+    {
+      "hash": "fa74162",
+      "date": "2026-09-20",
+      "type": "fix",
+      "scope": "web",
+      "message": "引用数据全量拉取改 page_size=0 语义，消除百条静默截断"
+    },
     {
       "hash": "858eafd",
       "date": "2026-09-20",
