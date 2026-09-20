@@ -1,6 +1,20 @@
 {
-  "generatedAt": "2026-09-20T10:10:44.821Z",
+  "generatedAt": "2026-09-20T10:15:25.370Z",
   "commits": [
+    {
+      "hash": "b978d0f",
+      "date": "2026-09-20",
+      "type": "fix",
+      "scope": "dict/job",
+      "message": "字典项路由参数修正与分页上限夹取、处理器清单序列化"
+    },
+    {
+      "hash": "460f12a",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "监控页历史区间回看"
+    },
     {
       "hash": "21fdd48",
       "date": "2026-09-20",
