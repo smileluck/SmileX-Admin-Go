@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DictItem, DictType, NoticeInfo, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DictItem, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -256,3 +256,17 @@ export const deleteNotice = (id: number) => request.delete<R<null>>(`/notices/${
 export const listActiveNotices = () => request.get<R<NoticeInfo[]>>('/notices/active')
 export const getUnreadNoticeCount = () => request.get<R<{ count: number }>>('/notices/unread-count')
 export const markNoticeRead = (id: number) => request.post<R<null>>(`/notices/${id}/read`)
+
+// ---- 定时任务 ----
+
+export const listJobs = (params: { page: number; page_size: number; name?: string }) =>
+  request.get<R<PageResult<JobInfo>>>('/jobs', { params })
+export const listJobHandlers = () => request.get<R<JobHandler[]>>('/jobs/handlers')
+export const createJob = (data: Partial<JobInfo>) => request.post<R<JobInfo>>('/jobs', data)
+export const getJob = (id: number) => request.get<R<JobInfo>>(`/jobs/${id}`)
+export const updateJob = (id: number, data: Partial<JobInfo>) => request.put<R<null>>(`/jobs/${id}`, data)
+export const setJobStatus = (id: number, status: number) => request.put<R<null>>(`/jobs/${id}/status`, { status })
+export const deleteJob = (id: number) => request.delete<R<null>>(`/jobs/${id}`)
+export const runJobOnce = (id: number) => request.post<R<null>>(`/jobs/${id}/run`)
+export const listJobLogs = (id: number, params: { page: number; page_size: number }) =>
+  request.get<R<PageResult<JobLog>>>(`/jobs/${id}/logs`, { params })

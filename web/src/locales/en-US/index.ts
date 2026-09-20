@@ -22,6 +22,7 @@ import agent from './agent'
 import dict from './dict'
 import sysconfig from './sysconfig'
 import notice from './notice'
+import job from './job'
 import errorPage from './errorPage'
 
 export default {
@@ -49,5 +50,6 @@ export default {
   dict,
   sysconfig,
   notice,
+  job,
   errorPage,
 }
