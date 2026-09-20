@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-20T10:21:35.637Z",
+  "generatedAt": "2026-09-20T10:22:07.480Z",
   "commits": [
+    {
+      "hash": "dde9278",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "多标签页栏与页面缓存 keep-alive"
+    },
     {
       "hash": "ddccd1f",
       "date": "2026-09-20",
