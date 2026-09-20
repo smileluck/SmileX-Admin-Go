@@ -1,5 +1,8 @@
 // login module messages (extracted from the corresponding page)
 export default {
+  brandLine1: 'Gin + Vue3 single binary',
+  brandLine2: 'MySQL / PostgreSQL / SQLite',
+  brandStatus: 'Lightweight',
   brandHeadline1: 'Let system governance',
   brandHeadline2: 'run quietly',
   brandSub: 'Users, roles, permissions, and menus — all in one place.',

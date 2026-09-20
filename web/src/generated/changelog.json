@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-20T10:22:07.480Z",
+  "generatedAt": "2026-09-20T10:23:54.464Z",
   "commits": [
+    {
+      "hash": "37cedc9",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "顶栏真面包屑（按菜单树层级）"
+    },
     {
       "hash": "dde9278",
       "date": "2026-09-20",

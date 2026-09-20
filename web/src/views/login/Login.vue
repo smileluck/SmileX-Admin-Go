@@ -24,9 +24,9 @@
         <div class="pulse-head mono-label">system pulse</div>
         <PulseWave />
         <div class="pulse-meta mono">
-          <span>uptime 99.98%</span>
-          <span>region cn-east</span>
-          <span class="live"><i></i>operational</span>
+          <span>{{ t('login.brandLine1') }}</span>
+          <span>{{ t('login.brandLine2') }}</span>
+          <span class="live"><i></i>{{ t('login.brandStatus') }}</span>
         </div>
       </div>
 

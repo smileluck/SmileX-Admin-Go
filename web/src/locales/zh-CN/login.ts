@@ -1,5 +1,8 @@
 // login 模块文案（由对应页面抽取填充）
 export default {
+  brandLine1: 'Gin + Vue3 单二进制部署',
+  brandLine2: 'MySQL / PostgreSQL / SQLite',
+  brandStatus: '轻量高内聚',
   brandHeadline1: '让系统治理',
   brandHeadline2: '安静地运转',
   brandSub: '用户、角色、权限、菜单——一处掌控。',
