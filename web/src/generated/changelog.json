@@ -1,6 +1,104 @@
 {
-  "generatedAt": "2026-09-20T06:11:25.693Z",
+  "generatedAt": "2026-09-20T09:16:15.432Z",
   "commits": [
+    {
+      "hash": "74dd008",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "web",
+      "message": "聊天页多会话管理"
+    },
+    {
+      "hash": "b737c37",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "agent",
+      "message": "SSE 对话接入会话持久化"
+    },
+    {
+      "hash": "0cf7eaf",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "agent",
+      "message": "会话与消息落库——表结构、三层与 CRUD 接口"
+    },
+    {
+      "hash": "7cf3bc9",
+      "date": "2026-09-20",
+      "type": "refactor",
+      "scope": "server",
+      "message": "http.go 按模块拆分 handler 文件"
+    },
+    {
+      "hash": "65b0c70",
+      "date": "2026-09-20",
+      "type": "fix",
+      "scope": "web",
+      "message": "聊天「（已停止）」文案接入 i18n"
+    },
+    {
+      "hash": "9d04924",
+      "date": "2026-09-20",
+      "type": "fix",
+      "scope": "log",
+      "message": "操作日志动作名补录 tenant/appuser/agent/export"
+    },
+    {
+      "hash": "6851274",
+      "date": "2026-09-20",
+      "type": "ci",
+      "scope": "",
+      "message": "新增 GitHub Actions 流水线，Makefile 增加 lint"
+    },
+    {
+      "hash": "f44b601",
+      "date": "2026-09-20",
+      "type": "test",
+      "scope": "middleware",
+      "message": "补 CORS/JWT/RBAC/限流中间件测试（miniredis）"
+    },
+    {
+      "hash": "7e45349",
+      "date": "2026-09-20",
+      "type": "chore",
+      "scope": "conf",
+      "message": "移除仓库内明文密钥与弱种子密码，release 模式弱 secret 启动拦截"
+    },
+    {
+      "hash": "7a15725",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "security",
+      "message": "抽出通用限流中间件，agent 对话与验证码接入频控"
+    },
+    {
+      "hash": "5856a95",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "security",
+      "message": "CORS 支持来源白名单，默认同源不下发跨域头"
+    },
+    {
+      "hash": "dcba56f",
+      "date": "2026-09-20",
+      "type": "chore",
+      "scope": "git",
+      "message": "移除误跟踪的编译产物与测试截图"
+    },
+    {
+      "hash": "916dbb7",
+      "date": "2026-09-20",
+      "type": "fix",
+      "scope": "make",
+      "message": "Makefile 兼容 Windows 原生环境"
+    },
+    {
+      "hash": "d24b5f5",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "agent",
+      "message": "新增聊天测试页并抽出可复用对话面板"
+    },
     {
       "hash": "16299e5",
       "date": "2026-09-20",
