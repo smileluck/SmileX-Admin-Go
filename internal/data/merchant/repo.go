@@ -144,29 +144,26 @@ func (r *repo) List(ctx context.Context, q bizmerchant.Query, page, pageSize int
 // 写入队列容量：超出即丢弃并告警（日志属于尽力而为的旁路数据，不反压业务主流程）
 const queueSize = 256
 
-// APILogRepo 调用日志仓储
+// APILogRepo 调用日志仓储（保留期清理已迁移为定时任务 handler，见 biz/job）
 type APILogRepo struct {
-	data  *data.Data
-	queue chan *model.MerchantAPILogPO
-	done  chan struct{} // 通知保留期清理循环退出
-	wg    sync.WaitGroup
+	data          *data.Data
+	queue         chan *model.MerchantAPILogPO
+	done          chan struct{} // 通知写入 worker 退出
+	wg            sync.WaitGroup
+	retentionDays int
 }
 
-// NewAPILogRepo 创建调用日志仓储：启动异步写入 worker；
-// retentionDays > 0 时启动每日保留期清理循环（复用 conf.Log.RetentionDays）。
+// NewAPILogRepo 创建调用日志仓储：启动异步写入 worker。
 // cleanup 冲刷剩余队列并停止后台协程（关停时先于数据库连接关闭执行）。
-func NewAPILogRepo(d *data.Data, c *conf.Bootstrap) (bizmerchant.APILogRepo, func(), error) {
+func NewAPILogRepo(d *data.Data, c *conf.Bootstrap) (*APILogRepo, func(), error) {
 	r := &APILogRepo{
-		data:  d,
-		queue: make(chan *model.MerchantAPILogPO, queueSize),
-		done:  make(chan struct{}),
+		data:          d,
+		queue:         make(chan *model.MerchantAPILogPO, queueSize),
+		done:          make(chan struct{}),
+		retentionDays: c.Log.RetentionDays,
 	}
 	r.wg.Add(1)
 	go r.writeWorker()
-	if c.Log.RetentionDays > 0 {
-		r.wg.Add(1)
-		go r.retentionLoop(c.Log.RetentionDays)
-	}
 	cleanup := func() {
 		close(r.done)
 		close(r.queue) // worker 消费完剩余条目后退出
@@ -226,32 +223,18 @@ func (r *APILogRepo) List(ctx context.Context, q bizmerchant.APILogQuery, page, 
 	return out, total, nil
 }
 
-// retentionLoop 保留期清理循环：启动先跑一次，此后每日一次（单机版定时，无需分布式锁）
-func (r *APILogRepo) retentionLoop(days int) {
-	defer r.wg.Done()
-	r.cleanupExpired(days)
-	t := time.NewTicker(24 * time.Hour)
-	defer t.Stop()
-	for {
-		select {
-		case <-r.done:
-			return
-		case <-t.C:
-			r.cleanupExpired(days)
-		}
+// CleanupExpired 清理保留期外调用日志（定时任务 handler 调用；保留期<=0 永久保留）
+func (r *APILogRepo) CleanupExpired(ctx context.Context) error {
+	if r.retentionDays <= 0 {
+		return nil
 	}
-}
-
-// cleanupExpired 物理删除保留期外的调用日志
-func (r *APILogRepo) cleanupExpired(days int) {
-	ctx := context.Background()
-	cutoff := time.Now().AddDate(0, 0, -days)
+	cutoff := time.Now().AddDate(0, 0, -r.retentionDays)
 	res := r.data.DB.WithContext(ctx).Where("created_at < ?", cutoff).Delete(&model.MerchantAPILogPO{})
 	if res.Error != nil {
-		logger.Warn("merchant api log retention cleanup failed", zap.Error(res.Error))
-		return
+		return res.Error
 	}
 	if res.RowsAffected > 0 {
 		logger.Info("merchant api log retention cleanup", zap.Int64("deleted", res.RowsAffected))
 	}
+	return nil
 }

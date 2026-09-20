@@ -3,6 +3,7 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -21,26 +22,24 @@ const queueSize = 256
 
 // Repo 日志仓储（登录/操作日志共用；写异步、读删同步）
 type Repo struct {
-	data  *data.Data
-	queue chan interface{} // *model.LoginLogPO | *model.OperationLogPO
-	done  chan struct{}    // 通知保留期清理循环退出
-	wg    sync.WaitGroup
+	data          *data.Data
+	queue         chan interface{} // *model.LoginLogPO | *model.OperationLogPO
+	done          chan struct{}    // 通知写入 worker 退出
+	wg            sync.WaitGroup
+	retentionDays int
 }
 
 // NewRepo 创建日志仓储：启动异步写入 worker；retentionDays > 0 时启动每日保留期清理循环。
 // cleanup 冲刷剩余队列并停止后台协程（关停时先于数据库连接关闭执行）。
 func NewRepo(d *data.Data, c *conf.Bootstrap) (*Repo, func(), error) {
 	r := &Repo{
-		data:  d,
-		queue: make(chan interface{}, queueSize),
-		done:  make(chan struct{}),
+		data:          d,
+		queue:         make(chan interface{}, queueSize),
+		done:          make(chan struct{}),
+		retentionDays: c.Log.RetentionDays,
 	}
 	r.wg.Add(1)
 	go r.writeWorker()
-	if c.Log.RetentionDays > 0 {
-		r.wg.Add(1)
-		go r.retentionLoop(c.Log.RetentionDays)
-	}
 	cleanup := func() {
 		close(r.done)
 		close(r.queue) // worker 消费完剩余条目后退出
@@ -67,40 +66,30 @@ func (r *Repo) writeWorker() {
 	}
 }
 
-// retentionLoop 保留期清理循环：启动先跑一次，此后每日一次（单机版定时，无需分布式锁）
-func (r *Repo) retentionLoop(days int) {
-	defer r.wg.Done()
-	r.cleanupExpired(days)
-	t := time.NewTicker(24 * time.Hour)
-	defer t.Stop()
-	for {
-		select {
-		case <-r.done:
-			return
-		case <-t.C:
-			r.cleanupExpired(days)
-		}
+// CleanupExpired 清理保留期外日志（定时任务 handler 调用；保留期<=0 永久保留）
+func (r *Repo) CleanupExpired(ctx context.Context) error {
+	if r.retentionDays <= 0 {
+		return nil
 	}
+	return r.cleanupExpired(ctx, r.retentionDays)
 }
 
 // cleanupExpired 物理删除保留期外的日志（与手动清空共用删除路径）
-func (r *Repo) cleanupExpired(days int) {
-	ctx := context.Background()
+func (r *Repo) cleanupExpired(ctx context.Context, days int) error {
 	cutoff := time.Now().AddDate(0, 0, -days)
 	n1, err := r.DeleteLoginBefore(ctx, cutoff)
 	if err != nil {
-		logger.Warn("login log retention cleanup failed", zap.Error(err))
-		return
+		return fmt.Errorf("登录日志清理失败: %w", err)
 	}
 	n2, err := r.DeleteOperationBefore(ctx, cutoff)
 	if err != nil {
-		logger.Warn("operation log retention cleanup failed", zap.Error(err))
-		return
+		return fmt.Errorf("操作日志清理失败: %w", err)
 	}
 	if n1+n2 > 0 {
 		logger.Info("log retention cleanup",
 			zap.Int64("login_logs_deleted", n1), zap.Int64("operation_logs_deleted", n2))
 	}
+	return nil
 }
 
 // ---- 写入（异步） ----
