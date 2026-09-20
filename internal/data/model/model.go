@@ -5,6 +5,7 @@ package model
 import (
 	"time"
 
+	"github.com/smilex/smilex-admin-gin/internal/biz/agent"
 	"github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
 	"github.com/smilex/smilex-admin-gin/internal/biz/export"
@@ -97,12 +98,12 @@ func (LoginLogPO) TableName() string { return "login_logs" }
 // OperationLogPO 操作日志表（写请求审计流水：无软删，清空/保留期清理均为物理删除）
 type OperationLogPO struct {
 	ID         uint      `gorm:"primaryKey"`
-	UserID     uint      `gorm:"index"`  // 操作人（JWT 校验失败被拒时为 0）
+	UserID     uint      `gorm:"index"`         // 操作人（JWT 校验失败被拒时为 0）
 	Username   string    `gorm:"size:64;index"` // 操作人用户名快照
 	Method     string    `gorm:"size:8;index"`
-	Path       string    `gorm:"size:255"` // 实际请求路径（含资源 ID 与 query）
-	Route      string    `gorm:"size:128"` // 路由模板（如 /api/v1/users/:id）
-	Action     string    `gorm:"size:64"`  // 中文动作名（如「新增用户」）
+	Path       string    `gorm:"size:255"`  // 实际请求路径（含资源 ID 与 query）
+	Route      string    `gorm:"size:128"`  // 路由模板（如 /api/v1/users/:id）
+	Action     string    `gorm:"size:64"`   // 中文动作名（如「新增用户」）
 	Params     string    `gorm:"type:text"` // 请求参数摘要（敏感字段脱敏、超长截断）
 	IP         string    `gorm:"size:64"`
 	UserAgent  string    `gorm:"size:255"`
@@ -116,10 +117,10 @@ func (OperationLogPO) TableName() string { return "operation_logs" }
 // FilePO 文件元数据表（对象本体在 driver 对应的存储后端；driver 落库保证后端升级后旧文件仍可访问）
 type FilePO struct {
 	ID           uint   `gorm:"primaryKey"`
-	Driver       string `gorm:"size:16;index"`   // local | oss | cos | tos | minio
+	Driver       string `gorm:"size:16;index"`        // local | oss | cos | tos | minio
 	ObjectKey    string `gorm:"size:512;uniqueIndex"` // 服务端生成的对象 key
-	Name         string `gorm:"size:255"`        // 原始文件名
-	Ext          string `gorm:"size:16;index"`   // 扩展名（小写，不含点）
+	Name         string `gorm:"size:255"`             // 原始文件名
+	Ext          string `gorm:"size:16;index"`        // 扩展名（小写，不含点）
 	Size         int64
 	ContentType  string `gorm:"size:128"`
 	UploaderID   uint   `gorm:"index"`
@@ -151,12 +152,12 @@ func (IPBlacklistPO) TableName() string { return "ip_blacklist" }
 // 追加型流水：无软删，保留期清理与手动删除均为物理删除）
 type ExportRecordPO struct {
 	ID         uint       `gorm:"primaryKey"`
-	UserID     uint       `gorm:"index"` // 任务归属用户
-	Biz        string     `gorm:"size:32"` // 业务类型（user / login_log / op_log）
-	Name       string     `gorm:"size:255"` // 展示名（兼作下载文件名）
+	UserID     uint       `gorm:"index"`     // 任务归属用户
+	Biz        string     `gorm:"size:32"`   // 业务类型（user / login_log / op_log）
+	Name       string     `gorm:"size:255"`  // 展示名（兼作下载文件名）
 	Params     string     `gorm:"type:text"` // 查询条件快照（JSON）
-	Driver     string     `gorm:"size:16"` // 产物落库时的存储后端
-	ObjectKey  string     `gorm:"size:512"` // 产物对象 key
+	Driver     string     `gorm:"size:16"`   // 产物落库时的存储后端
+	ObjectKey  string     `gorm:"size:512"`  // 产物对象 key
 	Size       int64      // 产物字节数（含 BOM）
 	Rows       int        // 已导出数据行数（不含表头）
 	Status     string     `gorm:"size:16;index"` // pending | running | done | failed
@@ -190,15 +191,15 @@ func (MerchantPO) TableName() string { return "merchants" }
 // MerchantAPILogPO 开放 API 调用日志表（追加型流水：无软删，保留期清理为物理删除）
 type MerchantAPILogPO struct {
 	ID         uint      `gorm:"primaryKey"`
-	MerchantID uint      `gorm:"index"`           // 商户（鉴权失败且商户未知时为 0）
-	AppKey     string    `gorm:"size:64;index"`   // 请求头携带的 appKey（原样记录）
+	MerchantID uint      `gorm:"index"`         // 商户（鉴权失败且商户未知时为 0）
+	AppKey     string    `gorm:"size:64;index"` // 请求头携带的 appKey（原样记录）
 	Method     string    `gorm:"size:8"`
-	Path       string    `gorm:"size:255"`        // 请求路径（不含 query）
+	Path       string    `gorm:"size:255"` // 请求路径（不含 query）
 	IP         string    `gorm:"size:64"`
-	StatusCode int                                // 响应状态码
-	LatencyMs  int                                // 耗时（毫秒）
-	Msg        string    `gorm:"size:255"`        // 失败原因摘要（成功为空）
-	CreatedAt  time.Time `gorm:"index"`           // 调用时间
+	StatusCode int       // 响应状态码
+	LatencyMs  int       // 耗时（毫秒）
+	Msg        string    `gorm:"size:255"` // 失败原因摘要（成功为空）
+	CreatedAt  time.Time `gorm:"index"`    // 调用时间
 }
 
 func (MerchantAPILogPO) TableName() string { return "merchant_api_logs" }
@@ -245,6 +246,61 @@ type AppUserTenantPO struct {
 }
 
 func (AppUserTenantPO) TableName() string { return "app_user_tenants" }
+
+// AgentProviderPO LLM 供应商配置表（智能体底座；api_key 只存 AES-GCM 密文，掩码仅展示用）
+type AgentProviderPO struct {
+	ID         uint   `gorm:"primaryKey"`
+	Name       string `gorm:"size:20"`
+	Code       string `gorm:"size:64;uniqueIndex"`
+	BaseURL    string `gorm:"size:255"`
+	APIKeyEnc  string `gorm:"size:512"`               // AES-GCM 密文（base64），永不输出
+	APIKeyMask string `gorm:"size:32"`                // 展示掩码（如 sk-****abcd）
+	Protocol   string `gorm:"size:32;default:openai"` // 调用协议（预留多协议扩展）
+	Remark     string `gorm:"size:200"`
+	Status     int    // 1 启用 0 禁用
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  gorm.DeletedAt `gorm:"index"`
+}
+
+func (AgentProviderPO) TableName() string { return "agent_providers" }
+
+// AgentModelPO 供应商下的模型配置表（同一供应商下模型名唯一）
+type AgentModelPO struct {
+	ID            uint   `gorm:"primaryKey"`
+	ProviderID    uint   `gorm:"index;uniqueIndex:uk_agent_provider_model"`
+	Name          string `gorm:"size:128;uniqueIndex:uk_agent_provider_model"`
+	DisplayName   string `gorm:"size:20"`
+	ContextWindow int    // 上下文窗口（token，0=未知）
+	MaxOutput     int    // 单次最大输出（token，0=上游默认）
+	SupportsTools bool   // 支持工具调用（function call）
+	Remark        string `gorm:"size:200"`
+	Status        int    // 1 启用 0 禁用
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
+}
+
+func (AgentModelPO) TableName() string { return "agent_models" }
+
+// AgentPO 智能体配置表（业务按 code 稳定引用）
+type AgentPO struct {
+	ID           uint   `gorm:"primaryKey"`
+	Name         string `gorm:"size:20"`
+	Code         string `gorm:"size:64;uniqueIndex"`
+	ModelID      uint   `gorm:"index"` // 绑定 agent_models.id（经模型定位供应商）
+	SystemPrompt string `gorm:"type:text"`
+	Temperature  float64
+	TopP         float64
+	MaxTokens    int    // 0=上游默认
+	Remark       string `gorm:"size:200"`
+	Status       int    // 1 启用 0 禁用
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
+}
+
+func (AgentPO) TableName() string { return "agents" }
 
 // ---- 转换器 ----
 
@@ -433,6 +489,57 @@ func AppUserFromPO(p *AppUserPO) *appuser.AppUser {
 	return &appuser.AppUser{
 		ID: p.ID, Username: p.Username, PasswordHash: p.PasswordHash,
 		Nickname: p.Nickname, Phone: p.Phone, Email: p.Email, Status: appuser.Status(p.Status),
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
+func AgentProviderToPO(a *agent.Provider) *AgentProviderPO {
+	return &AgentProviderPO{
+		ID: a.ID, Name: a.Name, Code: a.Code, BaseURL: a.BaseURL,
+		APIKeyEnc: a.APIKeyEnc, APIKeyMask: a.APIKeyMask,
+		Protocol: a.Protocol, Remark: a.Remark, Status: int(a.Status),
+	}
+}
+
+func AgentProviderFromPO(p *AgentProviderPO) *agent.Provider {
+	return &agent.Provider{
+		ID: p.ID, Name: p.Name, Code: p.Code, BaseURL: p.BaseURL,
+		APIKeyEnc: p.APIKeyEnc, APIKeyMask: p.APIKeyMask,
+		Protocol: p.Protocol, Remark: p.Remark, Status: agent.Status(p.Status),
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
+func AgentModelToPO(m *agent.Model) *AgentModelPO {
+	return &AgentModelPO{
+		ID: m.ID, ProviderID: m.ProviderID, Name: m.Name, DisplayName: m.DisplayName,
+		ContextWindow: m.ContextWindow, MaxOutput: m.MaxOutput, SupportsTools: m.SupportsTools,
+		Remark: m.Remark, Status: int(m.Status),
+	}
+}
+
+func AgentModelFromPO(p *AgentModelPO) *agent.Model {
+	return &agent.Model{
+		ID: p.ID, ProviderID: p.ProviderID, Name: p.Name, DisplayName: p.DisplayName,
+		ContextWindow: p.ContextWindow, MaxOutput: p.MaxOutput, SupportsTools: p.SupportsTools,
+		Remark: p.Remark, Status: agent.Status(p.Status),
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
+func AgentToPO(a *agent.Agent) *AgentPO {
+	return &AgentPO{
+		ID: a.ID, Name: a.Name, Code: a.Code, ModelID: a.ModelID,
+		SystemPrompt: a.SystemPrompt, Temperature: a.Temperature, TopP: a.TopP,
+		MaxTokens: a.MaxTokens, Remark: a.Remark, Status: int(a.Status),
+	}
+}
+
+func AgentFromPO(p *AgentPO) *agent.Agent {
+	return &agent.Agent{
+		ID: p.ID, Name: p.Name, Code: p.Code, ModelID: p.ModelID,
+		SystemPrompt: p.SystemPrompt, Temperature: p.Temperature, TopP: p.TopP,
+		MaxTokens: p.MaxTokens, Remark: p.Remark, Status: agent.Status(p.Status),
 		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 	}
 }

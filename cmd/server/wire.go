@@ -6,6 +6,7 @@ package main
 import (
 	"github.com/google/wire"
 	base64Captcha "github.com/mojocn/base64Captcha"
+	bizagent "github.com/smilex/smilex-admin-gin/internal/biz/agent"
 	bizappuser "github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
@@ -21,6 +22,7 @@ import (
 	biztenant "github.com/smilex/smilex-admin-gin/internal/biz/tenant"
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
+	dataagent "github.com/smilex/smilex-admin-gin/internal/data/agent"
 	dataappuser "github.com/smilex/smilex-admin-gin/internal/data/appuser"
 	datablacklist "github.com/smilex/smilex-admin-gin/internal/data/blacklist"
 	datacaptcha "github.com/smilex/smilex-admin-gin/internal/data/captcha"
@@ -34,6 +36,7 @@ import (
 	datatenant "github.com/smilex/smilex-admin-gin/internal/data/tenant"
 	datauser "github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
+	agentsvc "github.com/smilex/smilex-admin-gin/internal/service/agent"
 	appusersvc "github.com/smilex/smilex-admin-gin/internal/service/appuser"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	blacklistsvc "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
@@ -62,6 +65,7 @@ var bizSet = wire.NewSet(
 	biztenant.NewUsecase,
 	bizappuser.NewUsecase,
 	bizmonitor.NewUsecase,
+	bizagent.NewUsecase,
 	bizexport.NewUsecase,
 	bizexport.NewRegistry,
 	bizexport.NewUserExporter,
@@ -92,6 +96,7 @@ var dataRepoSet = wire.NewSet(
 	datamerchant.NewAPILogRepo,
 	datatenant.NewRepo,
 	dataappuser.NewRepo,
+	dataagent.NewRepo,
 	datacaptcha.NewStore,
 	dataexport.NewRepo,
 	dataexport.NewWorker,
@@ -121,6 +126,7 @@ var serviceSet = wire.NewSet(
 	tenantsvc.NewService,
 	appusersvc.NewService,
 	monitorsvc.NewService,
+	agentsvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

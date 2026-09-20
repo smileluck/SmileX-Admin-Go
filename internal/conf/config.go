@@ -19,6 +19,7 @@ type Bootstrap struct {
 	Storage Storage `mapstructure:"storage"`
 	Export  Export  `mapstructure:"export"`
 	OpenAPI OpenAPI `mapstructure:"openapi"`
+	Agent   Agent   `mapstructure:"agent"`
 	Seed    Seed    `mapstructure:"seed"`
 }
 
@@ -92,6 +93,14 @@ type OpenAPI struct {
 	SignSkewSeconds int `mapstructure:"signSkewSeconds"`
 	// NonceTTLSeconds nonce 防重放去重的 Redis 键 TTL（秒），应不小于 SignSkewSeconds
 	NonceTTLSeconds int `mapstructure:"nonceTtlSeconds"`
+}
+
+// Agent 智能体模块配置（LLM 配置底座）
+type Agent struct {
+	// CryptoKey 供应商 API Key 的 AES 加密密钥（任意长度，内部派生 AES-256）；
+	// 为空时从 jwt.secret 派生 —— 更换 jwt.secret 会使已存密钥不可解密（错误表现为 agent.decrypt_failed），
+	// 重新保存一次供应商密钥即可恢复
+	CryptoKey string `mapstructure:"cryptoKey"`
 }
 
 type Log struct {

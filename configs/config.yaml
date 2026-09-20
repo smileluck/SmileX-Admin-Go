@@ -47,6 +47,11 @@ openapi: # 开放 API（商户 HMAC 签名）验签配置
   signSkewSeconds: 300 # 请求时间戳允许的最大偏差（秒），超出即拒绝
   nonceTtlSeconds: 600 # nonce 防重放去重的 Redis 键 TTL（秒），应不小于 signSkewSeconds
 
+agent: # 智能体模块（LLM 配置底座）
+  # 供应商 API Key 的 AES 加密密钥（任意长度，内部派生 AES-256）；留空则从 jwt.secret 派生，
+  # 注意：更换 jwt.secret 后已存密钥不可解密，需到「模型供应商」重新保存一次密钥
+  cryptoKey: ""
+
 log:
   retentionDays: 90 # 登录/操作日志保留天数，超期每日自动清理；0 表示永久保留
   # 应用运行日志：按日期滚动落盘（dir/filename-2006-01-02.log）

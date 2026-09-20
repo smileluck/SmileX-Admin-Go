@@ -131,6 +131,7 @@ func (d *Data) migrateAndSeed() error {
 		&model.FilePO{}, &model.ExportRecordPO{}, &model.IPBlacklistPO{},
 		&model.MerchantPO{}, &model.MerchantAPILogPO{},
 		&model.TenantPO{}, &model.AppUserPO{}, &model.AppUserTenantPO{},
+		&model.AgentProviderPO{}, &model.AgentModelPO{}, &model.AgentPO{},
 	); err != nil {
 		return err
 	}
@@ -246,6 +247,10 @@ var systemMenus = []systemMenuDef{
 	{Name: "租户中心", Code: "menu:tenantCenter", Type: "dir", Icon: "BusinessOutline", Sort: 2},
 	{Name: "租户管理", Code: "menu:tenant", Path: "/tenant/tenants", Icon: "BusinessOutline", Sort: 1, ParentCode: "menu:tenantCenter"},
 	{Name: "应用用户", Code: "menu:appUser", Path: "/tenant/app-users", Icon: "PeopleOutline", Sort: 2, ParentCode: "menu:tenantCenter"},
+	// 智能体（LLM 配置底座，顶级目录分组，父级先于子菜单声明以解析 ParentCode）
+	{Name: "智能体", Code: "menu:agent", Type: "dir", Icon: "SparklesOutline", Sort: 7},
+	{Name: "模型供应商", Code: "menu:agentProvider", Path: "/agent/providers", Icon: "ServerOutline", Sort: 1, ParentCode: "menu:agent"},
+	{Name: "Agent 配置", Code: "menu:agentList", Path: "/agent/agents", Icon: "ChatbubblesOutline", Sort: 2, ParentCode: "menu:agent"},
 }
 
 // ensureSystemMenus 幂等补齐系统菜单并绑定超管角色（每次启动执行）：
@@ -396,6 +401,26 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "重置密码", Code: "appUser:resetPwd", Menu: "menu:appUser", Method: "PUT", Path: "/api/v1/app-users/*/password", Sort: 6},
 	// 服务器状态监控
 	{Name: "查询服务器状态", Code: "monitor:list", Menu: "menu:monitor", Method: "GET", Path: "/api/v1/monitor", Sort: 1},
+	// 智能体 —— 模型供应商（含供应商下的模型管理）
+	{Name: "查询供应商", Code: "agent:provider:list", Menu: "menu:agentProvider", Method: "GET", Path: "/api/v1/agent/providers", Sort: 1},
+	{Name: "供应商详情", Code: "agent:provider:view", Menu: "menu:agentProvider", Method: "GET", Path: "/api/v1/agent/providers/*", Sort: 2},
+	{Name: "新增供应商", Code: "agent:provider:create", Menu: "menu:agentProvider", Method: "POST", Path: "/api/v1/agent/providers", Sort: 3},
+	{Name: "编辑供应商", Code: "agent:provider:update", Menu: "menu:agentProvider", Method: "PUT", Path: "/api/v1/agent/providers/*", Sort: 4},
+	{Name: "删除供应商", Code: "agent:provider:delete", Menu: "menu:agentProvider", Method: "DELETE", Path: "/api/v1/agent/providers/*", Sort: 5},
+	{Name: "测试供应商", Code: "agent:provider:test", Menu: "menu:agentProvider", Method: "POST", Path: "/api/v1/agent/providers/*/test", Sort: 6},
+	{Name: "拉取上游模型", Code: "agent:provider:remoteModels", Menu: "menu:agentProvider", Method: "GET", Path: "/api/v1/agent/providers/*/remote-models", Sort: 7},
+	{Name: "查询模型", Code: "agent:model:list", Menu: "menu:agentProvider", Method: "GET", Path: "/api/v1/agent/models", Sort: 8},
+	{Name: "新增模型", Code: "agent:model:create", Menu: "menu:agentProvider", Method: "POST", Path: "/api/v1/agent/models", Sort: 9},
+	{Name: "编辑模型", Code: "agent:model:update", Menu: "menu:agentProvider", Method: "PUT", Path: "/api/v1/agent/models/*", Sort: 10},
+	{Name: "删除模型", Code: "agent:model:delete", Menu: "menu:agentProvider", Method: "DELETE", Path: "/api/v1/agent/models/*", Sort: 11},
+	{Name: "测试模型", Code: "agent:model:test", Menu: "menu:agentProvider", Method: "POST", Path: "/api/v1/agent/models/*/test", Sort: 12},
+	// 智能体 —— Agent 配置
+	{Name: "查询Agent", Code: "agent:list", Menu: "menu:agentList", Method: "GET", Path: "/api/v1/agents", Sort: 1},
+	{Name: "Agent详情", Code: "agent:view", Menu: "menu:agentList", Method: "GET", Path: "/api/v1/agents/*", Sort: 2},
+	{Name: "新增Agent", Code: "agent:create", Menu: "menu:agentList", Method: "POST", Path: "/api/v1/agents", Sort: 3},
+	{Name: "编辑Agent", Code: "agent:update", Menu: "menu:agentList", Method: "PUT", Path: "/api/v1/agents/*", Sort: 4},
+	{Name: "删除Agent", Code: "agent:delete", Menu: "menu:agentList", Method: "DELETE", Path: "/api/v1/agents/*", Sort: 5},
+	{Name: "Agent调试对话", Code: "agent:chat", Menu: "menu:agentList", Method: "POST", Path: "/api/v1/agents/*/chat", Sort: 6},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -405,7 +430,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser", "menu:monitor"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser", "menu:monitor", "menu:agentProvider", "menu:agentList"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID

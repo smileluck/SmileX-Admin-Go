@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/google/wire"
 	"github.com/mojocn/base64Captcha"
+	agent2 "github.com/smilex/smilex-admin-gin/internal/biz/agent"
 	appuser2 "github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	blacklist2 "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
@@ -24,6 +25,7 @@ import (
 	tenant2 "github.com/smilex/smilex-admin-gin/internal/biz/tenant"
 	user2 "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/data"
+	"github.com/smilex/smilex-admin-gin/internal/data/agent"
 	"github.com/smilex/smilex-admin-gin/internal/data/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/data/blacklist"
 	"github.com/smilex/smilex-admin-gin/internal/data/captcha"
@@ -37,6 +39,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/data/tenant"
 	"github.com/smilex/smilex-admin-gin/internal/data/user"
 	"github.com/smilex/smilex-admin-gin/internal/server"
+	agent3 "github.com/smilex/smilex-admin-gin/internal/service/agent"
 	appuser3 "github.com/smilex/smilex-admin-gin/internal/service/appuser"
 	auth2 "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	blacklist3 "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
@@ -141,7 +144,10 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	appuserService := appuser3.NewService(appuserUsecase)
 	monitorUsecase, cleanup6 := monitor.NewUsecase()
 	monitorService := monitor2.NewService(monitorUsecase)
-	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService, exportService, blacklistService, merchantService, merchantUsecase, tenantService, appuserService, appuserUsecase, appuserTokenIssuer, monitorService, client)
+	agentRepo := agent.NewRepo(dataData)
+	agentUsecase := agent2.NewUsecase(agentRepo, bootstrap)
+	agentService := agent3.NewService(agentUsecase)
+	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService, exportService, blacklistService, merchantService, merchantUsecase, tenantService, appuserService, appuserUsecase, appuserTokenIssuer, monitorService, agentService, client)
 	return httpServer, func() {
 		cleanup6()
 		cleanup5()
@@ -154,10 +160,10 @@ func wireApp() (*server.HTTPServer, func(), error) {
 
 // wire.go:
 
-var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha2.NewUsecase, session2.NewUsecase, log2.NewUsecase, file2.NewUsecase, blacklist2.NewUsecase, merchant2.NewUsecase, tenant2.NewUsecase, appuser2.NewUsecase, monitor.NewUsecase, export2.NewUsecase, export2.NewRegistry, export2.NewUserExporter, export2.NewLoginLogExporter, export2.NewOpLogExporter, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha2.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)), wire.Bind(new(export2.PermissionChecker), new(*auth.Usecase)))
+var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha2.NewUsecase, session2.NewUsecase, log2.NewUsecase, file2.NewUsecase, blacklist2.NewUsecase, merchant2.NewUsecase, tenant2.NewUsecase, appuser2.NewUsecase, monitor.NewUsecase, agent2.NewUsecase, export2.NewUsecase, export2.NewRegistry, export2.NewUserExporter, export2.NewLoginLogExporter, export2.NewOpLogExporter, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha2.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)), wire.Bind(new(export2.PermissionChecker), new(*auth.Usecase)))
 
-var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, data.NewAppTokenIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, blacklist.NewRepo, merchant.NewRepo, merchant.NewAPILogRepo, tenant.NewRepo, appuser.NewRepo, captcha.NewStore, export.NewRepo, export.NewWorker, wire.Bind(new(base64Captcha.Store), new(*captcha.Store)), wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(role2.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)), wire.Bind(new(blacklist2.Repo), new(*blacklist.Repo)), wire.Bind(new(blacklist2.LoginProtector), new(*blacklist.Repo)), wire.Bind(new(export2.Enqueuer), new(*export.Worker)))
+var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, data.NewAppTokenIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, blacklist.NewRepo, merchant.NewRepo, merchant.NewAPILogRepo, tenant.NewRepo, appuser.NewRepo, agent.NewRepo, captcha.NewStore, export.NewRepo, export.NewWorker, wire.Bind(new(base64Captcha.Store), new(*captcha.Store)), wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(role2.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)), wire.Bind(new(blacklist2.Repo), new(*blacklist.Repo)), wire.Bind(new(blacklist2.LoginProtector), new(*blacklist.Repo)), wire.Bind(new(export2.Enqueuer), new(*export.Worker)))
 
-var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService, log3.NewService, file3.NewService, blacklist3.NewService, export3.NewService, merchant3.NewService, tenant3.NewService, appuser3.NewService, monitor2.NewService)
+var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService, log3.NewService, file3.NewService, blacklist3.NewService, export3.NewService, merchant3.NewService, tenant3.NewService, appuser3.NewService, monitor2.NewService, agent3.NewService)
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

@@ -18,6 +18,7 @@ import exportRecords from './exportRecords'
 import profile from './profile'
 import about from './about'
 import monitor from './monitor'
+import agent from './agent'
 import errorPage from './errorPage'
 
 export default {
@@ -41,5 +42,6 @@ export default {
   profile,
   about,
   monitor,
+  agent,
   errorPage,
 }

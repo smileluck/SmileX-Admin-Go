@@ -24,6 +24,8 @@ const viewModules: Record<string, () => Promise<any>> = {
   'menu:appUser': () => import('../views/tenant/AppUsers.vue'),
   'menu:merchantLog': () => import('../views/merchant-access/ApiLogs.vue'),
   'menu:about': () => import('../views/about/About.vue'),
+  'menu:agentProvider': () => import('../views/agent/Providers.vue'),
+  'menu:agentList': () => import('../views/agent/Agents.vue'),
 }
 
 // 将后端菜单树转换为路由
