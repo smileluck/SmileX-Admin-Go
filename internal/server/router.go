@@ -195,6 +195,9 @@ func (s *HTTPServer) registerRoutes() {
 			response.OK(c, hits)
 		})
 
+		// 仪表盘聚合数据（登录即可查看）
+		basic.GET("/dashboard/stats", s.dashboardStats)
+
 		// 数据字典消费入口：按类型编码取启用项（登录即可，无管理权限要求）
 		basic.GET("/dicts/:code/items", s.listDictItemsByCode)
 
