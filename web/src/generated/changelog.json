@@ -1,8 +1,15 @@
 {
-  "generatedAt": "2026-09-20T09:45:58.507Z",
+  "generatedAt": "2026-09-20T09:49:52.771Z",
   "commits": [
     {
-      "hash": "48ba7d4",
+      "hash": "c79a7b4",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "config",
+      "message": "系统参数运行时配置底座与分页上限消费点"
+    },
+    {
+      "hash": "02f6620",
       "date": "2026-09-20",
       "type": "feat",
       "scope": "web",

@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DictItem, DictType, UserInfo, UsageStats, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DictItem, DictType, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -234,3 +234,12 @@ export const createDictItem = (typeID: number, data: Partial<DictItem>) => reque
 export const updateDictItem = (id: number, data: Partial<DictItem>) => request.put<R<null>>(`/dict-items/${id}`, data)
 export const deleteDictItem = (id: number) => request.delete<R<null>>(`/dict-items/${id}`)
 export const getDictItemsByCode = (code: string) => request.get<R<DictItem[]>>(`/dicts/${code}/items`)
+
+// ---- 系统参数 ----
+
+export const listSysConfigs = (keyword?: string) =>
+  request.get<R<SysConfig[]>>('/sys-configs', { params: { keyword } })
+export const createSysConfig = (data: Partial<SysConfig>) => request.post<R<SysConfig>>('/sys-configs', data)
+export const updateSysConfig = (key: string, data: { value: string }) =>
+  request.put<R<SysConfig>>(`/sys-configs/${key}`, data)
+export const deleteSysConfig = (key: string) => request.delete<R<null>>(`/sys-configs/${key}`)

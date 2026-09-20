@@ -25,6 +25,7 @@ const viewModules: Record<string, () => Promise<any>> = {
   'menu:merchantLog': () => import('../views/merchant-access/ApiLogs.vue'),
   'menu:about': () => import('../views/about/About.vue'),
   'menu:dict': () => import('../views/system/Dicts.vue'),
+  'menu:sysConfig': () => import('../views/system/Configs.vue'),
   'menu:agentProvider': () => import('../views/agent/Providers.vue'),
   'menu:agentList': () => import('../views/agent/Agents.vue'),
   'menu:agentChat': () => import('../views/agent/Chat.vue'),
