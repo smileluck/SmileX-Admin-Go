@@ -150,6 +150,7 @@ echarts.use([LineChart, GridComponent, LegendComponent, TooltipComponent, Canvas
 // 曲线配色与 styles/tokens.css 同源（清水蓝主题）
 // 主题色从 CSS 变量读取（亮/暗切换后刷新图表）
 const ACCENT = ref('#3F75AB')
+const ACCENT_SOFT = ref('#8FC5E8')
 function refreshAccent() {
   const cs = getComputedStyle(document.documentElement)
   ACCENT.value = cs.getPropertyValue('--sx-accent').trim() || '#3F75AB'
@@ -161,7 +162,6 @@ watch(isDarkRef, () => {
   renderHistory()
   refreshNow() // 立即重拉一帧并重绘实时图表（配色已更新）
 })
-const ACCENT_SOFT = ref('#8FC5E8')
 const MUTED = '#6B7787'
 const DANGER = '#C2453A'
 // 曲线滚动窗口：5s 轮询下约覆盖最近 5 分钟

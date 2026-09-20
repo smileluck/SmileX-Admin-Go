@@ -82,6 +82,11 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	job *jobsvc.Service, dash *dashsvc.Service, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
+	// ClientIP 只信可信代理链上的 X-Forwarded-For：默认空表=不信任任何代理（取直连地址），
+	// 防止伪造请求头绕过登录限流/封禁或污染审计 IP；反代部署在 configs 配置代理机地址
+	if err := e.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
+		logger.Warn("set trusted proxies failed", zap.Strings("proxies", cfg.Server.TrustedProxies), zap.Error(err))
+	}
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
 	e.MaxMultipartMemory = 8 << 20
 	e.Use(gin.Recovery(),

@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-20T10:23:54.464Z",
+  "generatedAt": "2026-09-20T13:30:26.301Z",
   "commits": [
+    {
+      "hash": "b3a1535",
+      "date": "2026-09-20",
+      "type": "chore",
+      "scope": "web",
+      "message": "登录页装饰改真实文案，引入 ESLint 并接入 CI"
+    },
     {
       "hash": "37cedc9",
       "date": "2026-09-20",

@@ -84,14 +84,17 @@ func (r *repo) Delete(ctx context.Context, id uint) error {
 	if refCnt > 0 {
 		return biztenant.ErrTenantInUse
 	}
-	res := r.data.DB.WithContext(ctx).Delete(&model.TenantPO{}, id)
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return biztenant.ErrTenantNotFound
-	}
-	return nil
+	return r.data.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Delete(&model.TenantPO{}, id)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return biztenant.ErrTenantNotFound
+		}
+		// 软删行仍占用 name/code 唯一索引，归档释放以便重建
+		return data.ArchiveUniqueColumns(tx, "tenants", id, "name", "code")
+	})
 }
 
 func (r *repo) Get(ctx context.Context, id uint) (*biztenant.Tenant, error) {

@@ -85,17 +85,6 @@ func OpenAPIAuth(uc *bizmerchant.Usecase, rdb *redis.Client, cfg conf.OpenAPI) g
 			deny(i18n.T(c.Request.Context(), "openapi.invalid_nonce"), nil)
 			return
 		}
-		ok, err := rdb.SetNX(c.Request.Context(), "openapi:nonce:"+appKey+":"+nonce, 1,
-			time.Duration(cfg.NonceTTLSeconds)*time.Second).Result()
-		if err != nil {
-			// Redis 故障 fail-closed：防重放失效时宁可拒绝也不放行
-			deny(i18n.T(c.Request.Context(), "openapi.service_unavailable"), nil)
-			return
-		}
-		if !ok {
-			deny(i18n.T(c.Request.Context(), "openapi.nonce_replayed"), nil)
-			return
-		}
 
 		// body hash：读出后复位，供后续 handler 绑定使用（日志不记 body）
 		var body []byte
@@ -109,6 +98,8 @@ func OpenAPIAuth(uc *bizmerchant.Usecase, rdb *redis.Client, cfg conf.OpenAPI) g
 		bodySum := sha256.Sum256(body)
 		bodyHash := hex.EncodeToString(bodySum[:])
 
+		// 先验签后占坑：nonce 防重放去重放在签名校验之后，
+		// 避免无签名的恶意请求抢先消耗 (appKey, nonce)，把商户正常请求挤成 401
 		m, err := uc.VerifySign(c.Request.Context(), appKey, c.Request.Method, c.Request.URL.Path, timestamp, nonce, bodyHash, sign)
 		if err != nil {
 			msg := err.Error()
@@ -121,6 +112,17 @@ func OpenAPIAuth(uc *bizmerchant.Usecase, rdb *redis.Client, cfg conf.OpenAPI) g
 				msg = i18n.T(c.Request.Context(), "merchant.sign_invalid")
 			}
 			deny(msg, m)
+			return
+		}
+		ok, err := rdb.SetNX(c.Request.Context(), "openapi:nonce:"+appKey+":"+nonce, 1,
+			time.Duration(cfg.NonceTTLSeconds)*time.Second).Result()
+		if err != nil {
+			// Redis 故障 fail-closed：防重放失效时宁可拒绝也不放行
+			deny(i18n.T(c.Request.Context(), "openapi.service_unavailable"), m)
+			return
+		}
+		if !ok {
+			deny(i18n.T(c.Request.Context(), "openapi.nonce_replayed"), m)
 			return
 		}
 

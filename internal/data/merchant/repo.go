@@ -81,14 +81,17 @@ func (r *repo) Update(ctx context.Context, m *bizmerchant.Merchant) error {
 }
 
 func (r *repo) Delete(ctx context.Context, id uint) error {
-	res := r.data.DB.WithContext(ctx).Delete(&model.MerchantPO{}, id)
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return bizmerchant.ErrMerchantNotFound
-	}
-	return nil
+	return r.data.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Delete(&model.MerchantPO{}, id)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return bizmerchant.ErrMerchantNotFound
+		}
+		// 软删行仍占用 code/app_key 唯一索引，归档释放以便重建
+		return data.ArchiveUniqueColumns(tx, "merchants", id, "code", "app_key")
+	})
 }
 
 func (r *repo) Get(ctx context.Context, id uint) (*bizmerchant.Merchant, error) {
