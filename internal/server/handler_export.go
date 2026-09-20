@@ -168,8 +168,12 @@ func (s *HTTPServer) pageParams(c *gin.Context) (int, int) {
 	if page < 1 {
 		page = 1
 	}
-	if size < 1 || size > s.syscfg.IntDefault(c.Request.Context(), "page.sizeMax", 100) {
+	max := s.syscfg.IntDefault(c.Request.Context(), "page.sizeMax", 100)
+	if size < 1 {
 		size = 10
+	}
+	if size > max {
+		size = max // 运行时上限夹取（page.sizeMax 可调）
 	}
 	return page, size
 }
