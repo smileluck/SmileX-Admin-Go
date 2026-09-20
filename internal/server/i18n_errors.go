@@ -15,6 +15,7 @@ import (
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
+	bizsys "github.com/smilex/smilex-admin-gin/internal/biz/sysconfig"
 	biztenant "github.com/smilex/smilex-admin-gin/internal/biz/tenant"
 	"github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/pkg/response"
@@ -108,6 +109,11 @@ var errKeys = []struct {
 	{bizdict.ErrTypeHasItems, "dict.type.has_items"},
 	{bizdict.ErrItemNotFound, "dict.item.not_found"},
 	{bizdict.ErrItemExists, "dict.item.exists"},
+	// 系统参数
+	{bizsys.ErrNotFound, "sysconfig.not_found"},
+	{bizsys.ErrKeyExists, "sysconfig.key_exists"},
+	{bizsys.ErrBadValue, "sysconfig.bad_value"},
+	{bizsys.ErrKeyInvalid, "sysconfig.key_invalid"},
 }
 
 // init 将错误 -> i18n key 匹配函数注册到 response 包（response 不便反向依赖 server，走钩子）

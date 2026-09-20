@@ -40,7 +40,7 @@ func statusQuery(c *gin.Context) *int {
 }
 
 func (s *HTTPServer) listAgentProviders(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizagent.ProviderQuery{Name: c.Query("name"), Code: c.Query("code"), Status: statusQuery(c)}
 	list, pg, err := s.agent.ListProviders(c.Request.Context(), q, page, size)
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *HTTPServer) listAgentRemoteModels(c *gin.Context) {
 }
 
 func (s *HTTPServer) listAgentModels(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizagent.ModelQuery{Name: c.Query("name"), Status: statusQuery(c)}
 	if v := c.Query("provider_id"); v != "" {
 		if pid, err := strconv.ParseUint(v, 10, 64); err == nil && pid > 0 {
@@ -212,7 +212,7 @@ func (s *HTTPServer) testAgentModel(c *gin.Context) {
 }
 
 func (s *HTTPServer) listAgents(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizagent.AgentQuery{Name: c.Query("name"), Code: c.Query("code"), Status: statusQuery(c)}
 	list, pg, err := s.agent.ListAgents(c.Request.Context(), q, page, size)
 	if err != nil {
@@ -350,7 +350,7 @@ func (s *HTTPServer) chatAgent(c *gin.Context) {
 // ---- 会话（本人数据：user_id 在 biz 层强制过滤） ----
 
 func (s *HTTPServer) listAgentConversations(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	var agentID *uint
 	if v := c.Query("agent_id"); v != "" {
 		if id, err := strconv.ParseUint(v, 10, 64); err == nil && id > 0 {
@@ -419,7 +419,7 @@ func (s *HTTPServer) listAgentConversationMessages(c *gin.Context) {
 	if !ok {
 		return
 	}
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	sub := middleware.Subject(c)
 	list, pg, err := s.agent.ListConversationMessages(c.Request.Context(), sub.UserID, id, page, size)
 	if err != nil {

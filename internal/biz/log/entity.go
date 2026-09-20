@@ -51,9 +51,9 @@ type OperationLog struct {
 
 // OperationLogQuery 操作日志查询条件（零值为不限）
 type OperationLogQuery struct {
-	Username string    // 操作人前缀模糊
-	Method   string    // 请求方式精确匹配（空为全部）
-	Keyword  string    // 动作/路由/路径包含匹配
+	Username string // 操作人前缀模糊
+	Method   string // 请求方式精确匹配（空为全部）
+	Keyword  string // 动作/路由/路径包含匹配
 	Start    time.Time
 	End      time.Time
 }

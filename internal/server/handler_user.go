@@ -22,7 +22,7 @@ type listResult struct {
 }
 
 func (s *HTTPServer) listUsers(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := user.Query{Username: c.Query("username")}
 	if v := c.Query("status"); v != "" {
 		if st, err := strconv.Atoi(v); err == nil {

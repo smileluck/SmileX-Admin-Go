@@ -18,7 +18,7 @@ import (
 // ---- 在线用户 ----
 
 func (s *HTTPServer) listOnlineUsers(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizsession.Query{Username: c.Query("username"), Device: c.Query("device")}
 	currentSid := ""
 	if sub := middleware.Subject(c); sub != nil {

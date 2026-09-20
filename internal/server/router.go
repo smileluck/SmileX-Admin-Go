@@ -351,6 +351,15 @@ func (s *HTTPServer) registerRoutes() {
 		agentModels.POST("/:id/test", s.testAgentModel)
 	}
 
+	// ---- 系统参数（运行时可调） ----
+	syscfgs := protected.Group("/sys-configs")
+	{
+		syscfgs.GET("", s.listSysConfigs)
+		syscfgs.POST("", s.createSysConfig)
+		syscfgs.PUT("/:key", s.updateSysConfig)
+		syscfgs.DELETE("/:key", s.deleteSysConfig)
+	}
+
 	// ---- 数据字典 ----
 	dictTypes := protected.Group("/dict-types")
 	{

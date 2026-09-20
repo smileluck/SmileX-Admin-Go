@@ -17,7 +17,7 @@ import (
 // ---- 商户（开放 API 授权） ----
 
 func (s *HTTPServer) listMerchants(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizmerchant.Query{
 		Name:   strings.TrimSpace(c.Query("name")),
 		Code:   strings.TrimSpace(c.Query("code")),
@@ -123,7 +123,7 @@ func (s *HTTPServer) setMerchantStatus(c *gin.Context) {
 }
 
 func (s *HTTPServer) listMerchantAPILogs(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizmerchant.APILogQuery{AppKey: c.Query("app_key"), Path: c.Query("path")}
 	if v := c.Query("status_code"); v != "" {
 		if sc, err := strconv.Atoi(v); err == nil {

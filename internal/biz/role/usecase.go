@@ -21,7 +21,9 @@ type Usecase struct {
 // superAdminRoleID 超管角色固定 ID：禁止修改和操作
 const superAdminRoleID uint = 1
 
-func NewUsecase(repo Repo, permRd PermissionReader) *Usecase { return &Usecase{repo: repo, permRd: permRd} }
+func NewUsecase(repo Repo, permRd PermissionReader) *Usecase {
+	return &Usecase{repo: repo, permRd: permRd}
+}
 
 func (uc *Usecase) Create(ctx context.Context, name, remark string) (*Role, error) {
 	r := &Role{Name: name, Remark: remark}

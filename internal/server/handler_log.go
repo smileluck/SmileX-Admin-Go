@@ -20,7 +20,7 @@ type logListResult struct {
 }
 
 func (s *HTTPServer) listLoginLogs(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizlog.LoginLogQuery{Username: c.Query("username"), IP: c.Query("ip")}
 	if v := c.Query("status"); v != "" {
 		if st, err := strconv.Atoi(v); err == nil {
@@ -51,7 +51,7 @@ func (s *HTTPServer) clearLoginLogs(c *gin.Context) {
 }
 
 func (s *HTTPServer) listOperationLogs(c *gin.Context) {
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	q := bizlog.OperationLogQuery{Username: c.Query("username"), Method: c.Query("method"), Keyword: c.Query("kw")}
 	if t, ok := parseUnixParam(c.Query("start")); ok {
 		q.Start = t

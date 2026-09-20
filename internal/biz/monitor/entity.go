@@ -69,7 +69,7 @@ type GoRuntime struct {
 
 // ServerStatus 服务器状态快照（CPU/网络读采样器缓存，其余请求时采集）
 type ServerStatus struct {
-	Time   int64     // 快照 unix 秒
+	Time   int64 // 快照 unix 秒
 	Host   *HostInfo
 	CPU    CPUInfo
 	Memory MemInfo

@@ -8,6 +8,7 @@ import (
 	base64Captcha "github.com/mojocn/base64Captcha"
 	bizagent "github.com/smilex/smilex-admin-gin/internal/biz/agent"
 	bizdict "github.com/smilex/smilex-admin-gin/internal/biz/dict"
+	bizsys "github.com/smilex/smilex-admin-gin/internal/biz/sysconfig"
 	bizappuser "github.com/smilex/smilex-admin-gin/internal/biz/appuser"
 	"github.com/smilex/smilex-admin-gin/internal/biz/auth"
 	bizblacklist "github.com/smilex/smilex-admin-gin/internal/biz/blacklist"
@@ -25,6 +26,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/data"
 	dataagent "github.com/smilex/smilex-admin-gin/internal/data/agent"
 	datadict "github.com/smilex/smilex-admin-gin/internal/data/dict"
+	datasys "github.com/smilex/smilex-admin-gin/internal/data/sysconfig"
 	dataappuser "github.com/smilex/smilex-admin-gin/internal/data/appuser"
 	datablacklist "github.com/smilex/smilex-admin-gin/internal/data/blacklist"
 	datacaptcha "github.com/smilex/smilex-admin-gin/internal/data/captcha"
@@ -40,6 +42,7 @@ import (
 	"github.com/smilex/smilex-admin-gin/internal/server"
 	agentsvc "github.com/smilex/smilex-admin-gin/internal/service/agent"
 	dictsvc "github.com/smilex/smilex-admin-gin/internal/service/dict"
+	syssvc "github.com/smilex/smilex-admin-gin/internal/service/sysconfig"
 	appusersvc "github.com/smilex/smilex-admin-gin/internal/service/appuser"
 	authsvc "github.com/smilex/smilex-admin-gin/internal/service/auth"
 	blacklistsvc "github.com/smilex/smilex-admin-gin/internal/service/blacklist"
@@ -68,6 +71,7 @@ var bizSet = wire.NewSet(
 	biztenant.NewUsecase,
 	bizappuser.NewUsecase,
 	bizdict.NewUsecase,
+	bizsys.NewUsecase,
 	bizmonitor.NewUsecase,
 	bizagent.NewUsecase,
 	bizexport.NewUsecase,
@@ -103,6 +107,7 @@ var dataRepoSet = wire.NewSet(
 	dataappuser.NewRepo,
 	dataagent.NewRepo,
 	datadict.NewRepo,
+	datasys.NewRepo,
 	datacaptcha.NewStore,
 	dataexport.NewRepo,
 	dataexport.NewWorker,
@@ -134,6 +139,7 @@ var serviceSet = wire.NewSet(
 	monitorsvc.NewService,
 	agentsvc.NewService,
 	dictsvc.NewService,
+	syssvc.NewService,
 )
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

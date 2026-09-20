@@ -60,7 +60,7 @@ func (s *HTTPServer) listExports(c *gin.Context) {
 		response.OK(c, vos)
 		return
 	}
-	page, size := pageParams(c)
+	page, size := s.pageParams(c)
 	vos, pg, err := s.export.List(c.Request.Context(), sub.UserID, page, size)
 	if err != nil {
 		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
@@ -161,13 +161,14 @@ func (s *HTTPServer) revealParam(c *gin.Context, permCode string) bool {
 	return s.auth.HasPermissionCode(c.Request.Context(), sub.UserID, permCode)
 }
 
-func pageParams(c *gin.Context) (int, int) {
+// pageParams 解析分页参数：单页上限取运行时参数 page.sizeMax（系统参数页可调，未配置回退 100）
+func (s *HTTPServer) pageParams(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 	if page < 1 {
 		page = 1
 	}
-	if size < 1 || size > 100 {
+	if size < 1 || size > s.syscfg.IntDefault(c.Request.Context(), "page.sizeMax", 100) {
 		size = 10
 	}
 	return page, size
