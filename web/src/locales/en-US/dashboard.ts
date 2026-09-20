@@ -1,10 +1,14 @@
-// dashboard 模块文案（由对应页面抽取填充）
+// Dashboard messages
 export default {
-  userCount: 'Users',
-  roleCount: 'Roles',
-  permCount: 'Permissions',
-  myPermCodes: 'My Permission Codes',
-  welcome: 'Welcome',
-  greeting: '{name}, welcome to SmileX Admin.',
-  techLine: 'DDD + Gin + GORM backend · Vue3 + Naive UI frontend · Multi-database (MySQL/PostgreSQL/SQLite)',
+  users: 'Users',
+  roles: 'Roles',
+  online: 'Online Sessions',
+  todayLogins: "Today's Logins",
+  trend: 'Last 7 Days',
+  loginTotal: 'Logins',
+  loginSuccess: 'Succeeded',
+  opCount: 'Operations',
+  recentLogins: 'Recent Logins',
+  loginOk: 'Success',
+  loginFail: 'Failed',
 }

@@ -1,10 +1,14 @@
-// dashboard 模块文案（由对应页面抽取填充）
+// 仪表盘文案
 export default {
-  userCount: '用户数',
-  roleCount: '角色数',
-  permCount: '权限数',
-  myPermCodes: '我的权限码',
-  welcome: '欢迎',
-  greeting: '{name}，欢迎使用 SmileX Admin 管理系统。',
-  techLine: 'DDD + Gin + GORM 后端 · Vue3 + Naive UI 前端 · 多数据库（MySQL/PostgreSQL/SQLite）',
+  users: '用户总数',
+  roles: '角色总数',
+  online: '在线会话',
+  todayLogins: '今日登录',
+  trend: '近 7 日趋势',
+  loginTotal: '登录次数',
+  loginSuccess: '登录成功',
+  opCount: '操作次数',
+  recentLogins: '最近登录',
+  loginOk: '成功',
+  loginFail: '失败',
 }

@@ -475,3 +475,16 @@ export interface JobLog {
   duration_ms: number
   started_at: string
 }
+
+// 仪表盘聚合数据
+export interface DashboardStats {
+  cards: {
+    users: number
+    roles: number
+    online: number
+    today_logins: number
+  }
+  login_trend: { date: string; total: number; success: number }[]
+  op_trend: { date: string; total: number }[]
+  recent_logins: { username: string; ip: string; status: string; created_at: string }[]
+}

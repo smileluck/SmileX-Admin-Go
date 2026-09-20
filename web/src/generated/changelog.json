@@ -1,8 +1,15 @@
 {
-  "generatedAt": "2026-09-20T10:04:36.436Z",
+  "generatedAt": "2026-09-20T10:07:27.796Z",
   "commits": [
     {
-      "hash": "9065b2b",
+      "hash": "3be2284",
+      "date": "2026-09-20",
+      "type": "feat",
+      "scope": "dashboard",
+      "message": "统计聚合接口"
+    },
+    {
+      "hash": "41e4d2d",
       "date": "2026-09-20",
       "type": "feat",
       "scope": "web",
