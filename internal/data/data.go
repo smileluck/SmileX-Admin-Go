@@ -236,6 +236,8 @@ var systemMenus = []systemMenuDef{
 	{Name: "文件管理", Code: "menu:file", Path: "/file", Icon: "FolderOpenOutline", Sort: 4},
 	// IP 黑名单（挂在系统管理目录下）
 	{Name: "IP黑名单", Code: "menu:blacklist", Path: "/system/blacklist", Icon: "BanOutline", Sort: 6, ParentCode: "menu:system"},
+	// 服务器状态监控（顶级菜单，排在商户接入之后）
+	{Name: "服务器监控", Code: "menu:monitor", Path: "/system/monitor", Icon: "SpeedometerOutline", Sort: 6},
 	// 商户接入（顶级目录分组，父级先于子菜单声明以解析 ParentCode）
 	{Name: "商户接入", Code: "menu:openapi", Type: "dir", Icon: "KeyOutline", Sort: 5},
 	{Name: "商户管理", Code: "menu:merchant", Path: "/openapi/merchants", Icon: "StorefrontOutline", Sort: 1, ParentCode: "menu:openapi"},
@@ -392,6 +394,8 @@ var systemButtonPerms = []systemButtonPermDef{
 	{Name: "编辑应用用户", Code: "appUser:update", Menu: "menu:appUser", Method: "PUT", Path: "/api/v1/app-users/*", Sort: 4},
 	{Name: "删除应用用户", Code: "appUser:delete", Menu: "menu:appUser", Method: "DELETE", Path: "/api/v1/app-users/*", Sort: 5},
 	{Name: "重置密码", Code: "appUser:resetPwd", Menu: "menu:appUser", Method: "PUT", Path: "/api/v1/app-users/*/password", Sort: 6},
+	// 服务器状态监控
+	{Name: "查询服务器状态", Code: "monitor:list", Menu: "menu:monitor", Method: "GET", Path: "/api/v1/monitor", Sort: 1},
 }
 
 // ensureSystemButtonPerms 幂等补齐系统管理接口权限点并绑定超管角色（每次启动执行）：
@@ -401,7 +405,7 @@ var systemButtonPerms = []systemButtonPermDef{
 func (d *Data) ensureSystemButtonPerms() error {
 	// 菜单 code -> ID（存量库菜单 ID 可能与种子不同，按 code 解析；菜单缺失时 ParentID 落 0，不影响 RBAC）
 	menuIDs := map[string]uint{}
-	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser"} {
+	for _, code := range []string{"menu:user", "menu:role", "menu:menu", "menu:online", "menu:loginLog", "menu:opLog", "menu:file", "menu:blacklist", "menu:merchant", "menu:merchantLog", "menu:tenant", "menu:appUser", "menu:monitor"} {
 		var menu model.PermissionPO
 		if err := d.DB.Where("code = ? AND type = ?", code, string(permission.TypeMenu)).First(&menu).Error; err == nil {
 			menuIDs[code] = menu.ID

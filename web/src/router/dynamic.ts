@@ -14,6 +14,7 @@ const viewModules: Record<string, () => Promise<any>> = {
   'menu:role': () => import('../views/system/Roles.vue'),
   'menu:menu': () => import('../views/system/Menus.vue'),
   'menu:online': () => import('../views/system/Online.vue'),
+  'menu:monitor': () => import('../views/system/ServerMonitor.vue'),
   'menu:loginLog': () => import('../views/log/LoginLogs.vue'),
   'menu:opLog': () => import('../views/log/OperationLogs.vue'),
   'menu:file': () => import('../views/file/Files.vue'),

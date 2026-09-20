@@ -11,6 +11,7 @@ require (
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/redis/go-redis/v9 v9.22.0
+	github.com/shirou/gopsutil/v4 v4.26.8
 	github.com/spf13/viper v1.21.0
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.75
 	github.com/volcengine/ve-tos-golang-sdk/v2 v2.9.9
@@ -32,9 +33,11 @@ require (
 	github.com/clbanning/mxj v1.8.4 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
@@ -55,6 +58,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
@@ -65,6 +69,7 @@ require (
 	github.com/mozillazg/go-httpheader v0.2.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
@@ -75,8 +80,11 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
+	github.com/tklauser/go-sysconf v0.3.16 // indirect
+	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect

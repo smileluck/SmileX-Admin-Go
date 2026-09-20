@@ -1,6 +1,27 @@
 {
-  "generatedAt": "2026-09-19T07:35:34.920Z",
+  "generatedAt": "2026-09-20T04:02:46.076Z",
   "commits": [
+    {
+      "hash": "4a76111",
+      "date": "2026-09-19",
+      "type": "fix",
+      "scope": "captcha",
+      "message": "修复空验证码绕过登录校验"
+    },
+    {
+      "hash": "5707a06",
+      "date": "2026-09-19",
+      "type": "feat",
+      "scope": "deploy",
+      "message": "增加 Docker 与 docker-compose 部署"
+    },
+    {
+      "hash": "675abf9",
+      "date": "2026-09-19",
+      "type": "refactor",
+      "scope": "permission",
+      "message": "清理 all 通配权限残留死代码"
+    },
     {
       "hash": "5667d5a",
       "date": "2026-09-18",

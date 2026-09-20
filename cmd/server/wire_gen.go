@@ -17,6 +17,7 @@ import (
 	file2 "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	log2 "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	merchant2 "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
+	"github.com/smilex/smilex-admin-gin/internal/biz/monitor"
 	permission2 "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	role2 "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	session2 "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -43,6 +44,7 @@ import (
 	file3 "github.com/smilex/smilex-admin-gin/internal/service/file"
 	log3 "github.com/smilex/smilex-admin-gin/internal/service/log"
 	merchant3 "github.com/smilex/smilex-admin-gin/internal/service/merchant"
+	monitor2 "github.com/smilex/smilex-admin-gin/internal/service/monitor"
 	permission3 "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	role3 "github.com/smilex/smilex-admin-gin/internal/service/role"
 	session3 "github.com/smilex/smilex-admin-gin/internal/service/session"
@@ -137,8 +139,11 @@ func wireApp() (*server.HTTPServer, func(), error) {
 	appuserTokenIssuer := data.NewAppTokenIssuer(bootstrap)
 	appuserUsecase := appuser2.NewUsecase(appuserRepo, appuserTokenIssuer)
 	appuserService := appuser3.NewService(appuserUsecase)
-	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService, exportService, blacklistService, merchantService, merchantUsecase, tenantService, appuserService, appuserUsecase, appuserTokenIssuer, client)
+	monitorUsecase, cleanup6 := monitor.NewUsecase()
+	monitorService := monitor2.NewService(monitorUsecase)
+	httpServer := server.NewHTTPServer(bootstrap, service, userService, roleService, permissionService, sessionService, logService, fileService, exportService, blacklistService, merchantService, merchantUsecase, tenantService, appuserService, appuserUsecase, appuserTokenIssuer, monitorService, client)
 	return httpServer, func() {
+		cleanup6()
 		cleanup5()
 		cleanup4()
 		cleanup3()
@@ -149,10 +154,10 @@ func wireApp() (*server.HTTPServer, func(), error) {
 
 // wire.go:
 
-var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha2.NewUsecase, session2.NewUsecase, log2.NewUsecase, file2.NewUsecase, blacklist2.NewUsecase, merchant2.NewUsecase, tenant2.NewUsecase, appuser2.NewUsecase, export2.NewUsecase, export2.NewRegistry, export2.NewUserExporter, export2.NewLoginLogExporter, export2.NewOpLogExporter, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha2.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)))
+var bizSet = wire.NewSet(user2.NewUsecase, role2.NewUsecase, permission2.NewUsecase, captcha2.NewUsecase, session2.NewUsecase, log2.NewUsecase, file2.NewUsecase, blacklist2.NewUsecase, merchant2.NewUsecase, tenant2.NewUsecase, appuser2.NewUsecase, monitor.NewUsecase, export2.NewUsecase, export2.NewRegistry, export2.NewUserExporter, export2.NewLoginLogExporter, export2.NewOpLogExporter, auth.NewUsecase, wire.Bind(new(auth.CaptchaVerifier), new(*captcha2.Usecase)), wire.Bind(new(auth.SessionManager), new(*session2.Usecase)), wire.Bind(new(user2.SessionRevoker), new(*session2.Usecase)), wire.Bind(new(export2.PermissionChecker), new(*auth.Usecase)))
 
-var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, data.NewAppTokenIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, blacklist.NewRepo, merchant.NewRepo, merchant.NewAPILogRepo, tenant.NewRepo, appuser.NewRepo, captcha.NewStore, export.NewRepo, export.NewWorker, wire.Bind(new(base64Captcha.Store), new(*captcha.Store)), wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)), wire.Bind(new(blacklist2.Repo), new(*blacklist.Repo)), wire.Bind(new(blacklist2.LoginProtector), new(*blacklist.Repo)), wire.Bind(new(export2.Enqueuer), new(*export.Worker)))
+var dataRepoSet = wire.NewSet(data.NewData, data.NewRedisClient, data.NewJWTIssuer, data.NewAppTokenIssuer, user.NewRepo, role.NewRepo, permission.NewRepo, session.NewRepo, log.NewRepo, file.NewRepo, file.NewStorageManager, blacklist.NewRepo, merchant.NewRepo, merchant.NewAPILogRepo, tenant.NewRepo, appuser.NewRepo, captcha.NewStore, export.NewRepo, export.NewWorker, wire.Bind(new(base64Captcha.Store), new(*captcha.Store)), wire.Bind(new(auth.UserStore), new(user2.Repo)), wire.Bind(new(auth.RoleNameReader), new(role2.Repo)), wire.Bind(new(auth.PermissionReader), new(permission2.Repo)), wire.Bind(new(role2.PermissionReader), new(permission2.Repo)), wire.Bind(new(log2.Repo), new(*log.Repo)), wire.Bind(new(blacklist2.Repo), new(*blacklist.Repo)), wire.Bind(new(blacklist2.LoginProtector), new(*blacklist.Repo)), wire.Bind(new(export2.Enqueuer), new(*export.Worker)))
 
-var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService, log3.NewService, file3.NewService, blacklist3.NewService, export3.NewService, merchant3.NewService, tenant3.NewService, appuser3.NewService)
+var serviceSet = wire.NewSet(auth2.NewService, user3.NewService, role3.NewService, permission3.NewService, session3.NewService, log3.NewService, file3.NewService, blacklist3.NewService, export3.NewService, merchant3.NewService, tenant3.NewService, appuser3.NewService, monitor2.NewService)
 
 var providerSet = wire.NewSet(bizSet, dataRepoSet, serviceSet, ProvideConfig, server.NewHTTPServer)

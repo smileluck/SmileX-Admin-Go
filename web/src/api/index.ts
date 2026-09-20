@@ -1,5 +1,5 @@
 import request from './request'
-import type { AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, Tenant, TokenPair, UserInfo, LogPageResult } from './types'
+import type { AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, UserInfo, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -123,6 +123,10 @@ export const setAppUserStatus = (id: number, status: number) =>
 // 重置密码（新密码由管理员指定，旧密码立即失效）
 export const resetAppUserPassword = (id: number, password: string) =>
   request.put<R<null>>(`/app-users/${id}/password`, { password })
+
+// ---- 服务器状态监控 ----
+// 只读快照：CPU%/网卡速率为后端 3s 窗口差值，页面轮询读最新值
+export const getServerStatus = () => request.get<R<ServerStatus>>('/monitor')
 
 // ---- IP 黑名单 ----
 export const listBlacklist = (params: { page: number; page_size: number; ip?: string }) =>

@@ -39,6 +39,7 @@ import (
 	filesvc "github.com/smilex/smilex-admin-gin/internal/service/file"
 	logsvc "github.com/smilex/smilex-admin-gin/internal/service/log"
 	merchantsvc "github.com/smilex/smilex-admin-gin/internal/service/merchant"
+	monitorsvc "github.com/smilex/smilex-admin-gin/internal/service/monitor"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
@@ -67,6 +68,7 @@ type HTTPServer struct {
 	merchantUC *bizmerchant.Usecase // 开放 API 验签中间件直连领域用例
 	tenant     *tenantsvc.Service
 	appuser    *appusersvc.Service
+	monitor    *monitorsvc.Service
 	appuserUC  *bizappuser.Usecase    // AppJWT 中间件直连领域用例（校验用户启用状态）
 	appIssuer  bizappuser.TokenIssuer // AppJWT 中间件解析 app-access token
 	rbacCache  *cache.TwoLevel
@@ -81,7 +83,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	file *filesvc.Service, export *exportsvc.Service, blacklist *blacklistsvc.Service,
 	merchant *merchantsvc.Service, merchantUC *bizmerchant.Usecase,
 	tenant *tenantsvc.Service, appuser *appusersvc.Service, appuserUC *bizappuser.Usecase,
-	appIssuer bizappuser.TokenIssuer, rdb *redis.Client) *HTTPServer {
+	appIssuer bizappuser.TokenIssuer, monitor *monitorsvc.Service, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// multipart 表单内存上限保持较小值（超出部分落临时文件）；上传大小由 handler 显式校验
@@ -97,7 +99,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	// RBAC 权限判定缓存：L1 30s 进程内存 + L2 60s Redis（cache.l2Enabled 可关）
 	rbacCache := cache.NewTwoLevel(rdb, "rbac:", 30*time.Second, 60*time.Second, cfg.Cache.L2Enabled)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, rbacCache: rbacCache, rdb: rdb, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, monitor: monitor, rbacCache: rbacCache, rdb: rdb, engine: e}
 	s.registerRoutes()
 	s.registerStatic()
 
@@ -396,6 +398,12 @@ func (s *HTTPServer) registerRoutes() {
 		appUsers.DELETE("/:id", s.deleteAppUser)
 		// 重置密码（新密码由管理员指定，旧密码立即失效）
 		appUsers.PUT("/:id/password", s.resetAppUserPassword)
+	}
+
+	// 服务器状态监控（只读快照；CPU%/网卡速率由后台采样器固定 3s 窗口差值计算）
+	monitors := protected.Group("/monitor")
+	{
+		monitors.GET("", s.getServerStatus)
 	}
 
 	// ---- 开放 API：IP 黑名单 → 商户 HMAC 验签（时间戳偏差 + nonce 防重放） ----
@@ -1359,6 +1367,16 @@ func (s *HTTPServer) appuserErr(c *gin.Context, err error) {
 		return
 	}
 	response.FailI18n(c, http.StatusBadRequest, response.CodeErr, err)
+}
+
+// getServerStatus 服务器状态监控快照（主机/CPU/内存/磁盘/网络 + Go 进程运行时）
+func (s *HTTPServer) getServerStatus(c *gin.Context) {
+	vo, err := s.monitor.ServerStatus(c.Request.Context())
+	if err != nil {
+		response.FailI18n(c, http.StatusInternalServerError, response.CodeErr, err)
+		return
+	}
+	response.OK(c, vo)
 }
 
 // ---- 应用用户独立认证（app-auth） ----

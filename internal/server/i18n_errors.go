@@ -9,6 +9,7 @@ import (
 	bizexport "github.com/smilex/smilex-admin-gin/internal/biz/export"
 	bizfile "github.com/smilex/smilex-admin-gin/internal/biz/file"
 	bizmerchant "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
+	bizmonitor "github.com/smilex/smilex-admin-gin/internal/biz/monitor"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -79,6 +80,8 @@ var errKeys = []struct {
 	{bizappuser.ErrDuplicateUsername, "appuser.name_exists"},
 	{bizappuser.ErrAppUserDisabled, "auth.account_disabled"},
 	{bizappuser.ErrBadCredentials, "auth.invalid_credentials"},
+	// 服务器监控
+	{bizmonitor.ErrCollectFailed, "monitor.collect_failed"},
 }
 
 // init 将错误 -> i18n key 匹配函数注册到 response 包（response 不便反向依赖 server，走钩子）
