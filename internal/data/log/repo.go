@@ -115,7 +115,7 @@ func (r *Repo) CreateOperation(o *bizlog.OperationLog) {
 func (r *Repo) ListLoginLogs(ctx context.Context, q bizlog.LoginLogQuery, page, pageSize int) ([]*bizlog.LoginLog, int64, error) {
 	tx := r.data.DB.WithContext(ctx).Model(&model.LoginLogPO{})
 	if q.Username != "" {
-		tx = tx.Where("username LIKE ? ESCAPE '/'", security.EscapeLike(q.Username)+"%")
+		tx = tx.Where("username LIKE ? ESCAPE '/'", "%"+security.EscapeLike(q.Username)+"%")
 	}
 	if q.IP != "" {
 		tx = tx.Where("ip = ?", q.IP)
@@ -147,7 +147,7 @@ func (r *Repo) ListLoginLogs(ctx context.Context, q bizlog.LoginLogQuery, page, 
 func (r *Repo) ListOperationLogs(ctx context.Context, q bizlog.OperationLogQuery, page, pageSize int) ([]*bizlog.OperationLog, int64, error) {
 	tx := r.data.DB.WithContext(ctx).Model(&model.OperationLogPO{})
 	if q.Username != "" {
-		tx = tx.Where("username LIKE ? ESCAPE '/'", security.EscapeLike(q.Username)+"%")
+		tx = tx.Where("username LIKE ? ESCAPE '/'", "%"+security.EscapeLike(q.Username)+"%")
 	}
 	if q.Method != "" {
 		tx = tx.Where("method = ?", q.Method)

@@ -93,7 +93,7 @@ func (r *repo) Delete(ctx context.Context, id uint) error {
 			return biztenant.ErrTenantNotFound
 		}
 		// 软删行仍占用 name/code 唯一索引，归档释放以便重建
-		return data.ArchiveUniqueColumns(tx, "tenants", id, "name", "code")
+		return data.ArchiveUniqueColumns(tx, "tenants", id, map[string]int{"name": 64, "code": 64})
 	})
 }
 

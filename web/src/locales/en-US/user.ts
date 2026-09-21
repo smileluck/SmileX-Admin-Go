@@ -19,6 +19,7 @@ export default {
   exportQueued: 'Added to the export queue. Check progress via the export icon in the top-right corner.',
   exportTooMany: 'Too many export tasks. Please try again later.',
   exportFailed: 'Export failed',
+maskedNoEcho: 'Masked values are not echoed; leave blank to keep unchanged',
   saveFailed: 'Failed to save',
   deleteFailed: 'Failed to delete',
   superAdminNoDelete: 'The super administrator account cannot be deleted',

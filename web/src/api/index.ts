@@ -29,6 +29,7 @@ export const createUser = (data: Partial<UserInfo> & { password: string }) =>
 export const updateUser = (id: number, data: Partial<UserInfo>) =>
   request.put<R<null>>(`/users/${id}`, data)
 export const deleteUser = (id: number) => request.delete<R<null>>(`/users/${id}`)
+export const getUser = (id: number) => request.get<R<UserInfo>>(`/users/${id}`)
 export const setUserRoles = (id: number, role_ids: number[]) =>
   request.put<R<null>>(`/users/${id}/roles`, { role_ids })
 export const resetPassword = (id: number, password: string) =>

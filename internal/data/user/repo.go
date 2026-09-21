@@ -85,7 +85,7 @@ func (r *repo) Delete(ctx context.Context, id uint) error {
 			return user.ErrUserNotFound
 		}
 		// 软删行仍占用 username 唯一索引，归档释放以便同用户名重建
-		if err := data.ArchiveUniqueColumns(tx, "users", id, "username"); err != nil {
+		if err := data.ArchiveUniqueColumns(tx, "users", id, map[string]int{"username": 64}); err != nil {
 			return err
 		}
 		return tx.Where("user_id = ?", id).Delete(&model.UserRolePO{}).Error
@@ -130,7 +130,7 @@ func (r *repo) List(ctx context.Context, q user.Query, page, pageSize int) ([]*u
 	tx := r.data.DB.WithContext(ctx).Model(&model.UserPO{})
 	if q.Username != "" {
 		// 转义用户输入中的 LIKE 通配符，防止 %/_ 改变匹配语义（通配符注入）
-		tx = tx.Where("username LIKE ? ESCAPE '/'", security.EscapeLike(q.Username)+"%")
+		tx = tx.Where("username LIKE ? ESCAPE '/'", "%"+security.EscapeLike(q.Username)+"%")
 	}
 	if q.Status != nil {
 		tx = tx.Where("status = ?", *q.Status)

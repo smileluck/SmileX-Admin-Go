@@ -132,4 +132,10 @@ var messagesEn = map[string]string{
 	"menu.menu:agent":         "Agents",
 	"menu.menu:agentProvider": "LLM Providers",
 	"menu.menu:agentList":     "Agent Configs",
+	"menu.menu:agentChat":     "Chat Playground",
+	"menu.menu:agentUsage":    "Usage Stats",
+	"menu.menu:dict":          "Data Dictionary",
+	"menu.menu:sysConfig":     "System Configs",
+	"menu.menu:notice":        "Notices",
+	"menu.menu:job":           "Scheduled Jobs",
 }

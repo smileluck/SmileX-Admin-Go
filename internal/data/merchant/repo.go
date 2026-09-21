@@ -90,7 +90,7 @@ func (r *repo) Delete(ctx context.Context, id uint) error {
 			return bizmerchant.ErrMerchantNotFound
 		}
 		// 软删行仍占用 code/app_key 唯一索引，归档释放以便重建
-		return data.ArchiveUniqueColumns(tx, "merchants", id, "code", "app_key")
+		return data.ArchiveUniqueColumns(tx, "merchants", id, map[string]int{"code": 64, "app_key": 64})
 	})
 }
 
@@ -200,7 +200,7 @@ func (r *APILogRepo) List(ctx context.Context, q bizmerchant.APILogQuery, page, 
 		tx = tx.Where("app_key = ?", q.AppKey)
 	}
 	if q.Path != "" {
-		tx = tx.Where("path LIKE ? ESCAPE '/'", security.EscapeLike(q.Path)+"%")
+		tx = tx.Where("path LIKE ? ESCAPE '/'", "%"+security.EscapeLike(q.Path)+"%")
 	}
 	if q.StatusCode != nil {
 		tx = tx.Where("status_code = ?", *q.StatusCode)

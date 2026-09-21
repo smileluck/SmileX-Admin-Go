@@ -132,4 +132,10 @@ var messagesZh = map[string]string{
 	"menu.menu:agent":         "智能体",
 	"menu.menu:agentProvider": "模型供应商",
 	"menu.menu:agentList":     "Agent 配置",
+	"menu.menu:agentChat":     "聊天测试",
+	"menu.menu:agentUsage":    "用量统计",
+	"menu.menu:dict":          "数据字典",
+	"menu.menu:sysConfig":     "系统参数",
+	"menu.menu:notice":        "通知公告",
+	"menu.menu:job":           "定时任务",
 }

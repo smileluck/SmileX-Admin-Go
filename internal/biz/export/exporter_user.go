@@ -27,7 +27,7 @@ func (e *UserExporter) Columns() []Column {
 		{Key: "id", Title: "ID"},
 		{Key: "username", Title: "用户名"},
 		{Key: "nickname", Title: "昵称"},
-		{Key: "phone", Title: "手机号"},
+		{Key: "phone", Title: "手机号", Text: true},
 		{Key: "email", Title: "邮箱"},
 		{Key: "status", Title: "状态"},
 		{Key: "created_at", Title: "创建时间"},

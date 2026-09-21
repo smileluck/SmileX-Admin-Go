@@ -36,8 +36,12 @@
       </n-form-item>
       <n-form-item :label="t('user.phone')" path="phone">
         <n-input v-model:value="form.phone" :maxlength="32" :placeholder="t('user.phonePlaceholder')" />
+        <span v-if="editing && !plainFields" class="masked-hint">{{ t('user.maskedNoEcho') }}</span>
       </n-form-item>
-      <n-form-item :label="t('user.email')" path="email"><n-input v-model:value="form.email" :placeholder="t('user.emailPlaceholder')" /></n-form-item>
+      <n-form-item :label="t('user.email')" path="email">
+        <n-input v-model:value="form.email" :placeholder="t('user.emailPlaceholder')" />
+        <span v-if="editing && !plainFields" class="masked-hint">{{ t('user.maskedNoEcho') }}</span>
+      </n-form-item>
       <n-form-item :label="t('user.role')">
         <n-select v-model:value="form.role_ids" multiple :options="roleOptions" :disabled="editing && !userStore.has('user:setRoles')" />
       </n-form-item>
@@ -68,7 +72,7 @@ import { EyeOutline, EyeOffOutline } from '@vicons/ionicons5'
 import { renderActions, type TableAction } from '../../utils/tableActions'
 import SearchCard from '../../components/SearchCard.vue'
 import { useI18n } from 'vue-i18n'
-import { createUser, createExport, deleteUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
+import { createUser, createExport, deleteUser, getUser, listRoles, listUsers, resetPassword, setUserRoles, updateUser } from '../../api'
 import { usePagination } from '../../utils/pagination'
 import { useUserStore } from '../../stores/user'
 import type { UserInfo } from '../../api/types'
@@ -92,6 +96,8 @@ const showPwd = ref(false)
 const editing = ref(false)
 const editId = ref(0)
 const newPassword = ref('')
+// 编辑弹窗打开时手机号/邮箱是否明文（脱敏态显示「不回显」提示）
+const plainFields = ref(false)
 const form = reactive({ username: '', password: '', nickname: '', phone: '', email: '', role_ids: [] as number[], statusOn: 1 })
 const formRef = ref<FormInst | null>(null)
 
@@ -199,12 +205,20 @@ function openCreate() {
   showModal.value = true
 }
 
-function openEdit(row: UserInfo) {
+async function openEdit(row: UserInfo) {
   editing.value = true
   editId.value = row.id
+  // 列表不返回 role_ids（null），拉详情取完整角色，否则编辑保存会把角色清空
+  let detail: UserInfo | null = null
+  try {
+    const { data } = await getUser(row.id)
+    detail = data.data
+  } catch { /* 详情拉取失败沿用行数据 */ }
+  const src = detail ?? row
   // 脱敏态下列表带出的是掩码值，直接回填保存会把掩码写库：仅明文态回填手机号/邮箱，否则留空=不修改（后端空值跳过）
   const plain = reveal.value && canViewSensitive.value
-  Object.assign(form, { username: row.username, password: '', nickname: row.nickname, phone: plain ? row.phone : '', email: plain ? row.email : '', role_ids: row.role_ids ?? [], statusOn: row.status })
+  plainFields.value = plain
+  Object.assign(form, { username: src.username, password: '', nickname: src.nickname, phone: plain ? src.phone || '' : '', email: plain ? src.email || '' : '', role_ids: src.role_ids ?? [], statusOn: src.status })
   showModal.value = true
 }
 
@@ -317,6 +331,11 @@ onMounted(() => { load(); loadRoles() })
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  color: var(--sx-muted);
+}
+.masked-hint {
+  width: 100%;
+  font-size: 11px;
   color: var(--sx-muted);
 }
 </style>
