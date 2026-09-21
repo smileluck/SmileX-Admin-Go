@@ -143,7 +143,7 @@ const columns = computed<DataTableColumns<OnlineSession>>(() => [
   { title: t('online.loginTime'), key: 'login_at', width: 170 },
   { title: t('online.lastActive'), key: 'last_active_at', width: 170 },
   {
-    title: t('common.operation'), key: 'actions', width: 150,
+    title: t('common.operation'), key: 'actions', width: 200,
     render(row) {
       if (!canOperate(row)) {
         return renderActions([])

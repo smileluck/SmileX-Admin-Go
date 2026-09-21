@@ -292,7 +292,7 @@ const columns = computed<DataTableColumns<UserInfo>>(() => [
   },
   { title: t('common.createTime'), key: 'created_at', width: 170 },
   {
-    title: t('common.operation'), key: 'actions', width: 160,
+    title: t('common.operation'), key: 'actions', width: 200,
     render(row) {
       if (!canOperate(row)) {
         return renderActions([])

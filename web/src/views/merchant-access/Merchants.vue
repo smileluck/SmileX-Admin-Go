@@ -297,7 +297,7 @@ const columns = computed<DataTableColumns<Merchant>>(() => [
   },
   { title: t('common.createTime'), key: 'created_at', width: 170 },
   {
-    title: t('common.operation'), key: 'actions', width: 220,
+    title: t('common.operation'), key: 'actions', width: 200,
     render(row) {
       const actions: TableAction[] = []
       if (userStore.has('merchant:update')) {

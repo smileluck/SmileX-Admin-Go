@@ -234,7 +234,7 @@ const columns = computed<DataTableColumns<Role>>(() => [
   { title: t('role.name'), key: 'name' },
   { title: t('common.remark'), key: 'remark', render: (row) => row.remark || '—' },
   {
-    title: t('common.operation'), key: 'actions', width: 170,
+    title: t('common.operation'), key: 'actions', width: 200,
     render(row) {
       // 超管角色系统内置：禁止修改和操作，仅展示「内置」标记
       if (row.id === SUPER_ROLE_ID) {
