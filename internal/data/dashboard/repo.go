@@ -1,9 +1,12 @@
 // Package dashboard 仪表盘聚合仓储 GORM 实现。
-// 日期聚合用 DATE()：MySQL / PostgreSQL / SQLite 三方言均原生支持。
+// 日期聚合按方言显式格式化为 YYYY-MM-DD 字符串（见 dateExpr），
+// 不能用 DATE()：MySQL DSN 开 parseTime 后 DATE() 结果会被驱动转成
+// time.Time，扫进 string 字段得到 RFC3339 长串，下游按日匹配全部失效。
 package dashboard
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -36,6 +39,18 @@ func (r *repo) TodayLogins() (int64, error) {
 	return n, err
 }
 
+// dateExpr 按方言返回把 created_at 格式化为 'YYYY-MM-DD' 字符串的 SQL 表达式
+func (r *repo) dateExpr() string {
+	switch r.data.DB.Dialector.Name() {
+	case "postgres":
+		return "to_char(created_at, 'YYYY-MM-DD')"
+	case "sqlite":
+		return "strftime('%Y-%m-%d', created_at)"
+	default:
+		return "DATE_FORMAT(created_at, '%Y-%m-%d')"
+	}
+}
+
 // LoginTrend 按日聚合登录（总量与成功量）
 func (r *repo) LoginTrend(days int) ([]dashboard.DailyPoint, error) {
 	since := time.Now().AddDate(0, 0, -(days - 1)).Format("2006-01-02")
@@ -45,7 +60,7 @@ func (r *repo) LoginTrend(days int) ([]dashboard.DailyPoint, error) {
 		Success int64  `gorm:"column:success"`
 	}
 	err := r.data.DB.Model(&model.LoginLogPO{}).
-		Select("DATE(created_at) AS d, COUNT(*) AS total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS success").
+		Select(fmt.Sprintf("%s AS d, COUNT(*) AS total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS success", r.dateExpr())).
 		Where("created_at >= ?", since).
 		Group("d").Scan(&rows).Error
 	if err != nil {
@@ -66,7 +81,7 @@ func (r *repo) OpTrend(days int) ([]dashboard.DailyPoint, error) {
 		Total int64  `gorm:"column:total"`
 	}
 	err := r.data.DB.Model(&model.OperationLogPO{}).
-		Select("DATE(created_at) AS d, COUNT(*) AS total").
+		Select(fmt.Sprintf("%s AS d, COUNT(*) AS total", r.dateExpr())).
 		Where("created_at >= ?", since).
 		Group("d").Scan(&rows).Error
 	if err != nil {
