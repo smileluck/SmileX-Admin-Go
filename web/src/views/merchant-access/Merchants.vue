@@ -1,9 +1,9 @@
 <template>
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
-  <SearchCard storage-key="merchants" @search="load" @reset="resetQuery">
-    <n-input v-model:value="query.name" :placeholder="t('merchant.name')" clearable style="width: 180px" @keyup.enter="load" />
-    <n-input v-model:value="query.code" :placeholder="t('merchant.code')" clearable style="width: 160px" @keyup.enter="load" />
-    <n-input v-model:value="query.app_key" :placeholder="t('merchant.appKey')" clearable style="width: 180px" @keyup.enter="load" />
+  <SearchCard storage-key="merchants" @search="search" @reset="resetQuery">
+    <n-input v-model:value="query.name" :placeholder="t('merchant.name')" clearable style="width: 180px" @keyup.enter="search" />
+    <n-input v-model:value="query.code" :placeholder="t('merchant.code')" clearable style="width: 160px" @keyup.enter="search" />
+    <n-input v-model:value="query.app_key" :placeholder="t('merchant.appKey')" clearable style="width: 180px" @keyup.enter="search" />
     <n-select v-model:value="query.status" :options="statusOptions" clearable :placeholder="t('merchant.statusPlaceholder')" style="width: 120px" />
   </SearchCard>
 
@@ -117,7 +117,7 @@ const rules = computed<FormRules>(() => ({
   ],
 }))
 
-const { pagination, setTotal } = usePagination(query, load)
+const { pagination, setTotal, runSearch: search } = usePagination(query, load)
 
 // reveal=1 请求联系人明文（须持 merchant:viewSensitive；无权限时后端剔除参数仍脱敏）
 const canViewSensitive = computed(() => userStore.has('merchant:viewSensitive'))

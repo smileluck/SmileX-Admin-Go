@@ -1,7 +1,7 @@
 <template>
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
-  <SearchCard storage-key="roles" @search="load" @reset="resetQuery">
-    <n-input v-model:value="query.name" :placeholder="t('role.searchPlaceholder')" clearable style="width: 180px" @keyup.enter="load" />
+  <SearchCard storage-key="roles" @search="search" @reset="resetQuery">
+    <n-input v-model:value="query.name" :placeholder="t('role.searchPlaceholder')" clearable style="width: 180px" @keyup.enter="search" />
   </SearchCard>
 
   <n-card>
@@ -101,7 +101,7 @@ function clearAllPerms() {
   checkedKeys.value = []
 }
 
-const { pagination, setTotal } = usePagination(query, load)
+const { pagination, setTotal, runSearch: search } = usePagination(query, load)
 
 async function load() {
   loading.value = true

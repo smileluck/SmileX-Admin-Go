@@ -56,12 +56,13 @@ func (s *HTTPServer) registerRoutes() {
 			req.IP = c.ClientIP()
 			req.UserAgent = truncate(c.GetHeader("User-Agent"), 255)
 			tp, err := s.auth.Login(c.Request.Context(), req)
-			// 登录尝试（成功/失败）均落登录日志（异步，不影响登录响应）
+			// 登录尝试（成功/失败）均落登录日志（异步，不影响登录响应）；
+			// 失败原因统一转中文落库（与封禁拦截文案一致），管理页说明列不再中英混排
 			loginStatus := bizlog.LoginStatusSuccess
 			loginMsg := ""
 			if err != nil {
 				loginStatus = bizlog.LoginStatusFail
-				loginMsg = err.Error()
+				loginMsg = loginFailText(err)
 			}
 			s.log.RecordLogin(c.Request.Context(), &bizlog.LoginLog{
 				Username: req.Username, IP: req.IP, UserAgent: req.UserAgent,
@@ -457,5 +458,20 @@ func (s *HTTPServer) registerRoutes() {
 		open.GET("/ping", func(c *gin.Context) {
 			response.OK(c, merchantsvc.ToVO(middleware.MerchantFromContext(c)))
 		})
+	}
+}
+
+// loginFailText 登录日志失败原因统一中文：已知业务错误映射为与响应提示一致的中文文案
+// （与 pkg/i18n zh 文案同源），未知错误保留原始信息便于排查。
+func loginFailText(err error) string {
+	switch {
+	case errors.Is(err, bizauth.ErrInvalidCredentials):
+		return "用户名或密码错误"
+	case errors.Is(err, bizauth.ErrDisabledAccount):
+		return "账号已被禁用"
+	case errors.Is(err, bizauth.ErrCaptcha):
+		return "验证码错误或已过期"
+	default:
+		return err.Error()
 	}
 }

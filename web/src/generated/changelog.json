@@ -1,6 +1,76 @@
 {
-  "generatedAt": "2026-09-21T09:27:30.804Z",
+  "generatedAt": "2026-09-22T08:08:51.318Z",
   "commits": [
+    {
+      "hash": "b3eca34",
+      "date": "2026-09-22",
+      "type": "fix",
+      "scope": "web",
+      "message": "被顶号/踢下线时静止页面自动跳回登录页"
+    },
+    {
+      "hash": "8f2c507",
+      "date": "2026-09-22",
+      "type": "other",
+      "scope": "",
+      "message": "Revert \"feat(web): 页面动作按钮统一移入搜索栏左下角\""
+    },
+    {
+      "hash": "4cd3c4f",
+      "date": "2026-09-22",
+      "type": "feat",
+      "scope": "web",
+      "message": "页面动作按钮统一移入搜索栏左下角"
+    },
+    {
+      "hash": "e332fa4",
+      "date": "2026-09-21",
+      "type": "fix",
+      "scope": "web",
+      "message": "IP 黑名单窄屏下操作列固定但左侧内容无法横向滚动"
+    },
+    {
+      "hash": "edfb9b0",
+      "date": "2026-09-21",
+      "type": "style",
+      "scope": "web",
+      "message": "IP 黑名单页布局对齐用户管理"
+    },
+    {
+      "hash": "60491b2",
+      "date": "2026-09-21",
+      "type": "style",
+      "scope": "web",
+      "message": "全部表格操作列宽度统一 200px"
+    },
+    {
+      "hash": "7a1a240",
+      "date": "2026-09-21",
+      "type": "chore",
+      "scope": "web",
+      "message": "更新自动生成的 changelog"
+    },
+    {
+      "hash": "bc79a9b",
+      "date": "2026-09-21",
+      "type": "fix",
+      "scope": "web",
+      "message": "操作列按钮过多不再溢出；黑名单解封按钮统一风格"
+    },
+    {
+      "hash": "6b7a05f",
+      "date": "2026-09-21",
+      "type": "style",
+      "scope": "web",
+      "message": "系统参数/定时任务页对齐用户管理布局"
+    },
+    {
+      "hash": "4ff3400",
+      "date": "2026-09-21",
+      "type": "fix",
+      "scope": "web",
+      "message": "语言切换页签滞后一拍；黑名单封禁时间列支持换行"
+    },
     {
       "hash": "f3d37f8",
       "date": "2026-09-21",

@@ -4,6 +4,7 @@ package server
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
@@ -21,7 +22,7 @@ type logListResult struct {
 
 func (s *HTTPServer) listLoginLogs(c *gin.Context) {
 	page, size := s.pageParams(c)
-	q := bizlog.LoginLogQuery{Username: c.Query("username"), IP: c.Query("ip")}
+	q := bizlog.LoginLogQuery{Username: strings.TrimSpace(c.Query("username")), IP: strings.TrimSpace(c.Query("ip"))}
 	if v := c.Query("status"); v != "" {
 		if st, err := strconv.Atoi(v); err == nil {
 			q.Status = &st
@@ -52,7 +53,8 @@ func (s *HTTPServer) clearLoginLogs(c *gin.Context) {
 
 func (s *HTTPServer) listOperationLogs(c *gin.Context) {
 	page, size := s.pageParams(c)
-	q := bizlog.OperationLogQuery{Username: c.Query("username"), Method: c.Query("method"), Keyword: c.Query("kw")}
+	// 关键词/用户名 TrimSpace：过滤输入首尾空格，避免 IME 残留空格导致搜不到
+	q := bizlog.OperationLogQuery{Username: strings.TrimSpace(c.Query("username")), Method: strings.TrimSpace(c.Query("method")), Keyword: strings.TrimSpace(c.Query("kw"))}
 	if t, ok := parseUnixParam(c.Query("start")); ok {
 		q.Start = t
 	}

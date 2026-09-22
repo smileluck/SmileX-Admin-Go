@@ -1,8 +1,8 @@
 <template>
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
-  <SearchCard storage-key="merchantApiLogs" @search="load" @reset="resetQuery">
-    <n-input v-model:value="query.app_key" :placeholder="t('merchant.log.appKeyPlaceholder')" clearable style="width: 200px" @keyup.enter="load" />
-    <n-input v-model:value="query.path" :placeholder="t('merchant.log.pathPlaceholder')" clearable style="width: 180px" @keyup.enter="load" />
+  <SearchCard storage-key="merchantApiLogs" @search="search" @reset="resetQuery">
+    <n-input v-model:value="query.app_key" :placeholder="t('merchant.log.appKeyPlaceholder')" clearable style="width: 200px" @keyup.enter="search" />
+    <n-input v-model:value="query.path" :placeholder="t('merchant.log.pathPlaceholder')" clearable style="width: 180px" @keyup.enter="search" />
     <n-input-number v-model:value="query.status_code" :placeholder="t('merchant.log.statusCodePlaceholder')" clearable :min="100" :max="599" :show-button="false" style="width: 120px" />
     <n-date-picker v-model:value="range" type="datetimerange" clearable style="width: 340px; max-width: 100%" />
   </SearchCard>
@@ -43,7 +43,7 @@ const query = reactive({ app_key: '', path: '', status_code: null as number | nu
 // 时间范围（毫秒时间戳二元组，提交时转秒）
 const range = ref<[number, number] | null>(null)
 
-const { pagination, setTotal } = usePagination(query, load)
+const { pagination, setTotal, runSearch: search } = usePagination(query, load)
 
 // reveal=1 请求 IP 明文（须持 merchantLog:viewSensitive；无权限时后端剔除参数仍脱敏）
 const canViewSensitive = computed(() => userStore.has('merchantLog:viewSensitive'))

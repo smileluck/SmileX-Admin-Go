@@ -33,13 +33,15 @@ func (e *LoginLogExporter) Biz() string  { return "login_log" }
 func (e *LoginLogExporter) Name() string { return "登录日志" }
 
 func (e *LoginLogExporter) Columns() []Column {
+	// 列与列表页字段保持一致（浏览器/终端、说明等命名与顺序对齐）
 	return []Column{
 		{Key: "id", Title: "ID"},
 		{Key: "username", Title: "用户名"},
 		{Key: "ip", Title: "IP"},
-		{Key: "device", Title: "设备"},
-		{Key: "status", Title: "状态"},
-		{Key: "msg", Title: "信息"},
+		{Key: "device", Title: "设备端"},
+		{Key: "user_agent", Title: "浏览器 / 终端"},
+		{Key: "status", Title: "结果"},
+		{Key: "msg", Title: "说明"},
 		{Key: "created_at", Title: "登录时间"},
 	}
 }
@@ -72,7 +74,8 @@ func (e *LoginLogExporter) Fetch(ctx context.Context, params url.Values, offset,
 			strconv.FormatUint(uint64(l.ID), 10),
 			l.Username,
 			l.IP,
-			l.Device,
+			deviceText(l.Device),
+			l.UserAgent,
 			status,
 			l.Msg,
 			l.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -83,4 +86,16 @@ func (e *LoginLogExporter) Fetch(ctx context.Context, params url.Values, offset,
 		rows = append(rows, row)
 	}
 	return rows, total, nil
+}
+
+// deviceText 设备端转页面同款中文文案（web=网页端 / app=移动端），未知值原样输出
+func deviceText(d string) string {
+	switch d {
+	case "web":
+		return "网页端"
+	case "app":
+		return "移动端"
+	default:
+		return d
+	}
 }

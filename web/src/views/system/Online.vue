@@ -1,7 +1,7 @@
 <template>
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
-  <SearchCard storage-key="online" @search="load" @reset="resetQuery">
-    <n-input v-model:value="query.username" :placeholder="t('online.username')" clearable style="width: 180px" @keyup.enter="load" />
+  <SearchCard storage-key="online" @search="search" @reset="resetQuery">
+    <n-input v-model:value="query.username" :placeholder="t('online.username')" clearable style="width: 180px" @keyup.enter="search" />
     <n-select v-model:value="query.device" :options="deviceOptions" clearable :placeholder="t('online.device')" style="width: 140px" />
   </SearchCard>
 
@@ -49,7 +49,7 @@ const deviceOptions = computed(() => [
   { label: t('online.app'), value: 'app' },
 ])
 
-const { pagination, setTotal } = usePagination(query, load)
+const { pagination, setTotal, runSearch: search } = usePagination(query, load)
 
 async function load() {
   loading.value = true

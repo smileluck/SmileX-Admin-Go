@@ -1,8 +1,8 @@
 <template>
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
-  <SearchCard storage-key="loginLogs" @search="load" @reset="resetQuery">
-    <n-input v-model:value="query.username" :placeholder="t('loginLog.username')" clearable style="width: 160px" @keyup.enter="load" />
-    <n-input v-model:value="query.ip" :placeholder="t('loginLog.ipPlaceholder')" clearable style="width: 150px" @keyup.enter="load" />
+  <SearchCard storage-key="loginLogs" @search="search" @reset="resetQuery">
+    <n-input v-model:value="query.username" :placeholder="t('loginLog.username')" clearable style="width: 160px" @keyup.enter="search" />
+    <n-input v-model:value="query.ip" :placeholder="t('loginLog.ipPlaceholder')" clearable style="width: 150px" @keyup.enter="search" />
     <n-select v-model:value="query.status" :options="statusOptions" clearable :placeholder="t('loginLog.statusPlaceholder')" style="width: 120px" />
     <n-date-picker v-model:value="range" type="datetimerange" clearable style="width: 340px; max-width: 100%" />
   </SearchCard>
@@ -58,7 +58,7 @@ const statusOptions = computed(() => [
   { label: t('loginLog.failed'), value: 0 },
 ])
 
-const { pagination, setTotal } = usePagination(query, load)
+const { pagination, setTotal, runSearch: search } = usePagination(query, load)
 
 async function load() {
   loading.value = true
@@ -163,7 +163,7 @@ function deviceLabel(device: string) {
 
 const columns = computed<DataTableColumns<LoginLogInfo>>(() => [
   { title: 'ID', key: 'id', width: 70 },
-  { title: t('loginLog.username'), key: 'username', width: 140, render: (row) => row.username || '—' },
+  { title: t('loginLog.username'), key: 'username', width: 130, render: (row) => row.username || '—' },
   { title: 'IP', key: 'ip', width: 130 },
   {
     title: t('loginLog.device'), key: 'device', width: 90,
@@ -171,13 +171,21 @@ const columns = computed<DataTableColumns<LoginLogInfo>>(() => [
   },
   {
     title: t('loginLog.browser'), key: 'user_agent',
-    render: (row) => h(NEllipsis, { style: 'max-width: 200px', tooltip: true }, { default: () => row.user_agent || '—' }),
+    // UA 很长但无需读全：显式像素上限（% 在表格自动布局下不生效），省略号+悬浮看全
+    render: (row) => h(NEllipsis, { style: 'max-width: 300px', tooltip: true }, { default: () => row.user_agent || '—' }),
   },
   {
     title: t('loginLog.result'), key: 'status', width: 80,
     render: (row) => h(NTag, { type: row.status === 1 ? 'success' : 'error', size: 'small' }, { default: () => (row.status === 1 ? t('loginLog.success') : t('loginLog.failed')) }),
   },
-  { title: t('loginLog.msg'), key: 'msg', render: (row) => row.msg || '—' },
+  {
+    // 说明为失败原因，长文案省略号+悬浮完整提示，避免撑变形表格
+    title: t('loginLog.msg'), key: 'msg', width: 230,
+    render: (row) => {
+      const text = row.msg || '—'
+      return h(NEllipsis, { style: 'max-width: 100%', tooltip: true }, { default: () => text })
+    },
+  },
   { title: t('loginLog.time'), key: 'created_at', width: 170 },
 ])
 
