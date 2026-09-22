@@ -2,14 +2,16 @@
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
   <SearchCard storage-key="files" @search="load" @reset="resetQuery">
     <n-input v-model:value="query.name" :placeholder="t('file.name')" clearable style="width: 200px" @keyup.enter="load" />
-    <template #actions>
-      <!-- 隐藏原生文件选择框，按钮触发；选择后立即上传 -->
-      <input ref="fileInput" type="file" style="display: none" @change="onPick" />
-      <n-button type="primary" ghost :loading="uploading" @click="pickFile" v-permission="['file:upload']">{{ t('file.upload') }}</n-button>
-    </template>
   </SearchCard>
 
   <n-card>
+    <template #header>
+      <div class="page-actions">
+        <!-- 隐藏原生文件选择框，按钮触发；选择后立即上传 -->
+        <input ref="fileInput" type="file" style="display: none" @change="onPick" />
+        <n-button type="primary" ghost :loading="uploading" @click="pickFile" v-permission="['file:upload']">{{ t('file.upload') }}</n-button>
+      </div>
+    </template>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
@@ -187,6 +189,11 @@ onBeforeUnmount(() => { if (previewUrl.value) URL.revokeObjectURL(previewUrl.val
 
 <style scoped>
 /* 卡头只放操作按钮（页面标题由顶栏展示） */
+.page-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
 .preview-body {
   display: flex;
   justify-content: center;

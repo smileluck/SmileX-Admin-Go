@@ -2,14 +2,16 @@
   <!-- 定时任务：列表 + 启停/立即执行 + 执行记录抽屉 -->
   <SearchCard storage-key="jobs" @search="load" @reset="query.name = ''">
     <n-input v-model:value="query.name" :placeholder="t('job.name')" clearable style="width: 220px" @keyup.enter="load" />
-    <template #actions>
-      <n-button v-permission="['job:create']" type="primary" ghost @click="openCreate">
-        {{ t('job.new') }}
-      </n-button>
-    </template>
   </SearchCard>
 
   <n-card>
+    <template #header>
+      <div class="page-actions">
+        <n-button v-permission="['job:create']" type="primary" ghost @click="openCreate">
+          {{ t('job.new') }}
+        </n-button>
+      </div>
+    </template>
 
     <n-data-table size="small" :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote :bordered="false" />
   </n-card>
@@ -240,6 +242,13 @@ async function openLogs(row: JobInfo) {
 </script>
 
 <style scoped>
+.page-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
 .mono {
   font-family: var(--sx-font-mono);
 }

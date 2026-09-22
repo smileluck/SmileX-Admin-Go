@@ -2,20 +2,22 @@
   <!-- 搜索栏独立卡片：可折叠，重置/搜索按钮在卡片右下角 -->
   <SearchCard storage-key="users" @search="load" @reset="resetQuery">
     <n-input v-model:value="query.username" :placeholder="t('user.username')" clearable style="width: 180px" @keyup.enter="load" />
-    <template #actions>
-      <!-- 显示敏感数据开关：开启后列表携带 reveal=1 重查手机号/邮箱明文
-           （须持 user:viewSensitive，后端剔除参数仍脱敏），导出携带明文（须持 user:exportSensitive）；持任一权限可见 -->
-      <div v-if="canExportSensitive || canViewSensitive" class="reveal-toggle">
-        <n-icon :component="reveal ? EyeOutline : EyeOffOutline" />
-        <span>{{ t('common.sensitiveData') }}</span>
-        <n-switch v-model:value="reveal" size="small" @update:value="load" />
-      </div>
-      <n-button ghost :loading="exporting" @click="doExport" v-permission="['user:export']">{{ t('user.export') }}</n-button>
-      <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">{{ t('user.newUser') }}</n-button>
-    </template>
   </SearchCard>
 
   <n-card>
+    <template #header>
+      <div class="page-actions">
+        <!-- 显示敏感数据开关：开启后列表携带 reveal=1 重查手机号/邮箱明文
+             （须持 user:viewSensitive，后端剔除参数仍脱敏），导出携带明文（须持 user:exportSensitive）；持任一权限可见 -->
+        <div v-if="canExportSensitive || canViewSensitive" class="reveal-toggle">
+          <n-icon :component="reveal ? EyeOutline : EyeOffOutline" />
+          <span>{{ t('common.sensitiveData') }}</span>
+          <n-switch v-model:value="reveal" size="small" @update:value="load" />
+        </div>
+        <n-button ghost :loading="exporting" @click="doExport" v-permission="['user:export']">{{ t('user.export') }}</n-button>
+        <n-button type="primary" ghost @click="openCreate" v-permission="['user:create']">{{ t('user.newUser') }}</n-button>
+      </div>
+    </template>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
@@ -316,6 +318,13 @@ onMounted(() => { load(); loadRoles() })
 
 <style scoped>
 /* 卡头只放操作按钮（页面标题由顶栏展示） */
+.page-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
 /* 显示敏感数据开关 */
 .reveal-toggle {
   display: flex;

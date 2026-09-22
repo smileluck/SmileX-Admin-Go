@@ -15,13 +15,8 @@
         <slot />
       </div>
       <div class="search-actions">
-        <div class="search-actions-left">
-          <slot name="actions" />
-        </div>
-        <div class="search-actions-right">
-          <n-button quaternary @click="emit('reset')">{{ t('common.reset') }}</n-button>
-          <n-button type="primary" @click="emit('search')">{{ t('common.search') }}</n-button>
-        </div>
+        <n-button quaternary @click="emit('reset')">{{ t('common.reset') }}</n-button>
+        <n-button type="primary" @click="emit('search')">{{ t('common.search') }}</n-button>
       </div>
     </n-collapse-transition>
   </n-card>
@@ -83,26 +78,13 @@ function toggle() {
   align-items: center;
   gap: 8px;
 }
-/* 底部操作行：左侧页面动作（新增/导出等），右侧重置/搜索；上方发丝线分区 */
+/* 操作按钮固定右下角，上方发丝线分区（沿用列表页原搜索栏的分区语言） */
 .search-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--sx-line);
-}
-.search-actions-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.search-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
 }
 </style>

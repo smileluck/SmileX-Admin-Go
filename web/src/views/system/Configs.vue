@@ -2,14 +2,16 @@
   <!-- 系统参数：键值列表 + 行内编辑值；键与类型创建后不可变 -->
   <SearchCard storage-key="sysConfigs" @search="load" @reset="kw = ''">
     <n-input v-model:value="kw" :placeholder="t('sysconfig.keyword')" clearable style="width: 220px" @keyup.enter="load" />
-    <template #actions>
-      <n-button v-permission="['sysconfig:create']" type="primary" ghost @click="openCreate">
-        {{ t('sysconfig.new') }}
-      </n-button>
-    </template>
   </SearchCard>
 
   <n-card>
+    <template #header>
+      <div class="page-actions">
+        <n-button v-permission="['sysconfig:create']" type="primary" ghost @click="openCreate">
+          {{ t('sysconfig.new') }}
+        </n-button>
+      </div>
+    </template>
 
     <n-data-table size="small" :columns="columns" :data="rows" :loading="loading" :bordered="false" />
   </n-card>
@@ -172,6 +174,13 @@ onMounted(load)
 </script>
 
 <style scoped>
+.page-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
 .mono {
   font-family: var(--sx-font-mono);
 }

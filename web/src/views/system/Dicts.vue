@@ -3,14 +3,16 @@
   <SearchCard storage-key="dictTypes" @search="loadTypes(1)" @reset="resetQuery">
     <n-input v-model:value="query.name" :placeholder="t('dict.type.name')" clearable style="width: 200px" @keyup.enter="loadTypes(1)" />
     <n-input v-model:value="query.code" :placeholder="t('dict.type.code')" clearable style="width: 200px" @keyup.enter="loadTypes(1)" />
-    <template #actions>
-      <n-button v-permission="['dict:type:create']" type="primary" ghost @click="openTypeCreate">
-        {{ t('dict.type.new') }}
-      </n-button>
-    </template>
   </SearchCard>
 
   <n-card>
+    <template #header>
+      <div class="page-actions">
+        <n-button v-permission="['dict:type:create']" type="primary" ghost @click="openTypeCreate">
+          {{ t('dict.type.new') }}
+        </n-button>
+      </div>
+    </template>
 
     <n-data-table size="small" :columns="typeColumns" :data="types" :loading="typesLoading" :pagination="pagination" remote :bordered="false" />
   </n-card>
@@ -316,6 +318,13 @@ onMounted(() => loadTypes(1))
 </script>
 
 <style scoped>
+.page-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
 .items-header {
   width: 100%;
   display: flex;

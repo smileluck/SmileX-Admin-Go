@@ -4,14 +4,16 @@
     <n-input v-model:value="query.title" :placeholder="t('notice.titleField')" clearable style="width: 200px" @keyup.enter="load" />
     <n-select v-model:value="query.level" :options="levelOptions" :placeholder="t('notice.level')" clearable style="width: 130px" />
     <n-select v-model:value="query.status" :options="statusOptions" :placeholder="t('notice.status')" clearable style="width: 130px" />
-    <template #actions>
-      <n-button v-permission="['notice:create']" type="primary" ghost @click="openCreate">
-        {{ t('notice.new') }}
-      </n-button>
-    </template>
   </SearchCard>
 
   <n-card>
+    <template #header>
+      <div class="page-actions">
+        <n-button v-permission="['notice:create']" type="primary" ghost @click="openCreate">
+          {{ t('notice.new') }}
+        </n-button>
+      </div>
+    </template>
 
     <n-data-table size="small" :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote :bordered="false" />
   </n-card>
@@ -208,6 +210,13 @@ onMounted(load)
 </script>
 
 <style scoped>
+.page-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;
