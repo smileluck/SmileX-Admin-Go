@@ -5,19 +5,17 @@
     <n-input v-model:value="query.path" :placeholder="t('merchant.log.pathPlaceholder')" clearable style="width: 180px" @keyup.enter="load" />
     <n-input-number v-model:value="query.status_code" :placeholder="t('merchant.log.statusCodePlaceholder')" clearable :min="100" :max="599" :show-button="false" style="width: 120px" />
     <n-date-picker v-model:value="range" type="datetimerange" clearable style="width: 340px; max-width: 100%" />
+    <template #actions>
+      <!-- 显示敏感数据开关：开启后列表携带 reveal=1 重查 IP 明文（须持 merchantLog:viewSensitive，后端剔除参数仍脱敏） -->
+      <div v-if="canViewSensitive" class="reveal-toggle">
+        <n-icon :component="reveal ? EyeOutline : EyeOffOutline" />
+        <span>{{ t('common.sensitiveData') }}</span>
+        <n-switch v-model:value="reveal" size="small" @update:value="load" />
+      </div>
+    </template>
   </SearchCard>
 
   <n-card>
-    <template #header>
-      <div class="page-actions">
-        <!-- 显示敏感数据开关：开启后列表携带 reveal=1 重查 IP 明文（须持 merchantLog:viewSensitive，后端剔除参数仍脱敏） -->
-        <div v-if="canViewSensitive" class="reveal-toggle">
-          <n-icon :component="reveal ? EyeOutline : EyeOffOutline" />
-          <span>{{ t('common.sensitiveData') }}</span>
-          <n-switch v-model:value="reveal" size="small" @update:value="load" />
-        </div>
-      </div>
-    </template>
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
 </template>
@@ -108,13 +106,6 @@ onMounted(load)
 
 <style scoped>
 /* 卡头只放操作按钮（页面标题由顶栏展示） */
-.page-actions {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
-}
 /* 显示敏感数据开关 */
 .reveal-toggle {
   display: flex;

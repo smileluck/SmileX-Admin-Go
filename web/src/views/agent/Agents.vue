@@ -3,14 +3,12 @@
   <SearchCard storage-key="agents" @search="load" @reset="resetQuery">
     <n-input v-model:value="query.name" :placeholder="t('agent.agent.searchName')" clearable style="width: 160px" @keyup.enter="load" />
     <n-input v-model:value="query.code" :placeholder="t('agent.agent.searchCode')" clearable style="width: 160px" @keyup.enter="load" />
+    <template #actions>
+      <n-button type="primary" ghost v-permission="['agent:create']" @click="openCreate">{{ t('agent.agent.newAgent') }}</n-button>
+    </template>
   </SearchCard>
 
   <n-card>
-    <template #header>
-      <div class="page-actions">
-        <n-button type="primary" ghost v-permission="['agent:create']" @click="openCreate">{{ t('agent.agent.newAgent') }}</n-button>
-      </div>
-    </template>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" remote />
   </n-card>
@@ -328,11 +326,6 @@ onMounted(async () => {
 
 <style scoped>
 /* 卡头只放操作按钮（页面标题由顶栏展示） */
-.page-actions {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-}
 
 /* 采样参数行：滑块 + 当前值 */
 .param-row {

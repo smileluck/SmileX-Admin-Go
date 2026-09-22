@@ -5,25 +5,21 @@
     <n-select v-model:value="query.method" :options="methodOptions" clearable :placeholder="t('opLog.methodPlaceholder')" style="width: 130px" />
     <n-input v-model:value="query.kw" :placeholder="t('opLog.kwPlaceholder')" clearable style="width: 190px" @keyup.enter="load" />
     <n-date-picker v-model:value="range" type="datetimerange" clearable style="width: 340px; max-width: 100%" />
+    <template #actions>
+      <span class="retention-hint">{{ retentionHint }}</span>
+      <!-- 显示敏感数据开关（导出明文）：仅作用于导出参数（管理面列表本就明文，无需重查）。
+           仅持 log:op:exportSensitive 权限可见（提交入口后端二次校验） -->
+      <div v-if="canExportSensitive" class="reveal-toggle">
+        <n-icon :component="exportReveal ? EyeOutline : EyeOffOutline" />
+        <span>{{ t('common.sensitiveData') }}</span>
+        <n-switch v-model:value="exportReveal" size="small" />
+      </div>
+      <n-button ghost :loading="exporting" v-permission="['log:op:export']" @click="doExport">{{ t('opLog.export') }}</n-button>
+      <n-button type="error" ghost v-permission="['log:op:clear']" @click="confirmClear">{{ t('opLog.clear') }}</n-button>
+    </template>
   </SearchCard>
 
   <n-card>
-    <template #header>
-      <div class="page-header">
-        <span class="retention-hint">{{ retentionHint }}</span>
-        <div class="page-actions">
-          <!-- 显示敏感数据开关（导出明文）：仅作用于导出参数（管理面列表本就明文，无需重查）。
-               仅持 log:op:exportSensitive 权限可见（提交入口后端二次校验） -->
-          <div v-if="canExportSensitive" class="reveal-toggle">
-            <n-icon :component="exportReveal ? EyeOutline : EyeOffOutline" />
-            <span>{{ t('common.sensitiveData') }}</span>
-            <n-switch v-model:value="exportReveal" size="small" />
-          </div>
-          <n-button ghost :loading="exporting" v-permission="['log:op:export']" @click="doExport">{{ t('opLog.export') }}</n-button>
-          <n-button type="error" ghost v-permission="['log:op:clear']" @click="confirmClear">{{ t('opLog.clear') }}</n-button>
-        </div>
-      </div>
-    </template>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
@@ -231,21 +227,9 @@ onMounted(load)
 
 <style scoped>
 /* 卡头左侧保留说明、右侧清空按钮（页面标题由顶栏展示） */
-.page-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
 .retention-hint {
   font-size: 13px;
   color: var(--sx-muted);
-}
-.page-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 /* 显示敏感数据开关 */
 .reveal-toggle {

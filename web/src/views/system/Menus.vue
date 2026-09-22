@@ -371,12 +371,6 @@ onMounted(refresh)
 
 <style scoped>
 /* 卡头只放操作按钮（页面标题由顶栏展示） */
-.page-actions {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
 /* 展开/收起按钮固定在行最左，其余新增按钮靠右 */
 .expand-toggle {
   margin-right: auto;

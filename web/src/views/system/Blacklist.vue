@@ -1,14 +1,12 @@
 <template>
   <SearchCard storage-key="ipBlacklist" @search="load" @reset="resetQuery">
     <n-input v-model:value="query.ip" :placeholder="t('blacklist.ipPlaceholder')" clearable style="width: 180px" @keyup.enter="load" />
+    <template #actions>
+      <n-button type="primary" ghost v-permission="['blacklist:create']" @click="showModal = true">{{ t('common.add') }}</n-button>
+    </template>
   </SearchCard>
 
   <n-card>
-    <template #header>
-      <div class="page-actions">
-        <n-button type="primary" ghost v-permission="['blacklist:create']" @click="showModal = true">{{ t('common.add') }}</n-button>
-      </div>
-    </template>
 
     <!-- scroll-x 与列宽合计一致：窄屏下操作列固定右侧，左侧内容可横向滚动查看 -->
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote :scroll-x="1240" />
@@ -163,13 +161,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page-actions {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
-}
 </style>
 
 <style>

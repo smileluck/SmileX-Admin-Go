@@ -5,14 +5,12 @@
     <n-input v-model:value="query.phone" :placeholder="t('appUser.phonePlaceholder')" clearable style="width: 160px" @keyup.enter="load" />
     <n-select v-model:value="query.status" :options="statusOptions" clearable :placeholder="t('appUser.statusPlaceholder')" style="width: 120px" />
     <n-select v-model:value="query.tenant_id" :options="tenantOptions" clearable filterable :placeholder="t('appUser.tenantPlaceholder')" style="width: 180px" />
+    <template #actions>
+      <n-button type="primary" ghost @click="openCreate" v-permission="['appUser:create']">{{ t('appUser.newAppUser') }}</n-button>
+    </template>
   </SearchCard>
 
   <n-card>
-    <template #header>
-      <div class="page-actions">
-        <n-button type="primary" ghost @click="openCreate" v-permission="['appUser:create']">{{ t('appUser.newAppUser') }}</n-button>
-      </div>
-    </template>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
@@ -314,10 +312,4 @@ onMounted(() => {
 
 <style scoped>
 /* 卡头只放操作按钮（页面标题由顶栏展示） */
-.page-actions {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
 </style>

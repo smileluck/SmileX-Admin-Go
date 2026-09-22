@@ -3,17 +3,15 @@
   <SearchCard storage-key="online" @search="load" @reset="resetQuery">
     <n-input v-model:value="query.username" :placeholder="t('online.username')" clearable style="width: 180px" @keyup.enter="load" />
     <n-select v-model:value="query.device" :options="deviceOptions" clearable :placeholder="t('online.device')" style="width: 140px" />
+    <template #actions>
+      <n-button ghost @click="load">
+        <template #icon><n-icon :component="RefreshOutline" /></template>
+        {{ t('common.refresh') }}
+      </n-button>
+    </template>
   </SearchCard>
 
   <n-card>
-    <template #header>
-      <div class="page-actions">
-        <n-button ghost @click="load">
-          <template #icon><n-icon :component="RefreshOutline" /></template>
-          {{ t('common.refresh') }}
-        </n-button>
-      </div>
-    </template>
 
     <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" paginate-single-page remote />
   </n-card>
@@ -165,9 +163,4 @@ onMounted(() => { load() })
 
 <style scoped>
 /* 卡头只放操作按钮（页面标题由顶栏展示） */
-.page-actions {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-}
 </style>
