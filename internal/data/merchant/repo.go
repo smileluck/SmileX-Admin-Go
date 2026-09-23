@@ -131,8 +131,11 @@ func (r *repo) List(ctx context.Context, q bizmerchant.Query, page, pageSize int
 		return nil, 0, err
 	}
 	var pos []model.MerchantPO
-	// 列表查询不带密钥哈希
-	if err := tx.Omit("app_secret_hash").Offset((page - 1) * pageSize).Limit(pageSize).Order("id DESC").Find(&pos).Error; err != nil {
+	// 列表查询不带密钥哈希；pageSize<=0 表示全量（不分页）
+	if pageSize > 0 {
+		tx = tx.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if err := tx.Omit("app_secret_hash").Order("id DESC").Find(&pos).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]*bizmerchant.Merchant, 0, len(pos))
@@ -216,7 +219,10 @@ func (r *APILogRepo) List(ctx context.Context, q bizmerchant.APILogQuery, page, 
 		return nil, 0, err
 	}
 	var pos []model.MerchantAPILogPO
-	if err := tx.Offset((page - 1) * pageSize).Limit(pageSize).Order("id DESC").Find(&pos).Error; err != nil {
+	if pageSize > 0 { // pageSize<=0 表示全量（不分页）
+		tx = tx.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if err := tx.Order("id DESC").Find(&pos).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]*bizmerchant.APILog, 0, len(pos))

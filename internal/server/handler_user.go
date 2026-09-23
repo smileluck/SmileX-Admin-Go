@@ -128,7 +128,7 @@ func (s *HTTPServer) resetUserPassword(c *gin.Context) {
 }
 func (s *HTTPServer) userErr(c *gin.Context, err error) {
 	if errors.Is(err, user.ErrSuperAdminProtected) || errors.Is(err, user.ErrDeleteSuperAdmin) ||
-		errors.Is(err, user.ErrAssignSuperRole) {
+		errors.Is(err, user.ErrDisableSuperAdmin) || errors.Is(err, user.ErrAssignSuperRole) {
 		response.FailI18n(c, http.StatusForbidden, response.CodeForbidden, err)
 		return
 	}

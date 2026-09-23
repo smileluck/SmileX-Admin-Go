@@ -38,6 +38,7 @@ var errKeys = []struct {
 	{user.ErrDuplicateUsername, "user.name_exists"},
 	{user.ErrSuperAdminProtected, "user.super_protected"},
 	{user.ErrDeleteSuperAdmin, "user.super_delete_forbidden"},
+	{user.ErrDisableSuperAdmin, "user.super_disable_forbidden"},
 	// 角色
 	{role.ErrRoleNotFound, "role.not_found"},
 	{role.ErrRoleHasUsers, "role.has_users"},

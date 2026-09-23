@@ -28,6 +28,10 @@ var ErrSuperAdminProtected = errors.New("无权操作超级管理员账号")
 // ErrDeleteSuperAdmin 超级管理员账号一律禁止删除（含其本人）
 var ErrDeleteSuperAdmin = errors.New("超级管理员账号禁止删除")
 
+// ErrDisableSuperAdmin 超级管理员账号禁止禁用（含其本人）：唯一超管自禁后
+// 无法登录也无法被他人启用（仅本人可改），系统将永久锁死
+var ErrDisableSuperAdmin = errors.New("超级管理员账号禁止禁用")
+
 // SuperAdminID 超级管理员固定用户 ID（跨上下文保护规则共用：仅本人可操作其账号/会话）
 const SuperAdminID uint = 1
 
@@ -122,6 +126,10 @@ func (uc *Usecase) Create(ctx context.Context, username, password, nickname, pho
 func (uc *Usecase) Update(ctx context.Context, id uint, nickname, phone, email string, status *Status) error {
 	if err := guardSuperAdmin(ctx, id); err != nil {
 		return err
+	}
+	// 超管禁用保护：与删除同级，本人也不允许（防唯一超管自锁死）
+	if id == SuperAdminID && status != nil && *status == StatusDisabled {
+		return ErrDisableSuperAdmin
 	}
 	u, err := uc.repo.FindByID(ctx, id)
 	if err != nil {

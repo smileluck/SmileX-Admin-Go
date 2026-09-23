@@ -140,8 +140,11 @@ func (r *repo) List(ctx context.Context, q user.Query, page, pageSize int) ([]*u
 		return nil, 0, err
 	}
 	var pos []model.UserPO
-	// 列表查询不带密码哈希
-	if err := tx.Omit("password").Offset((page - 1) * pageSize).Limit(pageSize).Order("id DESC").Find(&pos).Error; err != nil {
+	// 列表查询不带密码哈希；pageSize<=0 表示全量（不分页）
+	if pageSize > 0 {
+		tx = tx.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if err := tx.Omit("password").Order("id DESC").Find(&pos).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]*user.User, 0, len(pos))
