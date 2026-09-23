@@ -15,6 +15,7 @@ var messagesEn = map[string]string{
 	// 角色
 	"role.not_found":    "Role not found",
 	"role.has_users":    "Users are still assigned to this role; remove the associations first",
+	"role.name_exists":  "Role name already exists, please choose another one",
 	"role.super_locked": "The super admin role is built-in and cannot be modified or deleted",
 	// 权限/菜单
 	"permission.not_found":          "Permission not found",
