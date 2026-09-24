@@ -31,11 +31,11 @@ type Stats struct {
 		Users       int64 `json:"users"`
 		Roles       int64 `json:"roles"`
 		Online      int64 `json:"online"`       // 在线会话数（Redis）
-		TodayLogins int64 `json:"today_logins"` // 今日登录尝试
+		TodayLogins int64 `json:"today_logins"` // 今日登录用户数（同用户多次登录去重）
 	} `json:"cards"`
 	LoginTrend   []DailyPoint `json:"login_trend"`   // 近 7 日登录趋势（含零填充）
 	OpTrend      []DailyPoint `json:"op_trend"`      // 近 7 日操作趋势
-	RecentLogins []LoginItem  `json:"recent_logins"` // 最近 8 条
+	RecentLogins []LoginItem  `json:"recent_logins"` // 最近 8 条（同用户去重，各取最新一条）
 }
 
 // Repo 聚合仓储接口

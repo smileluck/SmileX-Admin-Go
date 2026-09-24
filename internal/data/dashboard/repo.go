@@ -34,8 +34,10 @@ func (r *repo) Counts() (users, roles int64, err error) {
 func (r *repo) TodayLogins() (int64, error) {
 	var n int64
 	start := time.Now().Truncate(24 * time.Hour)
+	// 卡片口径为今日登录用户数：同一用户多次登录去重
 	err := r.data.DB.Model(&model.LoginLogPO{}).
-		Where("created_at >= ?", start).Count(&n).Error
+		Where("created_at >= ?", start).
+		Distinct("username").Count(&n).Error
 	return n, err
 }
 
@@ -94,9 +96,13 @@ func (r *repo) OpTrend(days int) ([]dashboard.DailyPoint, error) {
 	return out, nil
 }
 
+// RecentLogins 最近 n 条登录（同用户去重：每用户只保留最新一条；
+// id 自增与时间同向，MAX(id) 即该用户最新记录，IN 子查询写法三库通用）
 func (r *repo) RecentLogins(n int) ([]dashboard.LoginItem, error) {
 	var pos []model.LoginLogPO
 	if err := r.data.DB.WithContext(context.Background()).
+		Where("id IN (?)", r.data.DB.Model(&model.LoginLogPO{}).
+			Select("MAX(id)").Group("username")).
 		Order("id DESC").Limit(n).Find(&pos).Error; err != nil {
 		return nil, err
 	}
