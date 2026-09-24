@@ -20,6 +20,7 @@ import (
 	bizmerchant "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	bizmonitor "github.com/smilex/smilex-admin-gin/internal/biz/monitor"
 	biznotice "github.com/smilex/smilex-admin-gin/internal/biz/notice"
+	biznotify "github.com/smilex/smilex-admin-gin/internal/biz/notify"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	bizrole "github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -40,6 +41,7 @@ import (
 	datamerchant "github.com/smilex/smilex-admin-gin/internal/data/merchant"
 	datamonitor "github.com/smilex/smilex-admin-gin/internal/data/monitor"
 	datanotice "github.com/smilex/smilex-admin-gin/internal/data/notice"
+	datanotify "github.com/smilex/smilex-admin-gin/internal/data/notify"
 	dataperm "github.com/smilex/smilex-admin-gin/internal/data/permission"
 	datarole "github.com/smilex/smilex-admin-gin/internal/data/role"
 	datasession "github.com/smilex/smilex-admin-gin/internal/data/session"
@@ -60,6 +62,7 @@ import (
 	merchantsvc "github.com/smilex/smilex-admin-gin/internal/service/merchant"
 	monitorsvc "github.com/smilex/smilex-admin-gin/internal/service/monitor"
 	noticesvc "github.com/smilex/smilex-admin-gin/internal/service/notice"
+	notifysvc "github.com/smilex/smilex-admin-gin/internal/service/notify"
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
@@ -87,6 +90,7 @@ var bizSet = wire.NewSet(
 	bizjob.NewUsecase,
 	bizmonitor.NewUsecase,
 	bizagent.NewUsecase,
+	biznotify.NewUsecase,
 	bizexport.NewUsecase,
 	bizexport.NewRegistry,
 	bizexport.NewUserExporter,
@@ -99,6 +103,8 @@ var bizSet = wire.NewSet(
 	wire.Bind(new(bizuser.SessionRevoker), new(*bizsession.Usecase)),
 	wire.Bind(new(bizexport.PermissionChecker), new(*auth.Usecase)),
 	wire.Bind(new(bizagent.ServerStatusReader), new(*bizmonitor.Usecase)),
+	wire.Bind(new(biznotify.SnapshotReader), new(*bizmonitor.Usecase)),
+	wire.Bind(new(bizjob.NotifyCleaner), new(*biznotify.Usecase)),
 )
 
 var dataRepoSet = wire.NewSet(
@@ -125,6 +131,7 @@ var dataRepoSet = wire.NewSet(
 	wire.Bind(new(bizmonitor.SnapshotRepo), new(*datamonitor.SnapshotRepo)),
 	datasys.NewRepo,
 	datanotice.NewRepo,
+	datanotify.NewRepo,
 	datajob.NewRepo,
 	datacaptcha.NewStore,
 	dataexport.NewRepo,
@@ -166,6 +173,7 @@ var serviceSet = wire.NewSet(
 	dashsvc.NewService,
 	syssvc.NewService,
 	noticesvc.NewService,
+	notifysvc.NewService,
 	jobsvc.NewService,
 )
 

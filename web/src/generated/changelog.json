@@ -1,6 +1,20 @@
 {
-  "generatedAt": "2026-09-23T06:39:50.181Z",
+  "generatedAt": "2026-09-24T07:56:12.587Z",
   "commits": [
+    {
+      "hash": "751dcef",
+      "date": "2026-09-24",
+      "type": "feat",
+      "scope": "notice",
+      "message": "站内信定向送达（按角色/按用户）"
+    },
+    {
+      "hash": "1da8290",
+      "date": "2026-09-23",
+      "type": "feat",
+      "scope": "role",
+      "message": "角色名称全栈唯一性校验；移除死代码 pagination.Parse"
+    },
     {
       "hash": "6f0c770",
       "date": "2026-09-23",

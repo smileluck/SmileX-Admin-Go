@@ -389,6 +389,30 @@ func (s *HTTPServer) registerRoutes() {
 		notices.GET("/options/users", s.noticeUserOptions)
 	}
 
+	// ---- 告警通知 ----
+	notifyChannels := protected.Group("/notify/channels")
+	{
+		notifyChannels.GET("", s.listNotifyChannels)
+		notifyChannels.POST("", s.createNotifyChannel)
+		notifyChannels.GET("/:id", s.getNotifyChannel)
+		notifyChannels.PUT("/:id", s.updateNotifyChannel)
+		notifyChannels.DELETE("/:id", s.deleteNotifyChannel)
+		notifyChannels.POST("/:id/test", s.testNotifyChannel)
+	}
+	notifyRules := protected.Group("/notify/rules")
+	{
+		notifyRules.GET("", s.listNotifyRules)
+		notifyRules.POST("", s.createNotifyRule)
+		notifyRules.GET("/:id", s.getNotifyRule)
+		notifyRules.PUT("/:id", s.updateNotifyRule)
+		notifyRules.DELETE("/:id", s.deleteNotifyRule)
+	}
+	notifyRecords := protected.Group("/notify/records")
+	{
+		notifyRecords.GET("", s.listNotifyRecords)
+		notifyRecords.DELETE("", s.clearNotifyRecords)
+	}
+
 	// ---- 系统参数（运行时可调） ----
 	syscfgs := protected.Group("/sys-configs")
 	{

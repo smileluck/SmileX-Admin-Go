@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, MonitorHistoryPoint, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, NoticeRoleOption, NoticeUserOption, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, NotifyChannel, NotifyRecord, NotifyRule, NotifyTestResult, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, MonitorHistoryPoint, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, NoticeRoleOption, NoticeUserOption, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -261,6 +261,31 @@ export const listNoticeUserOptions = (kw: string) =>
 export const listActiveNotices = () => request.get<R<NoticeInfo[]>>('/notices/active')
 export const getUnreadNoticeCount = () => request.get<R<{ count: number }>>('/notices/unread-count')
 export const markNoticeRead = (id: number) => request.post<R<null>>(`/notices/${id}/read`)
+
+// ---- 告警通知：渠道 ----
+
+export const listNotifyChannels = () => request.get<R<NotifyChannel[]>>('/notify/channels')
+export const createNotifyChannel = (data: Partial<NotifyChannel> & { smtp_password?: string; webhook_secret?: string }) =>
+  request.post<R<NotifyChannel>>('/notify/channels', data)
+export const getNotifyChannel = (id: number) => request.get<R<NotifyChannel>>(`/notify/channels/${id}`)
+export const updateNotifyChannel = (id: number, data: Partial<NotifyChannel> & { smtp_password?: string; webhook_secret?: string }) =>
+  request.put<R<null>>(`/notify/channels/${id}`, data)
+export const deleteNotifyChannel = (id: number) => request.delete<R<null>>(`/notify/channels/${id}`)
+export const testNotifyChannel = (id: number) => request.post<R<NotifyTestResult>>(`/notify/channels/${id}/test`)
+
+// ---- 告警通知：规则 ----
+
+export const listNotifyRules = () => request.get<R<NotifyRule[]>>('/notify/rules')
+export const createNotifyRule = (data: Partial<NotifyRule>) => request.post<R<NotifyRule>>('/notify/rules', data)
+export const getNotifyRule = (id: number) => request.get<R<NotifyRule>>(`/notify/rules/${id}`)
+export const updateNotifyRule = (id: number, data: Partial<NotifyRule>) => request.put<R<null>>(`/notify/rules/${id}`, data)
+export const deleteNotifyRule = (id: number) => request.delete<R<null>>(`/notify/rules/${id}`)
+
+// ---- 告警通知：发送记录 ----
+
+export const listNotifyRecords = (params: { page: number; page_size: number; channel_id?: number; source?: string; status?: string }) =>
+  request.get<R<PageResult<NotifyRecord>>>('/notify/records', { params })
+export const clearNotifyRecords = () => request.delete<R<null>>('/notify/records')
 
 // ---- 定时任务 ----
 

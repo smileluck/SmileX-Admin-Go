@@ -14,6 +14,7 @@ import (
 	bizmerchant "github.com/smilex/smilex-admin-gin/internal/biz/merchant"
 	bizmonitor "github.com/smilex/smilex-admin-gin/internal/biz/monitor"
 	biznotice "github.com/smilex/smilex-admin-gin/internal/biz/notice"
+	biznotify "github.com/smilex/smilex-admin-gin/internal/biz/notify"
 	bizperm "github.com/smilex/smilex-admin-gin/internal/biz/permission"
 	"github.com/smilex/smilex-admin-gin/internal/biz/role"
 	bizsession "github.com/smilex/smilex-admin-gin/internal/biz/session"
@@ -124,6 +125,13 @@ var errKeys = []struct {
 	{biznotice.ErrInvalidTitle, "notice.inactive"},
 	{biznotice.ErrInvalidTargets, "notice.invalid_targets"},
 	{biznotice.ErrNotDelivered, "notice.not_delivered"},
+	// 告警通知
+	{biznotify.ErrChannelNotFound, "notify.channel_not_found"},
+	{biznotify.ErrChannelNameExists, "notify.channel_name_exists"},
+	{biznotify.ErrInvalidChannel, "notify.channel_invalid"},
+	{biznotify.ErrRuleNotFound, "notify.rule_not_found"},
+	{biznotify.ErrRuleNameExists, "notify.rule_name_exists"},
+	{biznotify.ErrInvalidRule, "notify.rule_invalid"},
 	// 定时任务
 	{bizjob.ErrNotFound, "job.not_found"},
 	{bizjob.ErrNameExists, "job.name_exists"},

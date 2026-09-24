@@ -20,6 +20,7 @@ type Bootstrap struct {
 	Export  Export  `mapstructure:"export"`
 	OpenAPI OpenAPI `mapstructure:"openapi"`
 	Agent   Agent   `mapstructure:"agent"`
+	Notify  Notify  `mapstructure:"notify"`
 	Seed    Seed    `mapstructure:"seed"`
 }
 
@@ -112,6 +113,13 @@ type Agent struct {
 	CryptoKey string `mapstructure:"cryptoKey"`
 	// UsageRetentionDays 用量计量流水保留天数，超期每日自动清理；0 表示永久保留
 	UsageRetentionDays int `mapstructure:"usageRetentionDays"`
+}
+
+// Notify 告警通知模块配置（渠道密钥加密；告警规则/渠道均存库、运行时管理）
+type Notify struct {
+	// CryptoKey 通知渠道密钥（SMTP 密码/Webhook 密钥）的 AES 加密密钥（任意长度，内部派生 AES-256）；
+	// 为空时从 jwt.secret 派生，域前缀与 agent 隔离 —— 更换 jwt.secret 后需重新保存一次渠道密钥
+	CryptoKey string `mapstructure:"cryptoKey"`
 }
 
 type Log struct {
