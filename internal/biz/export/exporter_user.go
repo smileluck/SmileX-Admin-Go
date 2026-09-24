@@ -7,6 +7,7 @@ import (
 
 	bizuser "github.com/smilex/smilex-admin-gin/internal/biz/user"
 	"github.com/smilex/smilex-admin-gin/internal/conf"
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 )
 
 // UserExporter 用户列表导出（复用用户仓储分页查询；查询条件与列表页一致：username / status）
@@ -19,18 +20,18 @@ func NewUserExporter(users bizuser.Repo, c *conf.Bootstrap) *UserExporter {
 	return &UserExporter{users: users, mask: c.Export.Mask}
 }
 
-func (e *UserExporter) Biz() string  { return "user" }
-func (e *UserExporter) Name() string { return "用户列表" }
+func (e *UserExporter) Biz() string     { return "user" }
+func (e *UserExporter) NameKey() string { return "export.name.user" }
 
 func (e *UserExporter) Columns() []Column {
 	return []Column{
-		{Key: "id", Title: "ID"},
-		{Key: "username", Title: "用户名"},
-		{Key: "nickname", Title: "昵称"},
-		{Key: "phone", Title: "手机号", Text: true},
-		{Key: "email", Title: "邮箱"},
-		{Key: "status", Title: "状态"},
-		{Key: "created_at", Title: "创建时间"},
+		{Key: "id", Title: "export.col.id"},
+		{Key: "username", Title: "export.col.username"},
+		{Key: "nickname", Title: "export.col.nickname"},
+		{Key: "phone", Title: "export.col.phone", Text: true},
+		{Key: "email", Title: "export.col.email"},
+		{Key: "status", Title: "export.col.status"},
+		{Key: "created_at", Title: "export.col.created_at"},
 	}
 }
 
@@ -49,9 +50,9 @@ func (e *UserExporter) Fetch(ctx context.Context, params url.Values, offset, lim
 	cols := e.Columns()
 	rows := make([][]string, 0, len(users))
 	for _, u := range users {
-		status := "禁用"
+		status := i18n.T(ctx, "export.value.disabled")
 		if u.Enabled() {
-			status = "启用"
+			status = i18n.T(ctx, "export.value.enabled")
 		}
 		row := []string{
 			strconv.FormatUint(uint64(u.ID), 10),

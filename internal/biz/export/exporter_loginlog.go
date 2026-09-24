@@ -8,6 +8,7 @@ import (
 
 	bizlog "github.com/smilex/smilex-admin-gin/internal/biz/log"
 	"github.com/smilex/smilex-admin-gin/internal/conf"
+	"github.com/smilex/smilex-admin-gin/pkg/i18n"
 )
 
 // parseUnix 解析 unix 秒级时间戳查询参数（与日志列表页 start/end 入参一致；空/非法返回零值表示不限）
@@ -29,20 +30,20 @@ func NewLoginLogExporter(logs bizlog.Repo, c *conf.Bootstrap) *LoginLogExporter 
 	return &LoginLogExporter{logs: logs, mask: c.Export.Mask}
 }
 
-func (e *LoginLogExporter) Biz() string  { return "login_log" }
-func (e *LoginLogExporter) Name() string { return "登录日志" }
+func (e *LoginLogExporter) Biz() string     { return "login_log" }
+func (e *LoginLogExporter) NameKey() string { return "export.name.login_log" }
 
 func (e *LoginLogExporter) Columns() []Column {
-	// 列与列表页字段保持一致（浏览器/终端、说明等命名与顺序对齐）
+	// 列与列表页字段保持一致（浏览器/终端、说明等命名与顺序对齐）；Title 为 i18n key
 	return []Column{
-		{Key: "id", Title: "ID"},
-		{Key: "username", Title: "用户名"},
-		{Key: "ip", Title: "IP"},
-		{Key: "device", Title: "设备端"},
-		{Key: "user_agent", Title: "浏览器 / 终端"},
-		{Key: "status", Title: "结果"},
-		{Key: "msg", Title: "说明"},
-		{Key: "created_at", Title: "登录时间"},
+		{Key: "id", Title: "export.col.id"},
+		{Key: "username", Title: "export.col.username"},
+		{Key: "ip", Title: "export.col.ip"},
+		{Key: "device", Title: "export.col.device"},
+		{Key: "user_agent", Title: "export.col.user_agent"},
+		{Key: "status", Title: "export.col.result"},
+		{Key: "msg", Title: "export.col.message"},
+		{Key: "created_at", Title: "export.col.login_time"},
 	}
 }
 
@@ -66,15 +67,15 @@ func (e *LoginLogExporter) Fetch(ctx context.Context, params url.Values, offset,
 	cols := e.Columns()
 	rows := make([][]string, 0, len(logs))
 	for _, l := range logs {
-		status := "失败"
+		status := i18n.T(ctx, "export.value.failure")
 		if l.Status == bizlog.LoginStatusSuccess {
-			status = "成功"
+			status = i18n.T(ctx, "export.value.success")
 		}
 		row := []string{
 			strconv.FormatUint(uint64(l.ID), 10),
 			l.Username,
 			l.IP,
-			deviceText(l.Device),
+			deviceText(ctx, l.Device),
 			l.UserAgent,
 			status,
 			l.Msg,
@@ -88,13 +89,13 @@ func (e *LoginLogExporter) Fetch(ctx context.Context, params url.Values, offset,
 	return rows, total, nil
 }
 
-// deviceText 设备端转页面同款中文文案（web=网页端 / app=移动端），未知值原样输出
-func deviceText(d string) string {
+// deviceText 设备端转页面同款文案（web=网页端 / app=移动端），未知值原样输出；按 ctx locale 翻译
+func deviceText(ctx context.Context, d string) string {
 	switch d {
 	case "web":
-		return "网页端"
+		return i18n.T(ctx, "export.device.web")
 	case "app":
-		return "移动端"
+		return i18n.T(ctx, "export.device.app")
 	default:
 		return d
 	}
