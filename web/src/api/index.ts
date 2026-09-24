@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, MonitorHistoryPoint, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, MonitorHistoryPoint, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, NoticeRoleOption, NoticeUserOption, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -253,6 +253,10 @@ export const createNotice = (data: Partial<NoticeInfo>) => request.post<R<Notice
 export const getNotice = (id: number) => request.get<R<NoticeInfo>>(`/notices/${id}`)
 export const updateNotice = (id: number, data: Partial<NoticeInfo>) => request.put<R<null>>(`/notices/${id}`, data)
 export const deleteNotice = (id: number) => request.delete<R<null>>(`/notices/${id}`)
+// 送达范围选项（发布表单；公告权限即可，无需角色/用户管理权限）
+export const listNoticeRoleOptions = () => request.get<R<NoticeRoleOption[]>>('/notices/options/roles')
+export const listNoticeUserOptions = (kw: string) =>
+  request.get<R<NoticeUserOption[]>>('/notices/options/users', { params: { kw } })
 // 消费端（basic）
 export const listActiveNotices = () => request.get<R<NoticeInfo[]>>('/notices/active')
 export const getUnreadNoticeCount = () => request.get<R<{ count: number }>>('/notices/unread-count')

@@ -101,6 +101,8 @@ var messagesEn = map[string]string{
 	"sysconfig.key_invalid":             "Key allows letters, digits, underscore and dot only",
 	"notice.not_found":                  "Notice not found",
 	"notice.inactive":                   "Notice not found or inactive",
+	"notice.invalid_targets":            "Targeted delivery requires at least one target",
+	"notice.not_delivered":              "Notice is not delivered to you",
 	"job.not_found":                     "Job not found",
 	"job.name_exists":                   "Job name already exists",
 	"job.bad_cron":                      "Invalid cron expression (5 fields: min hour day month week)",
@@ -139,6 +141,6 @@ var messagesEn = map[string]string{
 	"menu.menu:agentUsage":    "Usage Stats",
 	"menu.menu:dict":          "Data Dictionary",
 	"menu.menu:sysConfig":     "System Configs",
-	"menu.menu:notice":        "Notices",
+	"menu.menu:notice":        "Messages",
 	"menu.menu:job":           "Scheduled Jobs",
 }
