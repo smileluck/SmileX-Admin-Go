@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-24T08:25:47.910Z",
+  "generatedAt": "2026-09-24T08:58:14.001Z",
   "commits": [
+    {
+      "hash": "2e8e08d",
+      "date": "2026-09-24",
+      "type": "style",
+      "scope": "web",
+      "message": "菜单管理「权限点」按钮英文精简为 New/Add Permission"
+    },
     {
       "hash": "4e23d81",
       "date": "2026-09-24",
