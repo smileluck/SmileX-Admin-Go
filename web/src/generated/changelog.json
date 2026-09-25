@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-25T08:31:14.356Z",
+  "generatedAt": "2026-09-25T08:36:21.906Z",
   "commits": [
+    {
+      "hash": "5e58771",
+      "date": "2026-09-25",
+      "type": "fix",
+      "scope": "web",
+      "message": "标签栏滚轮横向滑动兼容触摸板与 Firefox 行模式"
+    },
     {
       "hash": "825b3f3",
       "date": "2026-09-25",
