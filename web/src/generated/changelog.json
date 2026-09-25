@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-25T08:29:07.641Z",
+  "generatedAt": "2026-09-25T08:31:14.356Z",
   "commits": [
+    {
+      "hash": "825b3f3",
+      "date": "2026-09-25",
+      "type": "feat",
+      "scope": "web",
+      "message": "登录后清空标签栏，仅保留落地页"
+    },
     {
       "hash": "6ff6edf",
       "date": "2026-09-25",
