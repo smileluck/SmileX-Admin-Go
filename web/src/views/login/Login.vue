@@ -105,6 +105,7 @@ import { getCaptcha } from '../../api'
 import { useUserStore } from '../../stores/user'
 import { isDarkRef, toggleTheme } from '../../stores/theme'
 import { setLocale, type AppLocale } from '../../locales'
+import { TABS_STORAGE_KEY } from '../../utils/tabStorage'
 import MapFlow3D from './MapFlow3D.vue'
 import PulseWave from './PulseWave.vue'
 
@@ -197,10 +198,12 @@ async function onLogin() {
   } catch {
     return // 校验失败，表单项已提示，静默返回
   }
-  loading.value = true
+    loading.value = true
   try {
     await userStore.login(form.username, form.password, captchaId.value, form.captchaCode)
     persistRemembered()
+    // 新会话不继承旧标签：清空持久化标签页（换账号登录也避免恢复出他人权限下的页面）
+    localStorage.removeItem(TABS_STORAGE_KEY)
     message.success(t('login.loginSuccess'))
     // 不在这里 loadUserContext——交由路由守卫统一加载并注册动态路由
     router.push('/')

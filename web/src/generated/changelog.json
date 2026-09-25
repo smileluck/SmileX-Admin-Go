@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-25T08:25:24.916Z",
+  "generatedAt": "2026-09-25T08:29:07.641Z",
   "commits": [
+    {
+      "hash": "6ff6edf",
+      "date": "2026-09-25",
+      "type": "feat",
+      "scope": "web",
+      "message": "标签栏右键菜单（关闭左侧/右侧/其他）"
+    },
     {
       "hash": "7350a4a",
       "date": "2026-09-25",
