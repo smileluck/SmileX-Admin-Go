@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-24T09:14:26.891Z",
+  "generatedAt": "2026-09-25T07:58:48.018Z",
   "commits": [
+    {
+      "hash": "77bafbc",
+      "date": "2026-09-24",
+      "type": "feat",
+      "scope": "notify",
+      "message": "通知渠道/告警规则列表增加搜索筛选"
+    },
     {
       "hash": "16b7d58",
       "date": "2026-09-24",
