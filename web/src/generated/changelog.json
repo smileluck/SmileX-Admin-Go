@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-09-25T08:36:21.906Z",
+  "generatedAt": "2026-10-01T08:28:44.840Z",
   "commits": [
+    {
+      "hash": "fe50149",
+      "date": "2026-09-25",
+      "type": "feat",
+      "scope": "web",
+      "message": "标签栏滚轮滚动改为 rAF 缓动，顺滑不生硬"
+    },
     {
       "hash": "5e58771",
       "date": "2026-09-25",

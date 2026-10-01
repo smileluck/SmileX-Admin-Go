@@ -362,6 +362,20 @@ func (s *HTTPServer) registerRoutes() {
 		agentModels.POST("/:id/test", s.testAgentModel)
 	}
 
+	// ---- MCP 服务（智能体工具源）：配置 CRUD + 连通测试 ----
+	mcpServers := protected.Group("/mcp/servers")
+	{
+		mcpServers.GET("", s.listMcpServers)
+		mcpServers.POST("", s.createMcpServer)
+		mcpServers.GET("/:id", s.getMcpServer)
+		mcpServers.PUT("/:id", s.updateMcpServer)
+		mcpServers.DELETE("/:id", s.deleteMcpServer)
+		// 连通测试：真实握手远端（外呼请求，按用户限流防滥用）
+		mcpServers.POST("/:id/test", middleware.NewRateLimit(s.rdb, middleware.RateLimitConfig{
+			KeyPrefix: "rl:mcp-test:", Max: 10, Window: time.Minute, ByUser: true, MessageKey: "security.rate_limited",
+		}), s.testMcpServer)
+	}
+
 	// ---- 定时任务 ----
 	jobs := protected.Group("/jobs")
 	{
