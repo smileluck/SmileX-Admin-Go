@@ -376,6 +376,16 @@ func (s *HTTPServer) registerRoutes() {
 		}), s.testMcpServer)
 	}
 
+	// ---- 技能管理（多文件技能包：附属文件随技能整体提交） ----
+	skills := protected.Group("/skills")
+	{
+		skills.GET("", s.listSkills)
+		skills.POST("", s.createSkill)
+		skills.GET("/:id", s.getSkill)
+		skills.PUT("/:id", s.updateSkill)
+		skills.DELETE("/:id", s.deleteSkill)
+	}
+
 	// ---- 定时任务 ----
 	jobs := protected.Group("/jobs")
 	{

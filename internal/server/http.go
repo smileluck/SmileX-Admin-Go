@@ -33,6 +33,7 @@ import (
 	permsvc "github.com/smilex/smilex-admin-gin/internal/service/permission"
 	rolesvc "github.com/smilex/smilex-admin-gin/internal/service/role"
 	sessionsvc "github.com/smilex/smilex-admin-gin/internal/service/session"
+	skillsvc "github.com/smilex/smilex-admin-gin/internal/service/skill"
 	syssvc "github.com/smilex/smilex-admin-gin/internal/service/sysconfig"
 	tenantsvc "github.com/smilex/smilex-admin-gin/internal/service/tenant"
 	usersvc "github.com/smilex/smilex-admin-gin/internal/service/user"
@@ -65,6 +66,7 @@ type HTTPServer struct {
 	notice     *noticesvc.Service
 	notify     *notifysvc.Service
 	mcp        *mcpsvc.Service
+	skill      *skillsvc.Service
 	job        *jobsvc.Service
 	dashboard  *dashsvc.Service
 	appuserUC  *bizappuser.Usecase    // AppJWT 中间件直连领域用例（校验用户启用状态）
@@ -83,7 +85,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	tenant *tenantsvc.Service, appuser *appusersvc.Service, appuserUC *bizappuser.Usecase,
 	appIssuer bizappuser.TokenIssuer, monitor *monitorsvc.Service, agent *agentsvc.Service,
 	dict *dictsvc.Service, syscfg *syssvc.Service, notice *noticesvc.Service, notify *notifysvc.Service,
-	mcp *mcpsvc.Service, job *jobsvc.Service, dash *dashsvc.Service, rdb *redis.Client) *HTTPServer {
+	mcp *mcpsvc.Service, skill *skillsvc.Service, job *jobsvc.Service, dash *dashsvc.Service, rdb *redis.Client) *HTTPServer {
 	gin.SetMode(cfg.Server.Mode)
 	e := gin.New()
 	// ClientIP 只信可信代理链上的 X-Forwarded-For：默认空表=不信任任何代理（取直连地址），
@@ -104,7 +106,7 @@ func NewHTTPServer(cfg *conf.Bootstrap, auth *authsvc.Service, user *usersvc.Ser
 	// RBAC 权限判定缓存：L1 30s 进程内存 + L2 60s Redis（cache.l2Enabled 可关）
 	rbacCache := cache.NewTwoLevel(rdb, "rbac:", 30*time.Second, 60*time.Second, cfg.Cache.L2Enabled)
 
-	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, monitor: monitor, agent: agent, dict: dict, syscfg: syscfg, notice: notice, notify: notify, mcp: mcp, job: job, dashboard: dash, rbacCache: rbacCache, rdb: rdb, engine: e}
+	s := &HTTPServer{cfg: cfg, auth: auth, user: user, role: role, perm: perm, session: session, log: log, file: file, export: export, blacklist: blacklist, merchant: merchant, merchantUC: merchantUC, tenant: tenant, appuser: appuser, appuserUC: appuserUC, appIssuer: appIssuer, monitor: monitor, agent: agent, dict: dict, syscfg: syscfg, notice: notice, notify: notify, mcp: mcp, skill: skill, job: job, dashboard: dash, rbacCache: rbacCache, rdb: rdb, engine: e}
 	// 内置系统参数幂等播种（不覆盖用户修改；失败不阻断启动）
 	if err := syscfg.EnsureBuiltin(); err != nil {
 		logger.Warn("ensure builtin sys-configs failed", zap.Error(err))

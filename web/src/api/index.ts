@@ -1,5 +1,5 @@
 import request from './request'
-import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AgentToolGroups, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, McpServer, McpServerInput, McpTestResult, NotifyChannel, NotifyRecord, NotifyRule, NotifyTestResult, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, MonitorHistoryPoint, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, NoticeRoleOption, NoticeUserOption, SysConfig, UserInfo, UsageStats, LogPageResult } from './types'
+import type { AgentConversation, AgentConversationMessage, AgentInfo, AgentModel, AgentProvider, AgentTestResult, AgentToolGroups, AppUser, BlacklistItem, CaptchaInfo, ExportRecord, FileInfo, LoginLogInfo, MenuHit, MenuNode, Merchant, MerchantAPILog, McpServer, McpServerInput, McpTestResult, NotifyChannel, NotifyRecord, NotifyRule, NotifyTestResult, OnlineSession, OperationLogInfo, PageResult, Permission, R, Role, ServerStatus, Tenant, TokenPair, DashboardStats, DictItem, MonitorHistoryPoint, DictType, JobHandler, JobInfo, JobLog, NoticeInfo, NoticeRoleOption, NoticeUserOption, SysConfig, UserInfo, UsageStats, LogPageResult, SkillInfo, SkillInput } from './types'
 
 // ---- 认证 ----
 export const getCaptcha = () => request.get<R<CaptchaInfo>>('/auth/captcha')
@@ -321,3 +321,12 @@ export const getMcpServer = (id: number) => request.get<R<McpServer>>(`/mcp/serv
 export const updateMcpServer = (id: number, data: McpServerInput) => request.put<R<null>>(`/mcp/servers/${id}`, data)
 export const deleteMcpServer = (id: number) => request.delete<R<null>>(`/mcp/servers/${id}`)
 export const testMcpServer = (id: number) => request.post<R<McpTestResult>>(`/mcp/servers/${id}/test`)
+
+// ---- 技能（多文件技能包） ----
+
+export const listSkills = (params?: { page: number; page_size: number; kw?: string; status?: number }) =>
+  request.get<R<PageResult<SkillInfo>>>('/skills', { params })
+export const createSkill = (data: SkillInput) => request.post<R<SkillInfo>>('/skills', data)
+export const getSkill = (id: number) => request.get<R<SkillInfo>>(`/skills/${id}`)
+export const updateSkill = (id: number, data: SkillInput) => request.put<R<null>>(`/skills/${id}`, data)
+export const deleteSkill = (id: number) => request.delete<R<null>>(`/skills/${id}`)
